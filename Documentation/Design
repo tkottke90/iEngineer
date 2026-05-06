@@ -1,0 +1,16 @@
+# IEngineer Overview
+
+I enjoy sim racing and would love to make both my gameplay and streaming more immersive.  To that end I started designing this suite of applications to help me.  
+
+One key piece of technology that i think will really enablee to achieve my goals is the use of LLMs and AI Agents, due to their ability to make decisions in undeterministic environments.  History this would have been a challenge because traditional softwae would require every logic branch to be accountable.
+
+## Ideas
+
+- **AI Engineer**: In racing an engineer is like a conductor.  Making decisions for the team about the strategy and adjusting it throughout the race. I think this would be a great asset to me as a driver to be able to offload some of the mental load of strategy.  Ideally running a Text to Speach model which can speak into a Discord channel would be ideal, allowing me to use voice to communicate.
+
+- **Data Collection & Processing**: While having a strategy can simply be great, using data to adjust that strategy would be better.  Being able to process that data across races would be the best. Building out a system to collect telemetry data (both from myself and from teammates in endurance races) would be a great tool to have not only for racing but also for stream data.
+
+- **Broadcast Producer**: When i live stream endurance races, i find that i am constantly babysitting the stream, changing cameras, adjusting views, showing stats or replays.  it would be nice to offload this to an AI Agent to think about.  Additionally, it could even grow to a broadcaster potentially, filling in dead space where i am not on the mic to talk to the crowd.  using a TTS model i could even change voices/personalities to help break up the stream.
+
+- **Stream + Camera Controls**:  i have a rough prototype of this one from the 2026 Daytona race.  i would like to finalize this into something concrete, particularly combining the iracing and obs controls with my Stream Helper app so i have a live steam with all the controls laid out.
+
