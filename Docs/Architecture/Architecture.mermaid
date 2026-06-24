@@ -1,0 +1,58 @@
+architecture-beta
+    group local_pc(server)[Racing PC]
+        service iracing(disk)[iRacing Sim] in local_pc
+        service obs(server)[OBS Studio] in local_pc
+
+        group app(cloud)[iRacing Engineer App] in local_pc
+
+            group data_grp(disk)[Data Layer] in app
+            service sdk_reader(disk)[SDK Reader] in data_grp
+            service session_mgr(server)[Session Manager] in data_grp
+
+            group re_grp(server)[Racing Engineer] in app
+            service strategy(server)[Strategy Engine] in re_grp
+            service voice(server)[Voice Interface] in re_grp
+
+            group se_grp(server)[Stream Engineer] in app
+            service broadcast(server)[Broadcast Plan Engine] in se_grp
+            service obs_ctrl(server)[OBS Controller] in se_grp
+            service overlay_srv(server)[Overlay HTTP Server] in se_grp
+            service disc_bridge(server)[Discord Bridge] in se_grp
+
+            service app_ui(server)[App UI] in app
+
+        group speech(server)[Speech Services] in local_pc
+        service whisper(server)[Whisper STT] in speech
+        service tts(server)[Local TTS] in speech
+
+    group inference_hw(server)[Inference Server - LAN]
+        service llm_api(server)[LLM API - OpenAI Compatible]
+
+    group team_server(cloud)[Team Coordination Server]
+        service redis_q(database)[Redis Queue]
+        service team_mgr(server)[Team Manager]
+
+    service discord(internet)[Discord]
+    service twitch(internet)[Twitch / YouTube]
+    service stream_deck(server)[Stream Deck]
+
+    iracing:R --> L:sdk_reader
+    sdk_reader:R --> L:session_mgr
+    session_mgr:R --> L:strategy
+    strategy:R --> L:voice
+    voice:R <--> L:llm_api
+    voice:B <--> T:whisper
+    voice:B <--> T:tts
+    stream_deck:B --> T:voice
+    session_mgr:B --> T:broadcast
+    broadcast:R --> L:obs_ctrl
+    obs_ctrl:R --> L:obs
+    obs:B --> T:overlay_srv
+    obs:R --> L:twitch
+    broadcast:B --> T:disc_bridge
+    disc_bridge:R --> L:discord
+    app_ui:L <--> R:session_mgr
+    app_ui:L <--> R:broadcast
+    session_mgr:R --> L:redis_q
+    redis_q:R --> L:team_mgr
+    team_mgr:B --> T:session_mgr
