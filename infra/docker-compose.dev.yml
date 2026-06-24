@@ -1,0 +1,27 @@
+services:
+  hub:
+    build:
+      context: ..
+      dockerfile: apps/hub-server/Dockerfile.dev
+    volumes:
+      - ../apps/hub-server/src:/app/src
+    environment:
+      - LOG_LEVEL=debug
+      - NODE_ENV=development
+    command: npm run dev -w apps/hub-server
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  speaches:
+    ports:
+      - "8000:8000"
+
+  chatterbox:
+    ports:
+      - "8001:8001"

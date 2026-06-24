@@ -1,0 +1,11 @@
+{
+  "name": "iracing-engineer",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev:hub": "npm run dev -w apps/hub-server",
+    "dev:tauri": "npm run tauri dev -w apps/tauri-client",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}

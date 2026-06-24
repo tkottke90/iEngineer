@@ -1,0 +1,71 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: iracing_engineer
+      POSTGRES_USER: iracing
+      POSTGRES_PASSWORD: iracing
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../apps/hub-server/src/db/migrations:/docker-entrypoint-initdb.d
+
+  speaches:
+    image: ghcr.io/speaches-ai/speaches:latest-cpu
+    ports:
+      - "8000:8000"
+    volumes:
+      - speaches-models:/root/.cache/huggingface
+      - ./config/speaches:/app/config
+    environment:
+      - WHISPER_MODEL=base.en
+
+  chatterbox:
+    image: ghcr.io/devnen/chatterbox-tts-api:latest
+    ports:
+      - "8001:8001"
+    volumes:
+      - chatterbox-models:/app/models
+      - ./config/chatterbox:/app/config
+
+  hub:
+    build:
+      context: ..
+      dockerfile: apps/hub-server/Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - ../.env
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://iracing:iracing@postgres:5432/iracing_engineer
+      - SPEACHES_URL=http://speaches:8000
+      - CHATTERBOX_URL=http://chatterbox:8001
+    depends_on:
+      - redis
+      - postgres
+      - speaches
+      - chatterbox
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./config/otel/collector.yaml:/etc/otelcol-contrib/config.yaml
+
+volumes:
+  redis-data:
+  postgres-data:
+  speaches-models:
+  chatterbox-models:

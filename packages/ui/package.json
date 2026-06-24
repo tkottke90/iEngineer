@@ -1,0 +1,21 @@
+{
+  "name": "@iracing-engineer/ui",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "preact": "^10.0.0"
+  },
+  "dependencies": {
+    "@iracing-engineer/types": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "preact": "^10.0.0"
+  }
+}

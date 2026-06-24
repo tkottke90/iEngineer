@@ -141,3 +141,10 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Project-specific
+target/
+*.sqlite
+*.sqlite-journal
+packages/types/src/generated/*.ts
+.DS_Store
