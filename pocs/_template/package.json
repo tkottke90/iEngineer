@@ -1,0 +1,16 @@
+{
+  "name": "@poc/template",
+  "version": "0.0.0",
+  "private": true,
+  "description": "",
+  "poc": {
+    "status": "draft"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.3"
+  }
+}
