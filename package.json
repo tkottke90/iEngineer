@@ -1,11 +1,16 @@
 {
   "name": "iracing-engineer",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "dev:hub": "npm run dev -w apps/hub-server",
     "dev:tauri": "npm run tauri dev -w apps/tauri-client",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "setup:hub": "[ -f .env ] || cp .env.example .env && npm install && docker compose -f infra/docker-compose.yml up -d redis postgres",
+    "postinstall": "node scripts/patch-hono-preact.mjs"
   }
 }
