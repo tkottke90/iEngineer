@@ -1,0 +1,138 @@
+{
+  "config": {
+    "LLM_BASE_URL": "https://lemonade.tdkottke.com/v1",
+    "LLM_MODEL": "qwen3.5-9b-FLM",
+    "CHATTERBOX_URL": "http://10.0.0.12:8004",
+    "CHATTERBOX_MODEL": "voice2.wav",
+    "ITERATIONS": 5,
+    "transcript": "What's my gap to the car ahead?"
+  },
+  "runs": [
+    {
+      "run": 1,
+      "batch": {
+        "llm_total_ms": 6806.506125,
+        "tts_first_byte_ms": 2831.4792500000003,
+        "combined_ms": 9637.985375,
+        "response": "You are 2.4 seconds behind car #45. This gap is sustainable given your current fuel load and tyre condition over the remaining laps."
+      },
+      "streaming": {
+        "llm_ttft_ms": 2796.370999999999,
+        "first_sentence_ms": 3437.2572920000002,
+        "first_sentence_text": "You are running 2.",
+        "tts_first_byte_ms": 956.718291000001,
+        "combined_ms": 4393.975583000001,
+        "full_response": "You are running 2.4 seconds behind car #45. With sufficient fuel and only mild tyre degradation, there is no immediate instruction to change your strategy based on this gap alone."
+      }
+    },
+    {
+      "run": 2,
+      "batch": {
+        "llm_total_ms": 4538.562124999997,
+        "tts_first_byte_ms": 1533.4376250000023,
+        "combined_ms": 6071.999749999999,
+        "response": "You are 2.4 seconds behind car #45."
+      },
+      "streaming": {
+        "llm_ttft_ms": 2667.511875,
+        "first_sentence_ms": 3299.811375000001,
+        "first_sentence_text": "You are currently 2.",
+        "tts_first_byte_ms": 1005.1122499999983,
+        "combined_ms": 4304.923624999999,
+        "full_response": "You are currently 2.4 seconds behind car #45. This gap is stable given your sufficient fuel load and manageable tyre degradation at this stage of the race."
+      }
+    },
+    {
+      "run": 3,
+      "batch": {
+        "llm_total_ms": 7970.67525,
+        "tts_first_byte_ms": 3356.005333999994,
+        "combined_ms": 11326.680583999994,
+        "response": "You are running 2.4 seconds behind car #45 on lap 24 of 50. Maintain steady pace to ensure we exit the stint with fuel remaining for a clean stop strategy."
+      },
+      "streaming": {
+        "llm_ttft_ms": 2865.485958999998,
+        "first_sentence_ms": 3354.786208999998,
+        "first_sentence_text": "You are 2.",
+        "tts_first_byte_ms": 894.101333999999,
+        "combined_ms": 4248.887542999997,
+        "full_response": "You are 2.4 seconds behind car #45."
+      }
+    },
+    {
+      "run": 4,
+      "batch": {
+        "llm_total_ms": 5671.041874999995,
+        "tts_first_byte_ms": 1726.325208000002,
+        "combined_ms": 7397.367082999997,
+        "response": "You are currently 2.4 seconds behind car #45."
+      },
+      "streaming": {
+        "llm_ttft_ms": 2579.751667000004,
+        "first_sentence_ms": 3298.286791999999,
+        "first_sentence_text": "You are 2.",
+        "tts_first_byte_ms": 863.8870830000014,
+        "combined_ms": 4162.173875,
+        "full_response": "You are 2.4 seconds behind car #45 on Lap 24 of 50. The current gap remains stable, so no immediate action is required."
+      }
+    },
+    {
+      "run": 5,
+      "batch": {
+        "llm_total_ms": 5793.661082999999,
+        "tts_first_byte_ms": 3642.0796249999985,
+        "combined_ms": 9435.740707999998,
+        "response": "You are 2.4 seconds behind car #45. Maintain your pace to close this deficit over the remaining laps."
+      },
+      "streaming": {
+        "llm_ttft_ms": 2686.4273329999996,
+        "first_sentence_ms": 3329.3202909999964,
+        "first_sentence_text": "You are running 2.",
+        "tts_first_byte_ms": 1179.648000000001,
+        "combined_ms": 4508.968290999997,
+        "full_response": "You are running 2.4 seconds behind car #45. With your current fuel load and tyre condition, this gap is sustainable for the remainder of the race."
+      }
+    }
+  ],
+  "summary": {
+    "batch": {
+      "llm_total": {
+        "mean": 6156.089291599998,
+        "p50": 5793.661082999999,
+        "p95": 7970.67525
+      },
+      "tts_first_byte": {
+        "mean": 2617.8654083999995,
+        "p50": 2831.4792500000003,
+        "p95": 3642.0796249999985
+      },
+      "combined": {
+        "mean": 8773.954699999998,
+        "p50": 9435.740707999998,
+        "p95": 11326.680583999994
+      }
+    },
+    "streaming": {
+      "llm_ttft": {
+        "mean": 2719.1095668000003,
+        "p50": 2686.4273329999996,
+        "p95": 2865.485958999998
+      },
+      "first_sentence": {
+        "mean": 3343.8923917999987,
+        "p50": 3329.3202909999964,
+        "p95": 3437.2572920000002
+      },
+      "tts_first_byte_short": {
+        "mean": 979.8933916000002,
+        "p50": 956.718291000001,
+        "p95": 1179.648000000001
+      },
+      "combined": {
+        "mean": 4323.7857834,
+        "p50": 4304.923624999999,
+        "p95": 4508.968290999997
+      }
+    }
+  }
+}
