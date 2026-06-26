@@ -1,0 +1,4 @@
+# WAV fixtures are generated locally and not committed
+*.wav
+*.aiff
+*.mp3

@@ -1,0 +1,21 @@
+{
+  "name": "@poc/0001-audio-pipeline-latency",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Measures end-to-end audio pipeline latency: STT → LLM → TTS",
+  "poc": {
+    "status": "concluded"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@langchain/core": "^0.3.0",
+    "@langchain/openai": "^0.5.0",
+    "dotenv": "^16.5.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.3"
+  }
+}

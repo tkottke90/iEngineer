@@ -1,0 +1,89 @@
+{
+  "config": {
+    "STT_URL": "https://lemonade.tdkottke.com",
+    "STT_MODEL": "Whisper-Large-v3-Turbo",
+    "LLM_BASE_URL": "https://lemonade.tdkottke.com/v1",
+    "LLM_MODEL": "qwen3.5-9b-FLM",
+    "CHATTERBOX_URL": "http://10.0.0.12:8004",
+    "ITERATIONS": 5
+  },
+  "runs": [
+    {
+      "run": 1,
+      "stt_ms": 12452.428375,
+      "llm_ttft_ms": 2611.9164579999997,
+      "llm_total_ms": 4529.987499999999,
+      "tts_ttfa_ms": 1580.0619590000024,
+      "total_ttfa_ms": 18563.225875,
+      "transcript": "What's my gap to the car ahead?",
+      "response": "You are currently 2.4 seconds behind car #45."
+    },
+    {
+      "run": 2,
+      "stt_ms": 12078.859875000002,
+      "llm_ttft_ms": 2585.8480839999975,
+      "llm_total_ms": 4351.383499999996,
+      "tts_ttfa_ms": 1658.0038330000025,
+      "total_ttfa_ms": 18088.405333000002,
+      "transcript": "What's my gap to the car ahead?",
+      "response": "You are 2.4 seconds behind car #45."
+    },
+    {
+      "run": 3,
+      "stt_ms": 12056.626249999994,
+      "llm_ttft_ms": 2626.9372090000033,
+      "llm_total_ms": 4405.835917000004,
+      "tts_ttfa_ms": 1531.9280829999989,
+      "total_ttfa_ms": 17994.761832999997,
+      "transcript": "What's my gap to the car ahead?",
+      "response": "You are 2.4 seconds behind car #45."
+    },
+    {
+      "run": 4,
+      "stt_ms": 12140.386083999998,
+      "llm_ttft_ms": 2631.1919170000037,
+      "llm_total_ms": 4349.582292000006,
+      "tts_ttfa_ms": 1576.2363749999931,
+      "total_ttfa_ms": 18066.328374999997,
+      "transcript": "What's my gap to the car ahead?",
+      "response": "You are 2.4 seconds behind car #45."
+    },
+    {
+      "run": 5,
+      "stt_ms": 12078.593041,
+      "llm_ttft_ms": 2601.5154160000093,
+      "llm_total_ms": 4604.428500000009,
+      "tts_ttfa_ms": 1595.8635420000064,
+      "total_ttfa_ms": 18279.683000000005,
+      "transcript": "What's my gap to the car ahead?",
+      "response": "You are currently running 2.4 seconds behind car #45."
+    }
+  ],
+  "summary": {
+    "stt": {
+      "mean": 12161.378724999999,
+      "p50": 12078.859875000002,
+      "p95": 12452.428375
+    },
+    "llm_ttft": {
+      "mean": 2611.481816800003,
+      "p50": 2611.9164579999997,
+      "p95": 2631.1919170000037
+    },
+    "llm_total": {
+      "mean": 4448.243541800003,
+      "p50": 4405.835917000004,
+      "p95": 4604.428500000009
+    },
+    "tts_ttfa": {
+      "mean": 1588.4187584000006,
+      "p50": 1580.0619590000024,
+      "p95": 1658.0038330000025
+    },
+    "total_ttfa": {
+      "mean": 18198.4808832,
+      "p50": 18088.405333000002,
+      "p95": 18563.225875
+    }
+  }
+}
