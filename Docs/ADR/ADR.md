@@ -30,6 +30,7 @@ This document consolidates all significant architectural decisions made for the 
 22. [Authentication — Authentik via OAuth2/OIDC](#22-authentication--authentik-via-oauth2oidc)
 23. [Observability — OpenTelemetry with Grafana Stack](#23-observability--opentelemetry-with-grafana-stack)
 24. [Fuel Strategy Math — Deterministic Code, Not LLM Reasoning](#24-fuel-strategy-math--deterministic-code-not-llm-reasoning)
+25. [Audio Pipeline Architecture — Revised from POC Findings](#25-audio-pipeline-architecture--revised-from-poc-findings)
 
 ---
 
@@ -170,7 +171,9 @@ Use SQLite via Tauri's built-in SQLite plugin for all local configuration storag
 
 ## 8. Speech-to-Text — Self-Hosted Whisper via Speaches
 
-**Status:** Accepted
+**Status:** Superseded by ADR 25
+
+POC-0001 measured remote STT at 12,161ms — the network upload cost made homelab-hosted Whisper structurally incompatible with any responsive TTFA target. STT now runs locally in the Tauri client via `whisper-rs`. See ADR 25.
 
 **Context:**
 Voice input (driver queries and commands) must be transcribed with low latency during a live race session. Cloud STT services (Google, AWS, Azure, OpenAI Whisper API) introduce network round-trips to external endpoints and a dependency on internet availability during a race. Running Whisper on the racing PC itself would load an ML model and compete for CPU with iRacing and OBS.
@@ -514,3 +517,61 @@ All fuel arithmetic is performed by the deterministic Fuel Model in the hub serv
 - The LLM's role is reasoning and communication, not arithmetic
 - Expanding strategy logic (more sophisticated pit window modeling, multi-stint planning) is a code change to the Fuel Model, not a prompt engineering problem
 - The tool interface (`get_fuel_status()`, `get_tire_status()`) must remain stable as the LLM is updated; breaking changes to the tool schema require prompt updates
+
+---
+
+## 25. Audio Pipeline Architecture — Revised from POC Findings
+
+**Status:** Accepted
+
+**Context:**
+The original audio pipeline design (ADR 8, ADR 12) assumed STT running on the homelab server via Speaches, LLM inference on Lemonade, and TTS via Chatterbox — all accessed over the network from the Tauri client. A 500ms TTFA target was set aspirationally before any latency measurement.
+
+Three POCs measured each stage against that target:
+
+| POC | What was measured | Key finding |
+|-----|-------------------|-------------|
+| POC-0001 | End-to-end batch pipeline latency | Remote STT: **12,161ms** mean (67% of TTFA). Total TTFA: **18,198ms**. 500ms impossible. |
+| POC-0002 | Local STT via `whisper-rs` (CPU, no GPU) | Base.en CPU: **345ms**. 35× faster than remote. STT bottleneck eliminated. |
+| POC-0003 | Streaming LLM→TTS (first sentence) vs. batch | Streaming **50.7% faster** than batch. LLM TTFT is the new floor. `qwen3.5-2b-FLM` cuts TTFT from 2,719ms to **1,298ms** vs. `qwen3.5-9b-FLM`. |
+
+One constraint was confirmed during POC-0002 planning: **the racing PC's GPU is dedicated to iRacing and cannot be shared with any ML inference workload.** This eliminates GPU-accelerated local STT and local LLM inference on the racing PC as options.
+
+**Decision:**
+
+Revise the audio pipeline architecture and TTFA target as follows:
+
+**STT — moves from homelab to racing PC (CPU-only)**
+Use `whisper-rs` (Rust bindings to `whisper.cpp`) embedded in the Tauri client backend. Model: `ggml-base.en.bin` (142MB). Runs on CPU only — no GPU sharing with iRacing. Load model once at startup; keep state in-process for zero-overhead repeated inference. Replaces ADR 8 (Speaches on homelab).
+
+**LLM — remains on Lemonade homelab server**
+Model: `qwen3.5-2b-FLM` (replaces `qwen3.5-9b-FLM`). The 2B model halves TTFT (1,298ms vs. 2,719ms) with no change to the serving infrastructure. Response quality tradeoff is acceptable for the constrained single-turn racing engineer use case; prompt tuning to enforce brevity is required (the 2B model is more verbose by default).
+
+**LLM→TTS — streaming chain, not batch**
+Do not wait for the full LLM response before starting TTS. Buffer streaming LLM tokens, detect the first sentence boundary, and dispatch it to Chatterbox TTS immediately. Subsequent sentences continue in the background. The driver hears audio after TTFT + first-sentence generation time + TTS latency for a short input — not after the full response is generated.
+
+Sentence boundary detection must avoid false positives on decimal numbers (e.g. `2.4`). Production implementation must require an uppercase letter after `.` or use a minimum-token-count heuristic.
+
+**TTS — unchanged (Chatterbox on homelab)**
+TTS latency for a short first sentence (~5–8 words) is ~972ms. For full responses in batch, it scales to ~2,618ms. Streaming keeps TTS input short, naturally bounding this stage.
+
+**Revised TTFA target: ≤3.5 seconds**
+
+Based on measured p95 values with the revised architecture:
+
+| Stage | Architecture | Measured (p95) |
+|-------|-------------|---------------:|
+| STT | `whisper-rs` Base.en, CPU, Tauri client | ~345ms |
+| LLM TTFT | `qwen3.5-2b-FLM`, Lemonade homelab | ~1,494ms |
+| TTS first sentence | Chatterbox, streaming, homelab | ~1,168ms |
+| **Total TTFA** | | **≤3.5s** |
+
+The original 500ms target was set without latency data. It is not achievable with any homelab-hosted LLM given the ~1.3s minimum TTFT observed, and local LLM on the racing PC is excluded by the GPU constraint. 3.5 seconds is the measured floor with current hardware, not a concession — it is the correct target given the system constraints.
+
+**Consequences:**
+- `whisper-rs` must be compiled into the Tauri Rust backend with no GPU feature flags on Windows (CPU-only). Model file (~142MB) is bundled with the client installer or downloaded at first launch.
+- The `qwen3.5-2b-FLM` model on Lemonade must be kept loaded; cold-start TTFT is significantly higher than the steady-state numbers measured here.
+- The streaming LLM→TTS pipeline is the production architecture; the Tauri client must never await the full LLM response before initiating TTS.
+- The 2B model's verbosity must be addressed in the system prompt — the Racing Engineer prompt must be stronger about single-sentence responses. Failure to do this increases LLM total time and TTS input length, degrading both latency and the one-sentence UX.
+- If the Lemonade server is unreachable (network failure), the voice pipeline is entirely unavailable — there is no offline LLM fallback. This is accepted for v1.
+- TTFA measurements were taken on a development machine accessing Lemonade over the internet. The Tauri client on the racing PC accesses Lemonade over LAN, which may reduce LLM TTFT modestly — production numbers are expected to be at or below the measurements here.
