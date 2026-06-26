@@ -20,7 +20,65 @@ apps/hub-server/     Node.js hub — homelab Docker
 packages/types/      Shared TypeScript types (source of truth for Redis schema)
 packages/ui/         Shared Preact components
 infra/               Docker Compose stack
+pocs/                Isolated proof-of-concept experiments (see below)
 ```
+
+---
+
+## Proof of Concepts (`pocs/`)
+
+POCs are isolated experiments used to validate assumptions before committing to design or architecture decisions. They are **never deleted** — conclusions become part of the project record.
+
+**Backlog:** `Docs/Engineering/POCs.md` — the authoritative list of open questions that need prototyping.
+
+### Naming convention
+
+```
+pocs/NNNN-descriptive-slug/
+```
+
+`NNNN` is a zero-padded 4-digit index that reflects the order POCs were created (e.g. `0001`, `0042`). Use the next available number. The slug is lowercase kebab-case describing what is being tested.
+
+### Structure
+
+```
+pocs/NNNN-poc-name/
+  README.md       Scientific method narrative — the primary artifact
+  package.json    Self-contained deps; carries poc.status field
+  src/            Experiment code (not production quality)
+  fixtures/       Input data and sample files
+  results/        Output, logs, and captured data (committed to git)
+```
+
+Copy `pocs/_template/` to start a new POC. Do not modify `_template/` itself.
+
+### Status lifecycle
+
+The `poc.status` field in `package.json` tracks state:
+
+| Status      | Meaning                                          |
+|-------------|--------------------------------------------------|
+| `draft`     | README sections being written, no code yet       |
+| `running`   | Experiment actively in progress                  |
+| `concluded` | Results captured, Conclusions section complete   |
+
+### README structure
+
+Each POC README follows the scientific method:
+
+1. **Observation** — what prompted this investigation
+2. **Question** — the single focused question to answer
+3. **Research** — docs, prior art, and findings gathered before writing code
+4. **Hypothesis** — expected outcome, committed to before running the experiment
+5. **Experiment** — prerequisites, setup, run instructions, what to observe
+6. **Conclusions** — what was found and what decision it informs
+
+### Rules
+
+- Each POC is a self-contained npm workspace package (`private: true`, no shared deps with `apps/` or `packages/`).
+- Write the Hypothesis section before writing any experiment code.
+- If an experiment answers more than one question, split it into two POCs.
+- `results/` is committed. Add a per-POC `.gitignore` inside `results/` only if an artifact is too large or sensitive.
 
 ---
 
@@ -28,9 +86,37 @@ infra/               Docker Compose stack
 
 > **This is a hard constraint. Do not work around it, do not "simplify" it, do not replace it with raw Hono, Express, or any other framework.**
 
-The hub-server uses **[hono-preact](https://github.com/sbesh91/hono-preact)** (`nodeAdapter`). Full framework docs: <https://framework.sbesh.com/llms-full.txt>
+**Before making any changes to `apps/hub-server/`, read `apps/hub-server/AGENTS.md`.** It is the authoritative guide for working within that package and must be consulted before generating any code.
 
-hono-preact is a Vite-driven full-stack framework: Hono on the server, Preact in the browser, manifest-driven routes, typed loaders/actions, streaming everywhere.
+The hub-server uses **[hono-preact](https://github.com/sbesh91/hono-preact)** (`nodeAdapter`). hono-preact is a Vite-driven full-stack framework: Hono on the server, Preact in the browser, manifest-driven routes, typed loaders/actions, streaming everywhere.
+
+**Docs:**
+- Offline corpus (always current): `apps/hub-server/agents/llms-full.txt`
+- Online: <https://framework.sbesh.com/docs>
+
+### How this framework differs from common assumptions
+
+| You might assume | Here it actually is |
+|---|---|
+| Routes come from a `pages/` or `app/` folder | Routes are declared in code in `src/routes.ts` via `defineRoutes()`. No file-system routing. |
+| This is React | This is **Preact**. Import hooks from `preact/hooks`, not `react`. |
+| Server code lives in the page component | Loaders, actions, guards live in a colocated `*.server.ts` file. Server code never ships to the client. |
+| Data fetched with `getServerSideProps` or `useEffect` | Data comes from `defineLoader` in a `.server.ts`; the page reads it through the typed loader. |
+| Mutations are ad-hoc POST handlers | Mutations are `defineAction`s; results come back via `useActionResult`. |
+| You cast to get types | The route table is typed end to end. Do not cast; let inference work. |
+| Auth checks are per-handler | Page guards are a `use: [...]` array on a route node, inherited down the tree. |
+
+### Import subpaths
+
+| Subpath | Exports |
+|---|---|
+| `hono-preact` | `defineRoutes`, `defineLoader`, `defineAction`, `defineRoom`, `defineSocket`, `useParams`, `Head`, `ClientScript`, `Form`, `useActionResult` |
+| `hono-preact/page` | `redirect`, `deny`, `render` |
+| `hono-preact/server` | `renderPage`, `useHonoContext`, `HonoContext` |
+| `hono-preact/vite` | `honoPreact()` Vite plugin |
+| `hono-preact/adapter-node` | `nodeAdapter()` — used in this project |
+
+UI components (Dialog, Popover, Tooltip, Menu, Select, Combobox): `hono-preact-ui` — ships unstyled.
 
 ### Required file structure
 
@@ -43,28 +129,42 @@ apps/hub-server/
     server.tsx            createServerEntry(routes, { api }) — framework entry point
     pages/
       <page>.tsx          definePage() or serverLoaders.default.View(...)
-      <page>.server.ts    defineLoader() / defineAction() co-located with page
+      <page>.server.ts    defineLoader() / defineAction() / defineRoom() / defineSocket() co-located
     pipeline/             Telemetry processors (no hono-preact dependency)
     state/                Race state + derived models (no hono-preact dependency)
     agents/               Racing Engineer + Stream Engineer (no hono-preact dependency)
     services/             LLM, TTS, STT, OBS, Discord, iRacing API clients
     db/                   PostgreSQL queries and migrations
     redis/                Redis client, stream consumers, pub/sub
+  agents/
+    skills/               Step-by-step recipes (see below)
+    llms-full.txt         Full offline framework docs
 ```
+
+### Skills (step-by-step recipes)
+
+For common tasks, follow the relevant skill file top to bottom — each ends with a verification command:
+
+| Task | Skill file |
+|---|---|
+| Add a new page (new URL) | `agents/skills/add-a-page.md` |
+| Add a loader (server data for a page) | `agents/skills/add-a-loader.md` |
+| Add an action and form (mutation) | `agents/skills/add-an-action.md` |
+| Add a guard (restrict a route) | `agents/skills/add-a-guard.md` |
 
 ### Routing rules
 
 - **All UI pages** go in `src/pages/` as `.tsx` + `.server.ts` pairs and are declared in `src/routes.ts` via `defineRoutes()`.
 - **All REST API routes** (race state, sessions, broadcast plans, config) go in `src/api.ts` as a standard Hono app. `createServerEntry` merges it.
-- **WebSockets** use the hono-preact WebSocket/rooms system or Hono's WebSocket helper mounted in `api.ts` — not a separate route file.
+- **WebSockets** use `defineRoom`/`defineSocket` in `.server.ts` or Hono's WebSocket helper in `api.ts` — not a separate route file.
 - **Overlay endpoints** (OBS browser sources) are Hono routes in `api.ts`.
 - **Never** create a manual `app.ts` that assembles a Hono app from scratch for the UI layer.
 
-### Loader/action pattern
+### Loader/action/realtime pattern
 
 ```ts
 // src/pages/race-control.server.ts
-import { defineLoader, defineAction } from 'hono-preact';
+import { defineLoader, defineAction, defineRoom } from 'hono-preact';
 
 export const serverLoaders = {
   default: defineLoader(async ({ c }) => {
@@ -75,6 +175,12 @@ export const serverLoaders = {
 export const serverActions = {
   updatePlan: defineAction(async (_ctx, payload) => {
     // mutate, return result
+  }),
+};
+
+export const serverRooms = {
+  live: defineRoom(async ({ c }) => {
+    // realtime room — push updates to subscribed clients
   }),
 };
 ```
@@ -113,6 +219,7 @@ export default definePage(View);
 - Do **not** put UI pages inside `src/routes/ui/` — they belong in `src/pages/`.
 - Do **not** skip the `vite.config.ts` or `src/routes.ts` manifest.
 - Do **not** import hono-preact page components from raw Hono route handlers.
+- Do **not** import from `react` — this is Preact; use `preact/hooks`.
 
 ---
 
