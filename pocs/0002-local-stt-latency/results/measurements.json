@@ -1,0 +1,114 @@
+{
+  "poc": "0002-local-stt-latency",
+  "remote_baseline_ms": 12161.0,
+  "models": [
+    {
+      "model": "tiny.en",
+      "load_ms": 85.97745800000001,
+      "runs": [
+        {
+          "run": 1,
+          "inference_ms": 189.73616600000003,
+          "transcript": "What's my gap to the car ahead?"
+        },
+        {
+          "run": 2,
+          "inference_ms": 184.361875,
+          "transcript": "What's my gap to the car ahead?"
+        },
+        {
+          "run": 3,
+          "inference_ms": 191.478041,
+          "transcript": "What's my gap to the car ahead?"
+        },
+        {
+          "run": 4,
+          "inference_ms": 184.097167,
+          "transcript": "What's my gap to the car ahead?"
+        },
+        {
+          "run": 5,
+          "inference_ms": 172.299375,
+          "transcript": "What's my gap to the car ahead?"
+        }
+      ],
+      "summary": {
+        "mean_ms": 184.3945248,
+        "p50_ms": 184.361875,
+        "p95_ms": 191.478041
+      }
+    },
+    {
+      "model": "base.en",
+      "load_ms": 61.383,
+      "runs": [
+        {
+          "run": 1,
+          "inference_ms": 343.583166,
+          "transcript": "What's my gap to the car ahead?"
+        },
+        {
+          "run": 2,
+          "inference_ms": 335.582334,
+          "transcript": "What's my gap to the car ahead?"
+        },
+        {
+          "run": 3,
+          "inference_ms": 340.02283300000005,
+          "transcript": "What's my gap to the car ahead?"
+        },
+        {
+          "run": 4,
+          "inference_ms": 340.94525,
+          "transcript": "What's my gap to the car ahead?"
+        },
+        {
+          "run": 5,
+          "inference_ms": 363.26175,
+          "transcript": "What's my gap to the car ahead?"
+        }
+      ],
+      "summary": {
+        "mean_ms": 344.6790666,
+        "p50_ms": 340.94525,
+        "p95_ms": 363.26175
+      }
+    },
+    {
+      "model": "small.en",
+      "load_ms": 164.93887500000002,
+      "runs": [
+        {
+          "run": 1,
+          "inference_ms": 1125.728292,
+          "transcript": "What's my gap to the car ahead?"
+        },
+        {
+          "run": 2,
+          "inference_ms": 1072.509,
+          "transcript": "What's my gap to the car ahead?"
+        },
+        {
+          "run": 3,
+          "inference_ms": 1055.798292,
+          "transcript": "What's my gap to the car ahead?"
+        },
+        {
+          "run": 4,
+          "inference_ms": 1056.620666,
+          "transcript": "What's my gap to the car ahead?"
+        },
+        {
+          "run": 5,
+          "inference_ms": 1044.381417,
+          "transcript": "What's my gap to the car ahead?"
+        }
+      ],
+      "summary": {
+        "mean_ms": 1071.0075333999998,
+        "p50_ms": 1056.620666,
+        "p95_ms": 1125.728292
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "@poc/0002-local-stt-latency",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Measures local Whisper inference latency via whisper-rs across Tiny/Base/Small model sizes",
+  "poc": {
+    "status": "concluded"
+  },
+  "scripts": {
+    "start": "cargo run --release --features metal",
+    "build": "cargo build --release --features metal"
+  }
+}
