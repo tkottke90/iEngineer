@@ -1,28 +1,16 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.0.0 → 1.1.0 (MINOR — two new principles added, rationale lines added to
-all existing principles, gate sub-conditions added, prompt governance added to Principle III,
-governance authority clarified)
+Version change: 1.1.0 → 1.1.1 (PATCH — TypeScript test framework changed from vitest to mocha + chai)
 
 Modified principles:
-- I. Real-Time Reliability — added Rationale, added gate sub-condition
-- II. Workspace Isolation — added Rationale
-- III. Agent Autonomy Contract — added prompt versioning rules, added Rationale
-- IV. Local-First Infrastructure — added Rationale
-- V. Observability-Driven — added Rationale, added gate sub-condition
+- VI. Test-Backed Change — replaced `vitest` with `mocha + chai` as the required TypeScript
+  unit test framework
 
-Added sections:
-- VI. Test-Backed Change (new principle)
-- VII. Incremental Delivery / YAGNI (new principle)
-- Governance authority clause
-
+Added sections: N/A
 Removed sections: N/A
 
-Templates requiring updates:
-- .specify/templates/plan-template.md — ✅ Constitution Check section references principles by name
-- .specify/templates/spec-template.md — ✅ no constitution-specific gates; no update needed
-- .specify/templates/tasks-template.md — ✅ test-backed change and observability task types apply
+Templates requiring updates: none (no principle-level semantics changed)
 
 Follow-up TODOs: none
 -->
@@ -121,8 +109,8 @@ All behavioral changes to agents, telemetry logic, and shared packages MUST be b
 automated tests AND linting/formatting checks before a PR is considered complete:
 
 - **Rust**: unit tests via `cargo test`; formatting via `rustfmt`; linting via `clippy`
-- **TypeScript**: unit tests via `vitest` for all `packages/types` validators and `packages/ui`
-  component contracts; linting via ESLint; formatting via Prettier
+- **TypeScript**: unit tests via `mocha + chai` for all `packages/types` validators and
+  `packages/ui` component contracts; linting via ESLint; formatting via Prettier
 - **Integration**: Redis Streams producer/consumer round-trip tests for both telemetry speeds
 - **Agent behavior**: prompt changes MUST be backed by evaluations (not unit tests alone) that
   verify the agent's decision output changes as intended across a representative set of inputs
@@ -195,4 +183,4 @@ Amendments require:
 
 All feature plans MUST include a Constitution Check gate before Phase 0 research.
 
-**Version**: 1.1.0 | **Ratified**: 2026-06-26 | **Last Amended**: 2026-06-26
+**Version**: 1.1.1 | **Ratified**: 2026-06-26 | **Last Amended**: 2026-06-26
