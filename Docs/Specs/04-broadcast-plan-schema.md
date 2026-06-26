@@ -48,9 +48,9 @@ The repair timer is a canonical example of a dual-purpose field: it tells the En
 
 The top-level disposition of the stream. Sets the Engineer's default behavior and determines which other fields are required or available.
 
-| Type | Description |
-|---|---|
-| `hero` | Focused on one or more primary subjects. Engineer prioritizes coverage of those cars. |
+| Type      | Description                                                                            |
+| --------- | -------------------------------------------------------------------------------------- |
+| `hero`    | Focused on one or more primary subjects. Engineer prioritizes coverage of those cars.  |
 | `general` | No primary subject. Engineer selects the most compelling action across the full field. |
 
 Additional types should be anticipated. The schema should be extensible here — a rivalry stream (two competing subjects with equal weight), a team stream, or a class-specific broadcast are natural evolutions.

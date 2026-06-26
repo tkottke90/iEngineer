@@ -39,7 +39,7 @@ export interface SessionState {
   trackName: string;
   trackLengthMeters: number;
   sessionType: string;
-  sessionPhase: import("./telemetry.js").SessionPhase;
+  sessionPhase: import('./telemetry.js').SessionPhase;
   lapsTotal: number | null;
   lapsRemaining: number | null;
   timeRemaining: number | null;

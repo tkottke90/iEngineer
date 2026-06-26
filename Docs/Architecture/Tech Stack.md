@@ -100,6 +100,7 @@ hono-preact is a lightweight full-stack framework pairing Hono (server) with Pre
 The main product interface is a web application served by the Node.js server. This makes it accessible from any device on the LAN — the driver's PC, a co-pilot's laptop, or a tablet used by the Stream Operator.
 
 **Screens:**
+
 - Broadcast plan editor (pre-session)
 - Race control center / stream operator view (during session)
 - Post-session debrief
@@ -177,6 +178,7 @@ The Tauri client uses a pre-shared connection token (configured per-installation
 **Model:** HTML templates with JavaScript API integration
 
 The application's responsibility is:
+
 1. Hosting the overlay HTML pages at stable local URLs
 2. Exposing a WebSocket or REST API that overlays can query for live race state
 
@@ -192,11 +194,11 @@ OBS browser sources load the overlay URLs directly. No data is pushed from the a
 
 **Standard:** OpenTelemetry (OTel) across all components. **Grafana Alloy** runs on the homelab server as the OTel collector, receiving signals from all services and routing them to the appropriate Grafana backend:
 
-| Signal | Backend | Purpose |
-|---|---|---|
-| Logs | Grafana Loki | Structured application logs, searchable by service and session |
-| Traces / Spans | Grafana Tempo | Distributed traces — including the audio pipeline latency waterfall |
-| Metrics | Grafana Prometheus | Optional; available for throughput and error rate dashboards |
+| Signal         | Backend            | Purpose                                                             |
+| -------------- | ------------------ | ------------------------------------------------------------------- |
+| Logs           | Grafana Loki       | Structured application logs, searchable by service and session      |
+| Traces / Spans | Grafana Tempo      | Distributed traces — including the audio pipeline latency waterfall |
+| Metrics        | Grafana Prometheus | Optional; available for throughput and error rate dashboards        |
 
 All backends are homelab-hosted and Grafana-native, so they compose into a single Grafana dashboard without additional configuration.
 
@@ -229,9 +231,9 @@ Log levels follow standard conventions (`debug`, `info`, `warn`, `error`). Debug
 
 Both speech services run as persistent local processes on the homelab server. Neither depends on cloud services.
 
-| Service | Role | Host | Notes |
-|---|---|---|---|
-| **Whisper** (via Speaches) | Speech-to-text | Homelab server | [Speaches](https://github.com/speaches-ai/speaches) (`speaches-ai/speaches`) running the `base.en` model. Tauri sends a 16kHz mono PCM audio file via HTTP POST on PTT release and receives the transcript. LAN audio transfer adds ~1–10ms — negligible against ~200ms inference time. Co-located with the hub server in Docker Compose. |
+| Service                                 | Role           | Host           | Notes                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------------------- | -------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Whisper** (via Speaches)              | Speech-to-text | Homelab server | [Speaches](https://github.com/speaches-ai/speaches) (`speaches-ai/speaches`) running the `base.en` model. Tauri sends a 16kHz mono PCM audio file via HTTP POST on PTT release and receives the transcript. LAN audio transfer adds ~1–10ms — negligible against ~200ms inference time. Co-located with the hub server in Docker Compose.                                                      |
 | **Chatterbox** (via chatterbox-tts-api) | Text-to-speech | Homelab server | [travisvn/chatterbox-tts-api](https://github.com/travisvn/chatterbox-tts-api) — a FastAPI wrapper exposing an OpenAI-compatible `/v1/audio/speech` endpoint with named voice profile management. Co-located with the hub server in Docker Compose. Target output latency under 300ms. See Chatterbox Configuration section below for model variant, voice cloning, and expression tag details. |
 
 ### Chatterbox Configuration
@@ -240,10 +242,10 @@ Both speech services run as persistent local processes on the homelab server. Ne
 
 Two Chatterbox model variants are supported, selected per use case via configuration:
 
-| Variant | Parameters | Decoder steps | Paralinguistic tags | Tuning controls | Use case |
-|---|---|---|---|---|---|
-| **Turbo** (default) | 350M | 1-step | ✅ 9 confirmed tags | `temperature`, `top_p`, `top_k`, `repetition_penalty` | Real-time race engineer voice responses |
-| **Original** | 500M | 10-step | ❌ | `exaggeration`, `cfg_weight`, `temperature` | Pre/post-session analysis narration, non-real-time contexts |
+| Variant             | Parameters | Decoder steps | Paralinguistic tags | Tuning controls                                       | Use case                                                    |
+| ------------------- | ---------- | ------------- | ------------------- | ----------------------------------------------------- | ----------------------------------------------------------- |
+| **Turbo** (default) | 350M       | 1-step        | ✅ 9 confirmed tags | `temperature`, `top_p`, `top_k`, `repetition_penalty` | Real-time race engineer voice responses                     |
+| **Original**        | 500M       | 10-step       | ❌                  | `exaggeration`, `cfg_weight`, `temperature`           | Pre/post-session analysis narration, non-real-time contexts |
 
 Turbo is the default for all real-time voice output. The Original variant is available for contexts where latency is not critical and where `exaggeration` (prosodic intensity) or `cfg_weight` (voice adherence) control is useful — for example, a post-session debrief summary rendered to an audio file. Both models cannot run simultaneously without loading both into VRAM; the active variant is selected per request.
 
@@ -277,10 +279,10 @@ Chatterbox outputs a raw audio tensor (WAV at 24kHz). MP3 conversion is handled 
 
 The hub server calls an LLM via a standard API. Two deployment modes are supported and toggled via configuration — no code changes required to switch:
 
-| Mode | Provider | Use Case |
-|---|---|---|
-| **Frontier** | Anthropic Claude API (claude-3.5-sonnet or later) | High-quality responses; requires internet and API key |
-| **Local** | GLM family via OpenAI-compatible local inference server (Ollama, LM Studio, vLLM) | No cloud dependency; latency and quality depend on hardware |
+| Mode         | Provider                                                                          | Use Case                                                    |
+| ------------ | --------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| **Frontier** | Anthropic Claude API (claude-3.5-sonnet or later)                                 | High-quality responses; requires internet and API key       |
+| **Local**    | GLM family via OpenAI-compatible local inference server (Ollama, LM Studio, vLLM) | No cloud dependency; latency and quality depend on hardware |
 
 The hub server targets the OpenAI chat completions API shape in both cases (Anthropic's SDK handles the translation for Claude). Model name, base URL, and API key are all configurable at runtime. The server degrades gracefully if the inference service is unreachable.
 
@@ -290,18 +292,18 @@ Model selection, quantization level, and hardware sizing for the local path are 
 
 ## Integrations
 
-| Integration | Protocol | Owner |
-|---|---|---|
-| iRacing SDK (live telemetry) | Shared memory (custom Rust) | Tauri client |
-| iRacing REST API (historical) | HTTP / OAuth2 | Node.js server |
-| OBS Studio | WebSocket v5 (`obs-websocket-js`) | Node.js server |
-| Discord | Webhooks (send-only) | Node.js server |
-| Stream Deck | Global hotkeys (no SDK required for v1) | Tauri client |
-| Whisper STT (Speaches) | LAN HTTP POST | Tauri client → Homelab server |
-| Chatterbox TTS | Local HTTP | Node.js server → Tauri client (audio playback) |
-| LLM Inference | OpenAI-compatible HTTP (Claude or GLM) | Node.js server |
-| Authentik | OAuth2 / OIDC | Node.js server (web UI auth) |
-| Grafana Loki | OpenTelemetry log exporter | Node.js server + Tauri (via hub) |
+| Integration                   | Protocol                                | Owner                                          |
+| ----------------------------- | --------------------------------------- | ---------------------------------------------- |
+| iRacing SDK (live telemetry)  | Shared memory (custom Rust)             | Tauri client                                   |
+| iRacing REST API (historical) | HTTP / OAuth2                           | Node.js server                                 |
+| OBS Studio                    | WebSocket v5 (`obs-websocket-js`)       | Node.js server                                 |
+| Discord                       | Webhooks (send-only)                    | Node.js server                                 |
+| Stream Deck                   | Global hotkeys (no SDK required for v1) | Tauri client                                   |
+| Whisper STT (Speaches)        | LAN HTTP POST                           | Tauri client → Homelab server                  |
+| Chatterbox TTS                | Local HTTP                              | Node.js server → Tauri client (audio playback) |
+| LLM Inference                 | OpenAI-compatible HTTP (Claude or GLM)  | Node.js server                                 |
+| Authentik                     | OAuth2 / OIDC                           | Node.js server (web UI auth)                   |
+| Grafana Loki                  | OpenTelemetry log exporter              | Node.js server + Tauri (via hub)               |
 
 ---
 
@@ -387,15 +389,15 @@ Priority audio events (yellow flag, critical alerts) can preempt the current pla
 
 Each leg of the pipeline emits an OpenTelemetry span, producing a waterfall view in Grafana that shows exactly which stage is the bottleneck:
 
-| Stage | Start | End |
-|---|---|---|
-| PTT capture | Key-down | Key-release |
-| Whisper transcription | Upload start | Transcription received |
-| Hub processing | Transcript received | LLM call dispatched |
-| LLM inference | Call dispatched | Full response received |
-| TTS generation | Text sent to Chatterbox | Audio clip ready |
-| Audio delivery | URL published | Tauri fetch complete |
-| Playback start | Fetch complete | First audio sample played |
+| Stage                 | Start                   | End                       |
+| --------------------- | ----------------------- | ------------------------- |
+| PTT capture           | Key-down                | Key-release               |
+| Whisper transcription | Upload start            | Transcription received    |
+| Hub processing        | Transcript received     | LLM call dispatched       |
+| LLM inference         | Call dispatched         | Full response received    |
+| TTS generation        | Text sent to Chatterbox | Audio clip ready          |
+| Audio delivery        | URL published           | Tauri fetch complete      |
+| Playback start        | Fetch complete          | First audio sample played |
 
 Span data flows into Grafana Loki/Tempo via the OpenTelemetry pipeline already used for application logs. A session-scoped trace ID correlates all stages of a single voice interaction.
 

@@ -19,11 +19,7 @@ signed-in user.
 1. Write the guard (for example `src/guards.ts`):
 
    ```ts
-   import {
-     defineServerMiddleware,
-     defineClientMiddleware,
-     redirect,
-   } from 'hono-preact';
+   import { defineServerMiddleware, defineClientMiddleware, redirect } from 'hono-preact';
 
    const requireUserServer = defineServerMiddleware(async (ctx, next) => {
      const user = await getUser(ctx.c); // your server-side session lookup

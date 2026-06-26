@@ -26,7 +26,7 @@
 
 ## Top Open-Source Candidates
 
-### 1. F5-TTS ⭐ *Recommended starting point*
+### 1. F5-TTS ⭐ _Recommended starting point_
 
 - **Architecture:** Flow-matching diffusion (non-autoregressive)
 - **Voice cloning:** Zero-shot from ~3 seconds of reference audio; fine-tuning supported
@@ -138,14 +138,14 @@ A self-hosted TTS server that wraps multiple engines (XTTS, F5-TTS, Piper, Parle
 
 ## Comparison Summary
 
-| Model | VRAM | RTF | TTFA | Streaming | Voice Training | License |
-|-------|------|-----|------|-----------|----------------|---------|
-| F5-TTS | 3–5 GB | ~0.2–0.33 | ~200ms | Limited | Fine-tune supported | MIT |
-| XTTS v2 | 4–6 GB | ~0.15 | ~200ms | Native | Fine-tune supported | Coqui (⚠️) |
-| Chatterbox | ~6 GB | — | <300ms | Yes | Zero-shot cloning | MIT |
-| CosyVoice2 | ~4 GB | Real-time | Streaming | Native chunk-causal | Fine-tune (LLM layer) | Apache 2.0 |
-| Kokoro | 1–2 GB | ~0.03 | <100ms | Yes | ❌ (fixed voicepacks) | Apache 2.0 |
-| Qwen3-TTS | — | — | ~97ms | Full | Zero-shot | Apache 2.0 |
+| Model      | VRAM   | RTF       | TTFA      | Streaming           | Voice Training        | License    |
+| ---------- | ------ | --------- | --------- | ------------------- | --------------------- | ---------- |
+| F5-TTS     | 3–5 GB | ~0.2–0.33 | ~200ms    | Limited             | Fine-tune supported   | MIT        |
+| XTTS v2    | 4–6 GB | ~0.15     | ~200ms    | Native              | Fine-tune supported   | Coqui (⚠️) |
+| Chatterbox | ~6 GB  | —         | <300ms    | Yes                 | Zero-shot cloning     | MIT        |
+| CosyVoice2 | ~4 GB  | Real-time | Streaming | Native chunk-causal | Fine-tune (LLM layer) | Apache 2.0 |
+| Kokoro     | 1–2 GB | ~0.03     | <100ms    | Yes                 | ❌ (fixed voicepacks) | Apache 2.0 |
+| Qwen3-TTS  | —      | —         | ~97ms     | Full                | Zero-shot             | Apache 2.0 |
 
 ---
 
@@ -154,17 +154,20 @@ A self-hosted TTS server that wraps multiple engines (XTTS, F5-TTS, Piper, Parle
 For a real-time racing engineer voice assistant, the priority order is: **streaming latency → voice consistency → clarity → trainability**.
 
 **Primary candidate: F5-TTS via AllTalk TTS server**
+
 - MIT licensed, self-hostable on a gaming GPU (RTX 3060+)
 - Fine-tuning lets you lock in a specific "crew chief" voice character
 - AllTalk provides the REST/streaming API layer so the app doesn't need to manage inference directly
 - Community is large, documentation is good
 
 **If streaming latency is the top priority: CosyVoice2**
+
 - The chunk-aware causal architecture was purpose-built for real-time streaming
 - vLLM support means the inference server story is mature
 - Fine-tuning is available but requires more data (50–100 hours for best results)
 
 **Fallback / hybrid: Kokoro + KokoClone**
+
 - If voice cloning requirements are minimal and you just need a fast, clear, distinct voice
 - Near-zero latency and tiny VRAM footprint
 - Less control over voice identity
@@ -173,12 +176,12 @@ For a real-time racing engineer voice assistant, the priority order is: **stream
 
 ## Decisions
 
-| Question | Answer |
-|----------|--------|
-| Hardware | Dedicated server (GPU assumed — no resource constraints from the client machine) |
-| Voice cloning approach | Zero-shot cloning from a reference clip is sufficient |
-| Voice identity | A consistent voice *profile/character*, not a specific real person. How to create a voice matters; which voice is TBD. |
-| TTFA target | ≤ 500ms |
+| Question               | Answer                                                                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Hardware               | Dedicated server (GPU assumed — no resource constraints from the client machine)                                       |
+| Voice cloning approach | Zero-shot cloning from a reference clip is sufficient                                                                  |
+| Voice identity         | A consistent voice _profile/character_, not a specific real person. How to create a voice matters; which voice is TBD. |
+| TTFA target            | ≤ 500ms                                                                                                                |
 
 ### Impact on Recommendation
 
@@ -195,6 +198,7 @@ Zero-shot cloning also simplifies the workflow: record or source a 3–10 second
 ### Voice Profile Approach
 
 Zero-shot cloning via reference audio means voice design is a content/curation problem, not an engineering one:
+
 - Source or record a clip of the target voice character (calm, authoritative, clear)
 - Pass it as the reference sample on every inference call
 - Swap the reference clip to change the voice — no retraining required

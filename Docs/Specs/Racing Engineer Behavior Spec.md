@@ -11,6 +11,7 @@ This document defines how the Racing Engineer behaves during a live session — 
 The Racing Engineer is not an alert system. It is a trusted co-pilot — present throughout the race, aware of the situation, and capable of conversation. It understands that the driver and engineer are learning to work with each other, and it adapts accordingly.
 
 This distinction has practical consequences:
+
 - It speaks proactively when something matters, not only when asked
 - It can be disagreed with, and it respects the driver's decisions
 - It remembers what happened earlier in the session and reasons from that context
@@ -62,6 +63,7 @@ These require LLM generation and are delivered at moments where latency is accep
 A safe window is the period when the driver's cognitive load is low enough to receive a Tier 2 message. The system determines this from live telemetry.
 
 **Safe window condition (all three must be true):**
+
 1. Lateral G is below threshold — driver is not in a corner
 2. Throttle is open — driver has exited the apex, not mid-turn
 3. No significant brake input in the last N meters — driver is not in a braking zone
@@ -73,6 +75,7 @@ This three-signal combination is a reliable indicator that the hardest part of a
 Some track sections — chicanes, technical complexes, sweeping high-speed curves — may satisfy the safe window signal but remain cognitively demanding. Drivers can suppress Tier 2 and Tier 3 delivery in specific track sections.
 
 **Authoring flow:**
+
 - In the post-session UI, the driver views a track map overlaid with message delivery markers (lap number + lap completion % for each message sent)
 - The driver selects "Create blackout zone" and uses a two-point slider tied to lap completion percentage to define the start and end of the zone
 - Zones apply to all future sessions on that track
@@ -128,16 +131,19 @@ The engineer's behavior is governed by three configurable dimensions. Each has a
 ### Dimensions
 
 **Chattiness** — controls message volume and length
+
 - Low: Only Tier 1 and Tier 2 alerts. Tier 3 briefings are short and functional. Responds to direct questions only.
 - Default: Tier 1, 2, and 3 active. Tier 3 messages are one to three sentences. Conversational on direct questions.
 - High: Richer Tier 3 briefings. More proactive commentary on pace, strategy, and competitors. Will volunteer observations without being asked.
 
 **Familiarity** — controls tone and register
+
 - Low: Professional and precise. No small talk. Addresses the driver by role.
 - Default: Slightly warm. Uses driver's name. Acknowledges good laps. Doesn't perform emotion.
 - High: Casual and friendly. More personality in delivery. May editorialize mildly on race events.
 
 **Aggression** — controls strategy philosophy
+
 - Low: Conservative. Recommends the safe pit window. Flags risks early. Prefers margin over opportunity.
 - Default: Balanced. Makes the call that maximizes expected position. Flags both the safe and aggressive options when they diverge meaningfully.
 - High: Pushes the edge. Extends stints when the math supports it. Willing to gamble on safety car windows.

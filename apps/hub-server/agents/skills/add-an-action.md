@@ -48,8 +48,7 @@
    export function SignupForm() {
      const { pending } = useFormStatus(action);
      const result = useActionResult(action);
-     const error =
-       result?.kind === 'deny' || result?.kind === 'error' ? result.message : null;
+     const error = result?.kind === 'deny' || result?.kind === 'error' ? result.message : null;
 
      return (
        <Form action={action}>

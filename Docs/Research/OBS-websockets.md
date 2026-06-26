@@ -48,17 +48,17 @@ All messages follow this structure:
 
 ### OpCodes
 
-| Code | Name | Direction | Description |
-|------|------|-----------|-------------|
-| 0 | Hello | Server → Client | Initial connection info + auth challenge |
-| 1 | Identify | Client → Server | Authentication + session parameters |
-| 2 | Identified | Server → Client | Confirms successful identification |
-| 3 | Reidentify | Client → Server | Update session parameters (e.g. subscriptions) |
-| 5 | Event | Server → Client | An OBS event occurred |
-| 6 | Request | Client → Server | Make a request |
-| 7 | RequestResponse | Server → Client | Response to a request |
-| 8 | RequestBatch | Client → Server | Batch of requests, processed serially |
-| 9 | RequestBatchResponse | Server → Client | Response to a batch |
+| Code | Name                 | Direction       | Description                                    |
+| ---- | -------------------- | --------------- | ---------------------------------------------- |
+| 0    | Hello                | Server → Client | Initial connection info + auth challenge       |
+| 1    | Identify             | Client → Server | Authentication + session parameters            |
+| 2    | Identified           | Server → Client | Confirms successful identification             |
+| 3    | Reidentify           | Client → Server | Update session parameters (e.g. subscriptions) |
+| 5    | Event                | Server → Client | An OBS event occurred                          |
+| 6    | Request              | Client → Server | Make a request                                 |
+| 7    | RequestResponse      | Server → Client | Response to a request                          |
+| 8    | RequestBatch         | Client → Server | Batch of requests, processed serially          |
+| 9    | RequestBatchResponse | Server → Client | Response to a batch                            |
 
 ### Authentication
 
@@ -105,26 +105,26 @@ To generate the `authentication` string:
 
 The `eventSubscriptions` field in `Identify` is a bitmask. By default all standard categories are subscribed (`All`). High-volume events must be explicitly opted into.
 
-| Category | Bitmask Value |
-|----------|--------------|
-| None | `0` |
-| General | `1 << 0` = 1 |
-| Config | `1 << 1` = 2 |
-| Scenes | `1 << 2` = 4 |
-| Inputs | `1 << 3` = 8 |
-| Transitions | `1 << 4` = 16 |
-| Filters | `1 << 5` = 32 |
-| Outputs | `1 << 6` = 64 |
-| SceneItems | `1 << 7` = 128 |
-| MediaInputs | `1 << 8` = 256 |
-| Vendors | `1 << 9` = 512 |
-| Ui | `1 << 10` = 1024 |
-| Canvases | `1 << 11` = 2048 |
-| **All** | OR of all above |
-| InputVolumeMeters *(high-volume)* | `1 << 16` |
-| InputActiveStateChanged *(high-volume)* | `1 << 17` |
-| InputShowStateChanged *(high-volume)* | `1 << 18` |
-| SceneItemTransformChanged *(high-volume)* | `1 << 19` |
+| Category                                  | Bitmask Value    |
+| ----------------------------------------- | ---------------- |
+| None                                      | `0`              |
+| General                                   | `1 << 0` = 1     |
+| Config                                    | `1 << 1` = 2     |
+| Scenes                                    | `1 << 2` = 4     |
+| Inputs                                    | `1 << 3` = 8     |
+| Transitions                               | `1 << 4` = 16    |
+| Filters                                   | `1 << 5` = 32    |
+| Outputs                                   | `1 << 6` = 64    |
+| SceneItems                                | `1 << 7` = 128   |
+| MediaInputs                               | `1 << 8` = 256   |
+| Vendors                                   | `1 << 9` = 512   |
+| Ui                                        | `1 << 10` = 1024 |
+| Canvases                                  | `1 << 11` = 2048 |
+| **All**                                   | OR of all above  |
+| InputVolumeMeters _(high-volume)_         | `1 << 16`        |
+| InputActiveStateChanged _(high-volume)_   | `1 << 17`        |
+| InputShowStateChanged _(high-volume)_     | `1 << 18`        |
+| SceneItemTransformChanged _(high-volume)_ | `1 << 19`        |
 
 To receive only Output and Scene events (relevant for iRacing engineer): subscribe with `64 | 4 = 68`.
 
@@ -164,17 +164,17 @@ Response:
 
 These appear in stream/record/replay buffer state events and status responses:
 
-| Value | Meaning |
-|-------|---------|
-| `OBS_WEBSOCKET_OUTPUT_UNKNOWN` | Unknown state |
-| `OBS_WEBSOCKET_OUTPUT_STARTING` | Output is starting |
-| `OBS_WEBSOCKET_OUTPUT_STARTED` | Output has started |
-| `OBS_WEBSOCKET_OUTPUT_STOPPING` | Output is stopping |
-| `OBS_WEBSOCKET_OUTPUT_STOPPED` | Output has stopped |
-| `OBS_WEBSOCKET_OUTPUT_RECONNECTING` | Disconnected, reconnecting |
-| `OBS_WEBSOCKET_OUTPUT_RECONNECTED` | Reconnected successfully |
-| `OBS_WEBSOCKET_OUTPUT_PAUSED` | Output is paused (record only) |
-| `OBS_WEBSOCKET_OUTPUT_RESUMED` | Output has been resumed |
+| Value                               | Meaning                        |
+| ----------------------------------- | ------------------------------ |
+| `OBS_WEBSOCKET_OUTPUT_UNKNOWN`      | Unknown state                  |
+| `OBS_WEBSOCKET_OUTPUT_STARTING`     | Output is starting             |
+| `OBS_WEBSOCKET_OUTPUT_STARTED`      | Output has started             |
+| `OBS_WEBSOCKET_OUTPUT_STOPPING`     | Output is stopping             |
+| `OBS_WEBSOCKET_OUTPUT_STOPPED`      | Output has stopped             |
+| `OBS_WEBSOCKET_OUTPUT_RECONNECTING` | Disconnected, reconnecting     |
+| `OBS_WEBSOCKET_OUTPUT_RECONNECTED`  | Reconnected successfully       |
+| `OBS_WEBSOCKET_OUTPUT_PAUSED`       | Output is paused (record only) |
+| `OBS_WEBSOCKET_OUTPUT_RESUMED`      | Output has been resumed        |
 
 ---
 
@@ -186,16 +186,16 @@ Gets the current status of the stream output.
 
 **Response Fields:**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| outputActive | Boolean | Whether the stream is active |
-| outputReconnecting | Boolean | Whether the stream is reconnecting |
-| outputTimecode | String | Current stream timecode (`HH:MM:SS.mmm`) |
-| outputDuration | Number | Duration of the stream in milliseconds |
-| outputCongestion | Number | Congestion of the stream (0–1) |
-| outputBytes | Number | Total bytes sent |
-| outputSkippedFrames | Number | Number of frames skipped |
-| outputTotalFrames | Number | Total frames transmitted |
+| Field               | Type    | Description                              |
+| ------------------- | ------- | ---------------------------------------- |
+| outputActive        | Boolean | Whether the stream is active             |
+| outputReconnecting  | Boolean | Whether the stream is reconnecting       |
+| outputTimecode      | String  | Current stream timecode (`HH:MM:SS.mmm`) |
+| outputDuration      | Number  | Duration of the stream in milliseconds   |
+| outputCongestion    | Number  | Congestion of the stream (0–1)           |
+| outputBytes         | Number  | Total bytes sent                         |
+| outputSkippedFrames | Number  | Number of frames skipped                 |
+| outputTotalFrames   | Number  | Total frames transmitted                 |
 
 ### `ToggleStream`
 
@@ -203,8 +203,8 @@ Toggles the stream output on or off.
 
 **Response Fields:**
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field        | Type    | Description                    |
+| ------------ | ------- | ------------------------------ |
 | outputActive | Boolean | New active state of the stream |
 
 ### `StartStream`
@@ -221,8 +221,8 @@ Sends CEA-608 caption text over the stream output.
 
 **Request Fields:**
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field       | Type   | Description          |
+| ----------- | ------ | -------------------- |
 | captionText | String | Caption text to send |
 
 ---
@@ -235,13 +235,13 @@ Gets the current status of the record output.
 
 **Response Fields:**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| outputActive | Boolean | Whether recording is active |
-| outputPaused | Boolean | Whether recording is paused |
-| outputTimecode | String | Current recording timecode (`HH:MM:SS.mmm`) |
-| outputDuration | Number | Duration of the recording in milliseconds |
-| outputBytes | Number | Total bytes written |
+| Field          | Type    | Description                                 |
+| -------------- | ------- | ------------------------------------------- |
+| outputActive   | Boolean | Whether recording is active                 |
+| outputPaused   | Boolean | Whether recording is paused                 |
+| outputTimecode | String  | Current recording timecode (`HH:MM:SS.mmm`) |
+| outputDuration | Number  | Duration of the recording in milliseconds   |
+| outputBytes    | Number  | Total bytes written                         |
 
 ### `ToggleRecord`
 
@@ -257,8 +257,8 @@ Stops the record output.
 
 **Response Fields:**
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field      | Type   | Description                      |
+| ---------- | ------ | -------------------------------- |
 | outputPath | String | File path of the saved recording |
 
 ### `ToggleRecordPause`
@@ -273,18 +273,18 @@ Pauses the record output. No fields.
 
 Resumes the record output. No fields.
 
-### `SplitRecordFile` *(added v5.5.0)*
+### `SplitRecordFile` _(added v5.5.0)_
 
 Splits the current recording file into a new file. No fields.
 
-### `CreateRecordChapter` *(added v5.5.0)*
+### `CreateRecordChapter` _(added v5.5.0)_
 
 Adds a chapter marker to the current recording.
 
 **Request Fields:**
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field        | Type   | Description                           |
+| ------------ | ------ | ------------------------------------- |
 | ?chapterName | String | Name of the chapter marker (optional) |
 
 ---
@@ -297,13 +297,13 @@ Gets all scenes in OBS.
 
 **Response Fields:**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| currentProgramSceneName | String | Active program scene name |
-| currentProgramSceneUuid | String | Active program scene UUID |
-| currentPreviewSceneName | String | Preview scene name (studio mode only) |
-| currentPreviewSceneUuid | String | Preview scene UUID (studio mode only) |
-| scenes | Array\<Object\> | Array of all scenes |
+| Field                   | Type            | Description                           |
+| ----------------------- | --------------- | ------------------------------------- |
+| currentProgramSceneName | String          | Active program scene name             |
+| currentProgramSceneUuid | String          | Active program scene UUID             |
+| currentPreviewSceneName | String          | Preview scene name (studio mode only) |
+| currentPreviewSceneUuid | String          | Preview scene UUID (studio mode only) |
+| scenes                  | Array\<Object\> | Array of all scenes                   |
 
 ### `GetCurrentProgramScene`
 
@@ -315,8 +315,8 @@ Switches the active (program) scene.
 
 **Request Fields:**
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field      | Type   | Description             |
+| ---------- | ------ | ----------------------- |
 | ?sceneName | String | Scene name to switch to |
 | ?sceneUuid | String | Scene UUID to switch to |
 
@@ -334,20 +334,20 @@ Gets or sets the preview scene in Studio Mode. Requires Studio Mode to be enable
 
 Useful for showing/hiding camera overlays or info panels during a race.
 
-| Request | Description |
-|---------|-------------|
-| `GetSceneItemList` | Get all items in a scene |
-| `GetSceneItemId` | Find an item's numeric ID by source name |
-| `CreateSceneItem` | Add a source to a scene |
-| `RemoveSceneItem` | Remove an item from a scene |
-| `GetSceneItemEnabled` | Check if an item is visible |
-| `SetSceneItemEnabled` | Show or hide a scene item |
-| `GetSceneItemTransform` | Get position/size/crop info |
-| `SetSceneItemTransform` | Set position/size/crop info |
-| `GetSceneItemLocked` / `SetSceneItemLocked` | Lock/unlock item |
-| `GetSceneItemIndex` / `SetSceneItemIndex` | Reorder items in scene |
-| `GetSceneItemBlendMode` / `SetSceneItemBlendMode` | Set blend mode |
-| `DuplicateSceneItem` | Duplicate an item |
+| Request                                           | Description                              |
+| ------------------------------------------------- | ---------------------------------------- |
+| `GetSceneItemList`                                | Get all items in a scene                 |
+| `GetSceneItemId`                                  | Find an item's numeric ID by source name |
+| `CreateSceneItem`                                 | Add a source to a scene                  |
+| `RemoveSceneItem`                                 | Remove an item from a scene              |
+| `GetSceneItemEnabled`                             | Check if an item is visible              |
+| `SetSceneItemEnabled`                             | Show or hide a scene item                |
+| `GetSceneItemTransform`                           | Get position/size/crop info              |
+| `SetSceneItemTransform`                           | Set position/size/crop info              |
+| `GetSceneItemLocked` / `SetSceneItemLocked`       | Lock/unlock item                         |
+| `GetSceneItemIndex` / `SetSceneItemIndex`         | Reorder items in scene                   |
+| `GetSceneItemBlendMode` / `SetSceneItemBlendMode` | Set blend mode                           |
+| `DuplicateSceneItem`                              | Duplicate an item                        |
 
 **Key use case:** `SetSceneItemEnabled` with `sceneItemId` can toggle a camera, overlay, or telemetry panel on/off without switching the entire scene.
 
@@ -355,28 +355,28 @@ Useful for showing/hiding camera overlays or info panels during a race.
 
 ## Output Requests (Virtual Cam, Replay Buffer)
 
-| Request | Description |
-|---------|-------------|
-| `GetVirtualCamStatus` | Get virtualcam state |
-| `ToggleVirtualCam` / `StartVirtualCam` / `StopVirtualCam` | Control virtual camera |
-| `GetReplayBufferStatus` | Get replay buffer state |
-| `ToggleReplayBuffer` / `StartReplayBuffer` / `StopReplayBuffer` | Control replay buffer |
-| `SaveReplayBuffer` | Trigger a replay save |
-| `GetLastReplayBufferReplay` | Get path of last saved replay |
-| `GetOutputList` | List all outputs |
-| `GetOutputStatus` / `ToggleOutput` / `StartOutput` / `StopOutput` | Generic output control |
-| `GetOutputSettings` / `SetOutputSettings` | Read/write output config |
+| Request                                                           | Description                   |
+| ----------------------------------------------------------------- | ----------------------------- |
+| `GetVirtualCamStatus`                                             | Get virtualcam state          |
+| `ToggleVirtualCam` / `StartVirtualCam` / `StopVirtualCam`         | Control virtual camera        |
+| `GetReplayBufferStatus`                                           | Get replay buffer state       |
+| `ToggleReplayBuffer` / `StartReplayBuffer` / `StopReplayBuffer`   | Control replay buffer         |
+| `SaveReplayBuffer`                                                | Trigger a replay save         |
+| `GetLastReplayBufferReplay`                                       | Get path of last saved replay |
+| `GetOutputList`                                                   | List all outputs              |
+| `GetOutputStatus` / `ToggleOutput` / `StartOutput` / `StopOutput` | Generic output control        |
+| `GetOutputSettings` / `SetOutputSettings`                         | Read/write output config      |
 
 ---
 
 ## UI / Studio Mode Requests
 
-| Request | Description |
-|---------|-------------|
-| `GetStudioModeEnabled` | Returns `studioModeEnabled` (bool) |
-| `SetStudioModeEnabled` | Enable or disable Studio Mode |
-| `OpenInputPropertiesDialog` | Opens source properties in OBS UI |
-| `OpenVideoMixProjector` | Opens a video projector window |
+| Request                     | Description                        |
+| --------------------------- | ---------------------------------- |
+| `GetStudioModeEnabled`      | Returns `studioModeEnabled` (bool) |
+| `SetStudioModeEnabled`      | Enable or disable Studio Mode      |
+| `OpenInputPropertiesDialog` | Opens source properties in OBS UI  |
+| `OpenVideoMixProjector`     | Opens a video projector window     |
 
 ---
 
@@ -390,81 +390,81 @@ Events are received as OpCode 5 messages. Subscribe to the relevant category bit
 
 Fires whenever the stream output state changes.
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field        | Type    | Description                      |
+| ------------ | ------- | -------------------------------- |
 | outputActive | Boolean | Whether the stream is now active |
-| outputState | String | New state (see `ObsOutputState`) |
+| outputState  | String  | New state (see `ObsOutputState`) |
 
 #### `RecordStateChanged`
 
-| Field | Type | Description |
-|-------|------|-------------|
-| outputActive | Boolean | Whether recording is active |
-| outputState | String | New state |
-| outputPath | String | File path if recording stopped, `null` otherwise |
+| Field        | Type    | Description                                      |
+| ------------ | ------- | ------------------------------------------------ |
+| outputActive | Boolean | Whether recording is active                      |
+| outputState  | String  | New state                                        |
+| outputPath   | String  | File path if recording stopped, `null` otherwise |
 
-#### `RecordFileChanged` *(v5.5.0)*
+#### `RecordFileChanged` _(v5.5.0)_
 
 Fires when recording splits to a new file.
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field         | Type   | Description                 |
+| ------------- | ------ | --------------------------- |
 | newOutputPath | String | New file path being written |
 
 #### `ReplayBufferStateChanged`
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field        | Type    | Description                     |
+| ------------ | ------- | ------------------------------- |
 | outputActive | Boolean | Whether replay buffer is active |
-| outputState | String | New state |
+| outputState  | String  | New state                       |
 
 #### `ReplayBufferSaved`
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field           | Type   | Description                   |
+| --------------- | ------ | ----------------------------- |
 | savedReplayPath | String | Path of the saved replay file |
 
 #### `VirtualcamStateChanged`
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field        | Type    | Description                  |
+| ------------ | ------- | ---------------------------- |
 | outputActive | Boolean | Whether virtualcam is active |
-| outputState | String | New state |
+| outputState  | String  | New state                    |
 
 ### Scenes Category Events
 
-| Event | Key Fields | Description |
-|-------|-----------|-------------|
-| `CurrentProgramSceneChanged` | `sceneName`, `sceneUuid` | Program scene switched |
-| `CurrentPreviewSceneChanged` | `sceneName`, `sceneUuid` | Preview scene switched |
-| `SceneCreated` | `sceneName`, `sceneUuid`, `isGroup` | New scene created |
-| `SceneRemoved` | `sceneName`, `sceneUuid` | Scene deleted |
-| `SceneNameChanged` | `oldSceneName`, `sceneName`, `sceneUuid` | Scene renamed |
-| `SceneListChanged` | `scenes` | Scene list updated |
+| Event                        | Key Fields                               | Description            |
+| ---------------------------- | ---------------------------------------- | ---------------------- |
+| `CurrentProgramSceneChanged` | `sceneName`, `sceneUuid`                 | Program scene switched |
+| `CurrentPreviewSceneChanged` | `sceneName`, `sceneUuid`                 | Preview scene switched |
+| `SceneCreated`               | `sceneName`, `sceneUuid`, `isGroup`      | New scene created      |
+| `SceneRemoved`               | `sceneName`, `sceneUuid`                 | Scene deleted          |
+| `SceneNameChanged`           | `oldSceneName`, `sceneName`, `sceneUuid` | Scene renamed          |
+| `SceneListChanged`           | `scenes`                                 | Scene list updated     |
 
 ### Scene Items Category Events
 
-| Event | Key Fields | Description |
-|-------|-----------|-------------|
-| `SceneItemCreated` | `sceneName`, `sourceName`, `sceneItemId` | Item added to scene |
-| `SceneItemRemoved` | `sceneName`, `sourceName`, `sceneItemId` | Item removed |
-| `SceneItemEnableStateChanged` | `sceneItemId`, `sceneItemEnabled` | Item visibility toggled |
-| `SceneItemLockStateChanged` | `sceneItemId`, `sceneItemLocked` | Item lock toggled |
-| `SceneItemTransformChanged` | `sceneItemId`, `sceneItemTransform` | Position/size changed *(high-volume)* |
+| Event                         | Key Fields                               | Description                           |
+| ----------------------------- | ---------------------------------------- | ------------------------------------- |
+| `SceneItemCreated`            | `sceneName`, `sourceName`, `sceneItemId` | Item added to scene                   |
+| `SceneItemRemoved`            | `sceneName`, `sourceName`, `sceneItemId` | Item removed                          |
+| `SceneItemEnableStateChanged` | `sceneItemId`, `sceneItemEnabled`        | Item visibility toggled               |
+| `SceneItemLockStateChanged`   | `sceneItemId`, `sceneItemLocked`         | Item lock toggled                     |
+| `SceneItemTransformChanged`   | `sceneItemId`, `sceneItemTransform`      | Position/size changed _(high-volume)_ |
 
 ### UI Category Events
 
-| Event | Key Fields | Description |
-|-------|-----------|-------------|
-| `StudioModeStateChanged` | `studioModeEnabled` | Studio mode toggled |
-| `ScreenshotSaved` | `savedScreenshotPath` | Screenshot saved via OBS hotkey |
+| Event                    | Key Fields            | Description                     |
+| ------------------------ | --------------------- | ------------------------------- |
+| `StudioModeStateChanged` | `studioModeEnabled`   | Studio mode toggled             |
+| `ScreenshotSaved`        | `savedScreenshotPath` | Screenshot saved via OBS hotkey |
 
 ### General Category Events
 
-| Event | Description |
-|-------|-------------|
-| `ExitStarted` | OBS is shutting down |
-| `VendorEvent` | Event from a third-party plugin vendor |
+| Event         | Description                              |
+| ------------- | ---------------------------------------- |
+| `ExitStarted` | OBS is shutting down                     |
+| `VendorEvent` | Event from a third-party plugin vendor   |
 | `CustomEvent` | Custom event from `BroadcastCustomEvent` |
 
 ---
@@ -504,15 +504,15 @@ Returns OBS and obs-websocket version info, the list of all available request ty
 
 Returns live performance metrics:
 
-| Field | Description |
-|-------|-------------|
-| cpuUsage | CPU % |
-| memoryUsage | Memory in MB |
-| availableDiskSpace | Disk space for recordings |
-| activeFps | Current rendered FPS |
-| averageFrameRenderTime | Avg ms per frame |
-| renderSkippedFrames | Render thread skips |
-| outputSkippedFrames | Output thread skips |
+| Field                  | Description               |
+| ---------------------- | ------------------------- |
+| cpuUsage               | CPU %                     |
+| memoryUsage            | Memory in MB              |
+| availableDiskSpace     | Disk space for recordings |
+| activeFps              | Current rendered FPS      |
+| averageFrameRenderTime | Avg ms per frame          |
+| renderSkippedFrames    | Render thread skips       |
+| outputSkippedFrames    | Output thread skips       |
 
 ### `BroadcastCustomEvent`
 
@@ -535,20 +535,20 @@ Sends a custom payload to all connected WebSocket clients — useful for inter-p
 
 ## Relevance to iRacing Engineer
 
-| Capability | OBS WebSocket API |
-|------------|------------------|
-| Start/stop stream on session start/end | `StartStream` / `StopStream` |
-| Monitor stream health | `GetStreamStatus`, `StreamStateChanged` events |
-| Switch camera scenes on track position | `SetCurrentProgramScene` |
-| Toggle overlays (telemetry, standings) | `SetSceneItemEnabled` |
-| Auto-record race sessions | `StartRecord` / `StopRecord` |
-| Chapter markers at lap changes | `CreateRecordChapter` |
-| Split recording files at stint boundaries | `SplitRecordFile` |
-| Pause/resume recording during caution laps | `PauseRecord` / `ResumeRecord` |
-| Save replay clips on incidents | `SaveReplayBuffer` |
-| React to stream drops/reconnects | `StreamStateChanged` with `OBS_WEBSOCKET_OUTPUT_RECONNECTING` |
-| Batch scene + stream ops atomically | `RequestBatch` (OpCode 8) |
-| Signal other clients of race events | `BroadcastCustomEvent` |
+| Capability                                 | OBS WebSocket API                                             |
+| ------------------------------------------ | ------------------------------------------------------------- |
+| Start/stop stream on session start/end     | `StartStream` / `StopStream`                                  |
+| Monitor stream health                      | `GetStreamStatus`, `StreamStateChanged` events                |
+| Switch camera scenes on track position     | `SetCurrentProgramScene`                                      |
+| Toggle overlays (telemetry, standings)     | `SetSceneItemEnabled`                                         |
+| Auto-record race sessions                  | `StartRecord` / `StopRecord`                                  |
+| Chapter markers at lap changes             | `CreateRecordChapter`                                         |
+| Split recording files at stint boundaries  | `SplitRecordFile`                                             |
+| Pause/resume recording during caution laps | `PauseRecord` / `ResumeRecord`                                |
+| Save replay clips on incidents             | `SaveReplayBuffer`                                            |
+| React to stream drops/reconnects           | `StreamStateChanged` with `OBS_WEBSOCKET_OUTPUT_RECONNECTING` |
+| Batch scene + stream ops atomically        | `RequestBatch` (OpCode 8)                                     |
+| Signal other clients of race events        | `BroadcastCustomEvent`                                        |
 
 ---
 

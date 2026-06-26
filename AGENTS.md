@@ -56,11 +56,11 @@ Copy `pocs/_template/` to start a new POC. Do not modify `_template/` itself.
 
 The `poc.status` field in `package.json` tracks state:
 
-| Status      | Meaning                                          |
-|-------------|--------------------------------------------------|
-| `draft`     | README sections being written, no code yet       |
-| `running`   | Experiment actively in progress                  |
-| `concluded` | Results captured, Conclusions section complete   |
+| Status      | Meaning                                        |
+| ----------- | ---------------------------------------------- |
+| `draft`     | README sections being written, no code yet     |
+| `running`   | Experiment actively in progress                |
+| `concluded` | Results captured, Conclusions section complete |
 
 ### README structure
 
@@ -91,30 +91,31 @@ Each POC README follows the scientific method:
 The hub-server uses **[hono-preact](https://github.com/sbesh91/hono-preact)** (`nodeAdapter`). hono-preact is a Vite-driven full-stack framework: Hono on the server, Preact in the browser, manifest-driven routes, typed loaders/actions, streaming everywhere.
 
 **Docs:**
+
 - Offline corpus (always current): `apps/hub-server/agents/llms-full.txt`
 - Online: <https://framework.sbesh.com/docs>
 
 ### How this framework differs from common assumptions
 
-| You might assume | Here it actually is |
-|---|---|
-| Routes come from a `pages/` or `app/` folder | Routes are declared in code in `src/routes.ts` via `defineRoutes()`. No file-system routing. |
-| This is React | This is **Preact**. Import hooks from `preact/hooks`, not `react`. |
-| Server code lives in the page component | Loaders, actions, guards live in a colocated `*.server.ts` file. Server code never ships to the client. |
-| Data fetched with `getServerSideProps` or `useEffect` | Data comes from `defineLoader` in a `.server.ts`; the page reads it through the typed loader. |
-| Mutations are ad-hoc POST handlers | Mutations are `defineAction`s; results come back via `useActionResult`. |
-| You cast to get types | The route table is typed end to end. Do not cast; let inference work. |
-| Auth checks are per-handler | Page guards are a `use: [...]` array on a route node, inherited down the tree. |
+| You might assume                                      | Here it actually is                                                                                     |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Routes come from a `pages/` or `app/` folder          | Routes are declared in code in `src/routes.ts` via `defineRoutes()`. No file-system routing.            |
+| This is React                                         | This is **Preact**. Import hooks from `preact/hooks`, not `react`.                                      |
+| Server code lives in the page component               | Loaders, actions, guards live in a colocated `*.server.ts` file. Server code never ships to the client. |
+| Data fetched with `getServerSideProps` or `useEffect` | Data comes from `defineLoader` in a `.server.ts`; the page reads it through the typed loader.           |
+| Mutations are ad-hoc POST handlers                    | Mutations are `defineAction`s; results come back via `useActionResult`.                                 |
+| You cast to get types                                 | The route table is typed end to end. Do not cast; let inference work.                                   |
+| Auth checks are per-handler                           | Page guards are a `use: [...]` array on a route node, inherited down the tree.                          |
 
 ### Import subpaths
 
-| Subpath | Exports |
-|---|---|
-| `hono-preact` | `defineRoutes`, `defineLoader`, `defineAction`, `defineRoom`, `defineSocket`, `useParams`, `Head`, `ClientScript`, `Form`, `useActionResult` |
-| `hono-preact/page` | `redirect`, `deny`, `render` |
-| `hono-preact/server` | `renderPage`, `useHonoContext`, `HonoContext` |
-| `hono-preact/vite` | `honoPreact()` Vite plugin |
-| `hono-preact/adapter-node` | `nodeAdapter()` — used in this project |
+| Subpath                    | Exports                                                                                                                                      |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hono-preact`              | `defineRoutes`, `defineLoader`, `defineAction`, `defineRoom`, `defineSocket`, `useParams`, `Head`, `ClientScript`, `Form`, `useActionResult` |
+| `hono-preact/page`         | `redirect`, `deny`, `render`                                                                                                                 |
+| `hono-preact/server`       | `renderPage`, `useHonoContext`, `HonoContext`                                                                                                |
+| `hono-preact/vite`         | `honoPreact()` Vite plugin                                                                                                                   |
+| `hono-preact/adapter-node` | `nodeAdapter()` — used in this project                                                                                                       |
 
 UI components (Dialog, Popover, Tooltip, Menu, Select, Combobox): `hono-preact-ui` — ships unstyled.
 
@@ -145,12 +146,12 @@ apps/hub-server/
 
 For common tasks, follow the relevant skill file top to bottom — each ends with a verification command:
 
-| Task | Skill file |
-|---|---|
-| Add a new page (new URL) | `agents/skills/add-a-page.md` |
-| Add a loader (server data for a page) | `agents/skills/add-a-loader.md` |
-| Add an action and form (mutation) | `agents/skills/add-an-action.md` |
-| Add a guard (restrict a route) | `agents/skills/add-a-guard.md` |
+| Task                                  | Skill file                       |
+| ------------------------------------- | -------------------------------- |
+| Add a new page (new URL)              | `agents/skills/add-a-page.md`    |
+| Add a loader (server data for a page) | `agents/skills/add-a-loader.md`  |
+| Add an action and form (mutation)     | `agents/skills/add-an-action.md` |
+| Add a guard (restrict a route)        | `agents/skills/add-a-guard.md`   |
 
 ### Routing rules
 
@@ -190,10 +191,9 @@ export const serverRooms = {
 import { definePage } from 'hono-preact';
 import { serverLoaders } from './race-control.server.js';
 
-const View = serverLoaders.default.View(
-  ({ data }) => <RaceControlCenter data={data} />,
-  { fallback: <LoadingScreen /> },
-);
+const View = serverLoaders.default.View(({ data }) => <RaceControlCenter data={data} />, {
+  fallback: <LoadingScreen />,
+});
 
 export default definePage(View);
 ```
@@ -255,10 +255,10 @@ The LLM client uses **LangChain** (`@langchain/core`, `@langchain/anthropic`, `@
 
 Two telemetry streams, never merged:
 
-| Stream | Rate | Content |
-|--------|------|---------|
-| `telemetry:live` | 60 Hz | Brake, throttle, lateral G, speed, per-car lap dist pct |
-| `telemetry:session` | 15 Hz | Positions, lap times, fuel, flags, pit road status |
+| Stream              | Rate  | Content                                                 |
+| ------------------- | ----- | ------------------------------------------------------- |
+| `telemetry:live`    | 60 Hz | Brake, throttle, lateral G, speed, per-car lap dist pct |
+| `telemetry:session` | 15 Hz | Positions, lap times, fuel, flags, pit road status      |
 
 Pub/Sub channels: `session:yaml`, `session:events`, `voice:transcription`, `voice:audio`, `camera:command`.
 

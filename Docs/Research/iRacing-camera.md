@@ -20,6 +20,7 @@ Camera state is exposed as live telemetry variables updated at 60 Hz:
 - `CamCameraState` — bitfield of camera state flags
 
 The `CamCameraState` bitfield includes flags for:
+
 - `is_session_screen` — camera is on a session/results screen
 - `is_scenic_active` — scenic camera mode is active
 - `cam_tool_active` — camera tool is active
@@ -111,18 +112,19 @@ The POC (`poc-ir-py-sdk`) implemented a complete camera management layer. The ar
 
 The `State` class implements an automatic pit camera sequencer in `set_camera_by_driver`. It tracks three phases of a pit stop and switches to appropriate camera groups at each transition:
 
-| Phase | Trigger | Camera Group Used |
-|---|---|---|
-| Approaching pits | `driver_on_pit_road == True` and `driver_in_pits == False` | Group 16 ("Pit Lane 2") |
-| In pit stall | `driver_in_pit_stall == True` and `driver_in_stall == False` | Group 21 ("Pit Stall") |
-| Pit exit | `driver_in_stall == True` and no longer in stall | Group 14 ("Pit Exit") |
-| Back on track | `driver_on_track == True` and `driver_in_pits == True` | Restores previous camera |
+| Phase            | Trigger                                                      | Camera Group Used        |
+| ---------------- | ------------------------------------------------------------ | ------------------------ |
+| Approaching pits | `driver_on_pit_road == True` and `driver_in_pits == False`   | Group 16 ("Pit Lane 2")  |
+| In pit stall     | `driver_in_pit_stall == True` and `driver_in_stall == False` | Group 21 ("Pit Stall")   |
+| Pit exit         | `driver_in_stall == True` and no longer in stall             | Group 14 ("Pit Exit")    |
+| Back on track    | `driver_on_track == True` and `driver_in_pits == True`       | Restores previous camera |
 
 **Note:** The group IDs 14, 16, and 21 used in the POC were hardcoded from a specific session. In production, these must be resolved dynamically by name from `CameraInfo`.
 
 The `last_camera` field saves the active group ID before a pit entry so it can be restored when the driver rejoins the track.
 
 `set_camera_by_driver` returns `False` (no-op) when:
+
 - The telemetry source is an IBT file
 - The `show_pit_cams` toggle is `False` (opt-in feature disabled by default)
 
@@ -130,11 +132,11 @@ The `last_camera` field saves the active group ID before a pit entry so it can b
 
 Three endpoints expose camera control:
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/camera` | GET | Returns `current_camera` name, `camera_target` group ID, full `camera_groups` list, and `show_pit_cams` state |
-| `/api/camera/set` | POST | Accepts `{ "camera_group_id": int }`, switches camera to that group for the player's car |
-| `/api/camera/toggle-pit-cams` | POST | Toggles the automatic pit camera sequencer on/off |
+| Endpoint                      | Method | Description                                                                                                   |
+| ----------------------------- | ------ | ------------------------------------------------------------------------------------------------------------- |
+| `/api/camera`                 | GET    | Returns `current_camera` name, `camera_target` group ID, full `camera_groups` list, and `show_pit_cams` state |
+| `/api/camera/set`             | POST   | Accepts `{ "camera_group_id": int }`, switches camera to that group for the player's car                      |
+| `/api/camera/toggle-pit-cams` | POST   | Toggles the automatic pit camera sequencer on/off                                                             |
 
 The `camera_groups` response from `GET /api/camera` provides the full list of available groups (id + name) discovered from `CameraInfo`, enabling a UI to display group options without hardcoding.
 

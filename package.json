@@ -11,7 +11,18 @@
     "dev:hub": "npm run dev -w apps/hub-server",
     "dev:tauri": "npm run tauri dev -w apps/tauri-client",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "setup:hub": "[ -f .env ] || cp .env.example .env && npm install && docker compose -f infra/docker-compose.yml up -d redis postgres",
     "postinstall": "node scripts/patch-hono-preact.mjs"
+  },
+  "devDependencies": {
+    "eslint": "10.5.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "prettier": "3.8.5",
+    "typescript-eslint": "8.62.0"
   }
 }

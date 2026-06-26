@@ -1,5 +1,4 @@
-import { h } from "preact";
-import type { FuelModel } from "@iracing-engineer/types";
+import type { FuelModel } from '@iracing-engineer/types';
 
 interface FuelGaugeProps {
   model: FuelModel;

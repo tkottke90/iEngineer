@@ -9,6 +9,7 @@ iRacing does expose car position data, but the form it takes—and whether it's 
 ## Available Positional Variables
 
 ### IBT (Disk) Only — GPS Coordinates
+
 These variables are written to `.ibt` files when disk logging is enabled (Alt-L in iRacing). They are **not** available in the live SDK memory-mapped stream.
 
 - `Lat` — latitude of the car in degrees
@@ -20,17 +21,20 @@ The values are GPS-equivalent coordinates from iRacing's internal world simulati
 The session YAML also exposes the track's `TrackLatitude`, `TrackLongitude`, and `TrackNorthOffset` (a heading offset used to orient track maps north-up), which can serve as an anchor for transforming coordinates to a display-friendly frame.
 
 ### Live (60 Hz) — Track Progress Only
+
 - `LapDistPct` — position as a fraction of lap distance (0.0–1.0); available for the player and all competitors via `CarIdxLapDistPct`
 - `LapDist` — absolute distance in meters from the start/finish line
 
-These tell you *where around the lap* a car is, but not its lateral position on track (i.e., which part of the road width it's using). `LapDistPct` follows the centerline; two cars side-by-side at the same corner will read the same value.
+These tell you _where around the lap_ a car is, but not its lateral position on track (i.e., which part of the road width it's using). `LapDistPct` follows the centerline; two cars side-by-side at the same corner will read the same value.
 
 ### Live — Velocity Components (World Frame)
+
 - `VelocityX` / `VelocityY` / `VelocityZ` — velocity in m/s in the world frame
 
 These can be integrated over time to estimate position delta from a starting point (dead reckoning). This is unreliable for sustained tracking because integration error accumulates, but could be useful for short-window lateral movement analysis (e.g., how far left or right the car moved during a specific braking zone in the last few frames).
 
 ### No Direct World-Space XY Variables
+
 A search of the full SDK variable list confirms: there are no `PosX`, `PosY`, `PosZ`, or equivalent world-space Cartesian coordinate variables exposed in the SDK, in either live or disk mode. The only true position data is the GPS-equivalent `Lat`/`Lon`/`Alt` trio in IBT files.
 
 ---
@@ -38,6 +42,7 @@ A search of the full SDK variable list confirms: there are no `PosX`, `PosY`, `P
 ## How Track Map Tools Implement XY Positioning
 
 ### Live Track Maps (Garage61, iRacing Browser Apps, iOverlay, etc.)
+
 These tools don't use Lat/Lon in real-time because it isn't available. Instead, they use a **pre-rendered geometry + LapDistPct** approach:
 
 1. A track outline (SVG or polyline) is stored as a static asset, either manually drawn or extracted from a prior reference lap's IBT data.
@@ -49,6 +54,7 @@ Joel Real Timing's source documentation confirms this: "The trackmap are auto-ge
 **Implication:** Live track map = centerline position only. It shows roughly where around the lap a car is, but not lateral position. The car dots "follow an actual racing line" only if the pre-drawn geometry was traced from a real lap, and even then they don't reflect the current driver's lateral line choice.
 
 ### Post-Session Racing Line Analysis (Open Racer, MoTeC, Track Titan, RaceData AI, Garage61 analysis)
+
 These tools work from IBT files and read Lat/Lon directly. This gives true XY position at every moment:
 
 - Open Racer: "Upload your .ibt file and we'll create your 3D racing line. Valid GPS position data required." — explicitly reads Lat/Lon from IBT and projects it into a 3D visualization.
@@ -79,9 +85,11 @@ After conversion, the `TrackNorthOffset` from the YAML can be applied as a rotat
 ## Approaches for the AI Race Engineer
 
 ### Option 1: Post-Session IBT Analysis (Best Fit for Racing Line)
+
 Read `Lat`/`Lon`/`Alt` from IBT files after each session. This is the exact data pipeline used by every serious telemetry analysis tool in the ecosystem.
 
 **What you get:**
+
 - Full 60 Hz XY position trace for the entire session
 - Can compare driver's line vs. a stored reference lap (e.g., their own best lap, a coach's lap)
 - Can compute lateral deviation at each track position
@@ -90,6 +98,7 @@ Read `Lat`/`Lon`/`Alt` from IBT files after each session. This is the exact data
 **Constraint:** No live feedback during the session. Analysis happens post-session. For a race engineer use case, this is appropriate — setup recommendations based on racing line analysis happen between sessions, not mid-race.
 
 **Implementation path:**
+
 - Read IBT with pyirsdk `IBT()` class
 - Extract `Lat`, `Lon`, `LapDistPct`, `Throttle`, `Brake`, `Speed`, `SteeringWheelAngle` per frame
 - Convert to XY using the simple flat-earth projection above
@@ -97,15 +106,18 @@ Read `Lat`/`Lon`/`Alt` from IBT files after each session. This is the exact data
 - Compare against reference lap using distance-aligned interpolation
 
 ### Option 2: Live Track Position via Reference Geometry
+
 Build a one-time per-track lookup table by recording a reference lap IBT. Map `LapDistPct` → `(x, y)` at fine resolution (~1000 points per lap). During live sessions, use the live `CarIdxLapDistPct` to look up approximate XY from the table.
 
 **What you get:**
+
 - Live XY position for any car at 60 Hz
 - Useful for showing car position on a track map overlay
 
 **Constraint:** This gives centerline position, not actual lateral position. If the engineer needs to know which line the driver took through a specific corner during a live session, this won't show it — only post-session IBT will.
 
 ### Option 3: Dead Reckoning from VelocityX/VelocityY (Not Recommended)
+
 Integrate `VelocityX`/`VelocityY` over time from a known starting position. Drift accumulates rapidly (a 60-second lap at 60 Hz means 3,600 integrations before any correction). The S/F line crossing could be used to reset and correct, but mid-lap error will be significant. This is not how any production tool approaches it and is not recommended.
 
 ---

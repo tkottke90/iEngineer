@@ -16,9 +16,11 @@ The product's north star is simple: **return the driver's attention to the task 
 ## 2. Target Users
 
 ### The Driver
+
 The primary user during a session. Racing demands 100% cognitive focus; the Driver must never be asked to manage the stream mid-race. The Driver interacts primarily through voice (push-to-talk queries and commands) and pre-session configuration. Post-session, the Driver uses the UI for debrief and analysis.
 
 ### The Stream Operator
+
 May be the Driver between stints (in a team endurance context) or a dedicated co-pilot. The Operator interacts through a visual Race Control Center UI — authoring the broadcast plan before the session, monitoring autonomous stream output during the session, and making deliberate overrides when needed.
 
 These roles may be occupied by the same person in different moments, or by two separate individuals. The product accommodates both.
@@ -64,18 +66,23 @@ In a team endurance race, the driver in the car has full telemetry. Everyone els
 ## 5. Interaction Models
 
 ### Voice (Driver, in-race)
+
 Push-to-talk activation. The Racing Engineer speaks proactively when conditions warrant it (Tier 1 and Tier 2 alerts) and responds to driver queries on demand (Tier 3). Hotkeys and Stream Deck bindings allow common queries without speaking. All keybindings are user-defined.
 
 ### Broadcast Plan (Stream Operator, pre-session)
+
 A structured configuration that governs the autonomous Stream Engineer for the duration of the session. Defines primary subjects, editorial style dimensions, contingency behaviors, and story annotations. Authored before the race begins; updated mid-session only through deliberate Operator action.
 
 ### Race Control Center (Stream Operator, during session)
+
 A visual web UI served by the hub server, accessible from any device on the LAN — the Operator's laptop, a tablet, or a second monitor. Shows the live stream preview (via HLS), current race state, Stream Engineer activity log, and override controls.
 
 ### Post-Session Debrief (Driver, after session)
+
 A UI-driven analysis interface built from session data stored in Postgres and supplemented by post-session data from the iRacing REST API. Lap comparison, sector analysis, engineer decision review, and fuel/tire model calibration.
 
 ### Discord (Team, endurance races)
+
 The hub server posts to a team Discord channel during endurance events: stint summaries, competitor pit alerts, swap window recommendations, and next driver readiness prompts. Send-only via webhook. Operates from competitor-visible data when a team observer is the connected client.
 
 ---
@@ -89,9 +96,9 @@ The Racing Engineer is the voice of the application during a live session.
 **Message delivery system**
 A priority queue with a safe window gate governs when messages are delivered. Three tiers:
 
-- *Tier 1 (immediate, gate-override):* Fuel critical, blue flag, safety car deployed, pit limiter reminder. Template-based. Fires regardless of what the driver is doing.
-- *Tier 2 (computed alerts, next safe window):* Pit window opens, competitor pit entry/exit, gap threshold crossings, pace degradation trend. Template-generated from computed values.
-- *Tier 3 (LLM-synthesized briefings, natural pauses):* Pit lane entry briefing, safety car period briefing, on-demand driver queries, post-sector commentary.
+- _Tier 1 (immediate, gate-override):_ Fuel critical, blue flag, safety car deployed, pit limiter reminder. Template-based. Fires regardless of what the driver is doing.
+- _Tier 2 (computed alerts, next safe window):_ Pit window opens, competitor pit entry/exit, gap threshold crossings, pace degradation trend. Template-generated from computed values.
+- _Tier 3 (LLM-synthesized briefings, natural pauses):_ Pit lane entry briefing, safety car period briefing, on-demand driver queries, post-sector commentary.
 
 A safe window is open when: lateral G is below threshold, throttle is open, and no significant brake input in the last 150 meters. Radio Blackout Zones (driver-configured per-track sections) suppress Tier 2/3 delivery regardless of the live signal.
 
@@ -122,9 +129,9 @@ The Stream Engineer is the runtime execution layer for the Broadcast Plan.
 **Cut model**
 A shot queue with a hold gate governs when cuts are executed. Three tiers mirror the Racing Engineer structure:
 
-- *Tier 1 (immediate):* Red flag, safety car, hero car incident, hero car pit entry, race start.
-- *Tier 2 (next cut window):* Hero car pit exit, on-track battle emerging, position change, competitor pit event, dwell timeout, overlay trigger.
-- *Tier 3 (ambient):* Camera variety rotation, storyline graphic surfacing, between-action field coverage.
+- _Tier 1 (immediate):_ Red flag, safety car, hero car incident, hero car pit entry, race start.
+- _Tier 2 (next cut window):_ Hero car pit exit, on-track battle emerging, position change, competitor pit event, dwell timeout, overlay trigger.
+- _Tier 3 (ambient):_ Camera variety rotation, storyline graphic surfacing, between-action field coverage.
 
 A cut window is open when: minimum dwell time has elapsed, no active overtake is in progress in the current shot, no unresolved incident is in frame, and the subject car is not in a configured cut-blackout zone.
 

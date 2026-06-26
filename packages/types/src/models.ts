@@ -1,5 +1,5 @@
-export type FuelDataSource = "live" | "blended" | "estimated";
-export type ConfidenceLevel = "high" | "medium" | "low";
+export type FuelDataSource = 'live' | 'blended' | 'estimated';
+export type ConfidenceLevel = 'high' | 'medium' | 'low';
 
 export interface FuelModel {
   burnRatePerLap: number;
@@ -13,7 +13,7 @@ export interface FuelModel {
   lapsSinceCalibration: number;
 }
 
-export type DegradationSignal = "nominal" | "watch" | "critical";
+export type DegradationSignal = 'nominal' | 'watch' | 'critical';
 
 export interface TireModel {
   compound: string;
@@ -24,7 +24,7 @@ export interface TireModel {
   degradationConfidence: ConfidenceLevel;
 }
 
-export type BattleStatus = "open" | "closing" | "battle" | "resolved";
+export type BattleStatus = 'open' | 'closing' | 'battle' | 'resolved';
 
 export interface GapModel {
   leadCarIdx: number;

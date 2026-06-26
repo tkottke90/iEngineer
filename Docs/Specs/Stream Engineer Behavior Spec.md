@@ -4,7 +4,7 @@
 
 This document defines how the Stream Engineer behaves during a live session — when it cuts, what it covers, how it responds to race events, and how its behavior adapts to the Operator's configuration. It is the authoritative reference for the Stream Engineer's decision-making model.
 
-The Stream Engineer is the runtime execution layer for the Broadcast Plan. This document describes *how* it reasons and acts; what it has to work with is defined in the Broadcast Plan Schema.
+The Stream Engineer is the runtime execution layer for the Broadcast Plan. This document describes _how_ it reasons and acts; what it has to work with is defined in the Broadcast Plan Schema.
 
 ---
 
@@ -13,6 +13,7 @@ The Stream Engineer is the runtime execution layer for the Broadcast Plan. This 
 The Stream Engineer is not a camera operator. A camera operator reacts to what is visible in front of them. The Stream Engineer reads a broadcast plan, understands the editorial intent, and executes decisions that serve the audience — not just the race.
 
 This distinction has practical consequences:
+
 - It makes cuts when they serve the viewer, not just when something is happening
 - It maintains shot variety across a session, not just during exciting moments
 - It follows a pre-authored story with known priorities, and only departs from it when the race demands it
@@ -89,13 +90,13 @@ In a hero broadcast, coverage follows the primary subject list. The Stream Engin
 
 Select from the available camera groups for the subject car. Maintain camera variety by tracking the type of each cut made in the last N minutes and weighting against recently used types. Camera type target durations:
 
-| Camera type | Target dwell |
-|---|---|
-| Onboard (in-car) | 15–30 seconds |
-| TV pod (exterior follow) | 20–40 seconds |
-| Trackside (fixed angle) | 10–20 seconds |
-| Blimp / overhead | 30–60 seconds |
-| Pit lane overhead | Hold through pit stop |
+| Camera type              | Target dwell          |
+| ------------------------ | --------------------- |
+| Onboard (in-car)         | 15–30 seconds         |
+| TV pod (exterior follow) | 20–40 seconds         |
+| Trackside (fixed angle)  | 10–20 seconds         |
+| Blimp / overhead         | 30–60 seconds         |
+| Pit lane overhead        | Hold through pit stop |
 
 These are targets, not enforcements. A particularly clean lap or an active battle overrides the dwell timer.
 
@@ -123,15 +124,15 @@ In a general broadcast, there is no primary subject. The Stream Engineer scores 
 
 **Action scoring (higher score = higher priority):**
 
-| Situation | Score |
-|---|---|
-| Active position change in progress | 100 |
-| Gap between adjacent cars < 1.0s and closing | 80 |
-| Gap between adjacent cars < 1.0s, stable | 50 |
-| Car on new outlap after pit (strategy play visible) | 40 |
-| Lead fight (P1 and P2 within 3 seconds) | 70 (additive) |
-| Final 5 laps of the race | +30 to all active situations |
-| Car involved in recent incident, now recovering | 30 |
+| Situation                                           | Score                        |
+| --------------------------------------------------- | ---------------------------- |
+| Active position change in progress                  | 100                          |
+| Gap between adjacent cars < 1.0s and closing        | 80                           |
+| Gap between adjacent cars < 1.0s, stable            | 50                           |
+| Car on new outlap after pit (strategy play visible) | 40                           |
+| Lead fight (P1 and P2 within 3 seconds)             | 70 (additive)                |
+| Final 5 laps of the race                            | +30 to all active situations |
+| Car involved in recent incident, now recovering     | 30                           |
 
 When multiple situations are active simultaneously, the highest-scoring situation is covered. Re-score on each telemetry tick. If the top-scored situation changes while the hold gate is closed, queue the new situation as a Tier 2 cut for the next window.
 
@@ -196,6 +197,7 @@ The Stream Engineer monitors OBS scene and source state via WebSocket subscripti
 On detecting an override, the Stream Engineer enters a **manual hold**: it stops queuing and executing autonomous cuts. The Operator has taken the wheel; the Stream Engineer moves aside.
 
 Manual hold duration:
+
 - Default: 60 seconds from the last detected Operator action
 - Configurable per session in the broadcast plan
 - Can be explicitly ended by the Operator via UI ("Resume Engineer control")
@@ -219,18 +221,21 @@ When manual hold expires or the Operator explicitly hands back control, the Stre
 **Connected** — normal operation. All cuts execute immediately.
 
 **Temporarily unreachable** — the WebSocket ping has timed out but the connection has not been down long enough to classify as sustained. The Stream Engineer:
+
 - Continues processing telemetry and maintaining its shot queue
 - Attempts reconnection on exponential backoff (starting at 1 second, capped at 15 seconds)
 - Logs each reconnection attempt
 - Does not emit a UI alert unless the condition persists past the sustained threshold
 
 **Sustained unreachable** (default: more than 30 seconds without a connection) — the Stream Engineer:
+
 - Emits an alert to the web UI
 - Continues processing telemetry and tracking race state
 - Stops queuing intended OBS actions (stale commands issued to OBS after reconnect would disrupt whatever the Operator has set manually in the meantime)
 - Logs the gap
 
 **On reconnect** — the Stream Engineer:
+
 - Resyncs OBS to the current desired state (correct scene for current race situation) rather than replaying the command history
 - Resumes normal operation
 - Clears the UI alert

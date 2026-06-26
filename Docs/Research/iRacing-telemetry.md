@@ -23,6 +23,7 @@ A separate **iRacing Data API** (REST) exists for fetching historical results, c
 This data lives primarily in the YAML session string under `WeekendInfo` and `SessionInfo`, plus a set of live telemetry variables for real-time session state.
 
 ### Track Information (WeekendInfo)
+
 - `TrackName` / `TrackDisplayName` / `TrackDisplayShortName` / `TrackConfigName` — full and abbreviated track and layout names
 - `TrackID` — numeric identifier
 - `TrackType` — e.g. "road course", "oval", "short oval", "superspeedway", "dirt road", "dirt oval"
@@ -37,7 +38,9 @@ This data lives primarily in the YAML session string under `WeekendInfo` and `Se
 - `TrackCleanup` — whether the track resets rubber at session start
 
 ### Weather Information (WeekendInfo + live variables)
+
 Static (YAML):
+
 - `TrackWeatherType` — one of: "Realistic", "Static", "Classic Specified / Dynamic Sky", "Classic Generated / Dynamic Sky", "Timeline", etc.
 - `TrackAirTemp` / `TrackAirPressure` — ambient conditions
 - `TrackSurfaceTemp` — initial track surface temperature
@@ -45,6 +48,7 @@ Static (YAML):
 - `TrackFogLevel` / `TrackPrecipitation` / `TrackRelativeHumidity` / `TrackSkies`
 
 Live (60 Hz):
+
 - `AirTemp` / `AirPressure` / `AirDensity` — current air conditions
 - `TrackTemp` / `TrackTempCrew` — track surface temperature (driver view vs. crew view)
 - `TrackWetness` — enum estimating overall track wetness level
@@ -54,6 +58,7 @@ Live (60 Hz):
 - `SolarAltitude` / `SolarAzimuth` — sun position (affects dynamic lighting and time-of-day)
 
 ### Session Configuration (WeekendInfo)
+
 - `EventType` — Practice, Qualify, Race, Time Trial, etc.
 - `Official` — whether this is an official iRacing-scored session
 - `SessionID` / `SubSessionID` / `SeasonID` / `SeriesID` / `LeagueID`
@@ -65,6 +70,7 @@ Live (60 Hz):
 - `SimMode` — consumer vs. offline/commercial simulator mode
 
 ### Session Rules (WeekendOptions)
+
 - `Date` / `TimeOfDay` — in-game date and starting time of day
 - `WeatherType` / `WeatherTemp` — weather configuration
 - `Restarts` — restart type (single-file, double-file, etc.)
@@ -80,6 +86,7 @@ Live (60 Hz):
 - `EarthRotationSpeedupFactor` — time acceleration for day/night cycle
 
 ### Live Session State (60 Hz telemetry)
+
 - `SessionTime` / `SessionTimeOfDay` — elapsed session time and in-game clock
 - `SessionTimeRemain` / `SessionTimeTotal` — time-based race countdown
 - `SessionLapsRemain` / `SessionLapsRemainEx` / `SessionLapsTotal` — lap-count race state
@@ -93,15 +100,18 @@ Live (60 Hz):
 - `SessionUniqueID` — unique identifier for the current session
 
 ### Session Results (SessionInfo YAML, updated at session end)
+
 - `ResultsAverageLapTime` / `ResultsFastestLap` / `ResultsLapsComplete`
 - `ResultsNumCautionFlags` / `ResultsNumCautionLaps` / `ResultsNumLeadChanges`
 - `SessionTrackRubberState` — text description of rubber level (e.g. "moderate usage")
 
 ### Camera Information (CameraInfo YAML)
+
 - `Groups` array — each group has `GroupName` and `GroupNum`
 - `Cameras` array per group — each camera has `CameraName` and `CameraNum`
 
 Live camera state (60 Hz):
+
 - `CamCameraNumber` / `CamGroupNumber` — currently active camera
 - `CamCarIdx` — which car the camera is following
 - `CamCameraState` — bitfield of camera state flags (is session screen, TV style, pit lane, scenic, etc.)
@@ -110,6 +120,7 @@ Live camera state (60 Hz):
 Camera control (switching cameras programmatically) is covered in detail in `research/iRacing-camera.md`.
 
 ### Radio (RadioInfo YAML + live)
+
 - `RadioInfo` YAML section lists available radio frequencies and channels
 - `RadioTransmitCarIdx` / `RadioTransmitFrequencyIdx` / `RadioTransmitRadioIdx` — live indicators of who is currently transmitting
 
@@ -120,6 +131,7 @@ Camera control (switching cameras programmatically) is covered in detail in `res
 All per-competitor data is accessed through **CarIdx arrays** — arrays indexed by a car's position in the `DriverInfo.Drivers` array. The live 60 Hz telemetry exposes the following for every car on track:
 
 ### Position & Track State
+
 - `CarIdxPosition` — race position (overall)
 - `CarIdxClassPosition` — position within car class
 - `CarIdxLapDistPct` — track position as percentage of lap distance (0.0–1.0), the primary field for computing gaps
@@ -130,6 +142,7 @@ All per-competitor data is accessed through **CarIdx arrays** — arrays indexed
 - `CarIdxPaceLine` / `CarIdxPaceRow` — pace lap formation position
 
 ### Lap Timing
+
 - `CarIdxLap` — current lap number
 - `CarIdxLapCompleted` — number of laps completed
 - `CarIdxBestLapNum` — lap number on which best time was set
@@ -139,6 +152,7 @@ All per-competitor data is accessed through **CarIdx arrays** — arrays indexed
 - `CarIdxF2Time` — time behind race leader (or fastest lap time in qualifying)
 
 ### Car State
+
 - `CarIdxGear` — current gear
 - `CarIdxRPM` — engine RPM
 - `CarIdxSteer` — steering angle in radians
@@ -147,10 +161,12 @@ All per-competitor data is accessed through **CarIdx arrays** — arrays indexed
 - `CarIdxQualTireCompound` / `CarIdxQualTireCompoundLocked` — qualifying tire compound state
 
 ### Pit & Repair
+
 - `CarIdxFastRepairsUsed` — number of fast repairs this car has used
 - `CarIdxP2P_Count` / `CarIdxP2P_Status` — push-to-pass activations remaining and current status
 
 ### Driver Identity (DriverInfo YAML — per-entry in Drivers array)
+
 - `UserName` / `AbbrevName` / `Initials` / `UserID`
 - `CarNumber` / `CarNumberRaw` / `CarID` / `CarPath` / `CarScreenName`
 - `IRating` — iRating at session start
@@ -162,9 +178,11 @@ All per-competitor data is accessed through **CarIdx arrays** — arrays indexed
 - `CarClassID` / `CarClassShortName` / `CarClassColor` / `CarClassRelSpeed` / `CarClassMaxFuelPct` / `CarClassWeightPenalty` / `CarClassLicenseLevel`
 
 ### Qualifying Results (QualifyResultsInfo YAML)
+
 Available after qualifying sessions — position, times, and CarIdx mappings.
 
 ### Post-Session Results (SessionInfo YAML — ResultsPositions array)
+
 - `Position` / `ClassPosition` / `CarIdx`
 - `LapsComplete` / `LapsDriven` / `LapsLed`
 - `FastestLap` / `FastestTime` / `LastTime` / `Time`
@@ -178,6 +196,7 @@ Available after qualifying sessions — position, times, and CarIdx mappings.
 The player's own car has significantly more data than competitors, because the SDK has direct access to the simulation state for the player's vehicle.
 
 ### Car Identity & Configuration (DriverInfo YAML)
+
 - `DriverSetupName` — name of the loaded setup file
 - `DriverSetupIsModified` — whether the setup has been modified from the saved version
 - `DriverSetupPassedTech` — whether the setup passes technical inspection
@@ -192,6 +211,7 @@ The player's own car has significantly more data than competitors, because the S
 - `DriverHeadPosX/Y/Z` — driver head position offset for VR/head tracking
 
 ### Driver Inputs (60 Hz live)
+
 - `Throttle` / `ThrottleRaw` — processed and raw throttle input (0.0–1.0)
 - `Brake` / `BrakeRaw` — processed and raw brake input
 - `BrakeABSactive` / `BrakeABSCutPct` — ABS intervention state
@@ -202,6 +222,7 @@ The player's own car has significantly more data than competitors, because the S
 - `SteeringWheelLimiter` / `SteeringWheelPeakForceNm` — FFB limits
 
 ### Vehicle Dynamics (60 Hz live)
+
 - `Speed` — vehicle speed (m/s)
 - `RPM` — engine RPM
 - `Gear` — current gear (-1 to N)
@@ -215,6 +236,7 @@ The player's own car has significantly more data than competitors, because the S
 - `TireLF_RumblePitch` / `TireLR_RumblePitch` / `TireRF_RumblePitch` / `TireRR_RumblePitch` — tire rumble frequency per corner
 
 ### Engine & Powertrain
+
 - `FuelLevel` / `FuelLevelPct` — current fuel quantity and percentage
 - `FuelPress` / `FuelUsePerHour` — fuel pressure and consumption rate
 - `OilLevel` / `OilPress` / `OilTemp` — oil system
@@ -225,6 +247,7 @@ The player's own car has significantly more data than competitors, because the S
 - `ShiftIndicatorPct` / `ShiftPowerPct` / `ShiftGrindRPM` — shift light and power delivery feedback
 
 ### Hybrid / ERS (car-specific, where applicable)
+
 - `EnergyERSBattery` / `EnergyERSBatteryPct` — battery state
 - `EnergyBatteryToMGU_KLap` / `EnergyMGU_KLapDeployPct` — per-lap energy deployment
 - `P2P_Count` / `P2P_Status` — push-to-pass activations remaining and active
@@ -232,6 +255,7 @@ The player's own car has significantly more data than competitors, because the S
 - `ManualBoost` / `ManualNoBoost` — manual ERS override controls
 
 ### Lap Timing (player)
+
 - `Lap` — current lap number
 - `LapCompleted` — laps completed
 - `LapBestLap` / `LapBestLapTime` — best lap number and time
@@ -245,6 +269,7 @@ The player's own car has significantly more data than competitors, because the S
 - `LapLasNLapSeq` / `LapLastNLapTime` — rolling N-lap sequence tracking
 
 ### Pit & Repair (player)
+
 - `OnPitRoad` — boolean, player is in pit lane
 - `PitstopActive` — a pit stop service is in progress
 - `PlayerCarInPitStall` — player car is in their assigned pit stall
@@ -256,6 +281,7 @@ The player's own car has significantly more data than competitors, because the S
 - `PitSvTireCompound` — tire compound to fit
 
 ### Tire Set Management
+
 - `PlayerTireCompound` — current tire compound
 - `TireSetsAvailable` / `TireSetsUsed` — total tire set counts
 - `LeftTireSetsAvailable` / `LeftTireSetsUsed` — left-side specific counts
@@ -266,6 +292,7 @@ The player's own car has significantly more data than competitors, because the S
 - `PlayerFastRepairsUsed` — player's fast repair consumption
 
 ### Player Race State
+
 - `PlayerCarIdx` — the player's CarIdx (to cross-reference competitor arrays)
 - `PlayerCarPosition` / `PlayerCarClassPosition` — overall and class race positions
 - `PlayerCarClass` — car class identifier
@@ -282,11 +309,13 @@ The player's own car has significantly more data than competitors, because the S
 - `EnterExitReset` — whether the player is in the enter/exit/reset state
 
 ### Display & System
+
 - `DisplayUnits` — 0 = imperial, 1 = metric
 - `IsInGarage` / `IsOnTrack` / `IsOnTrackCar` / `IsReplayPlaying` — session presence flags
 - `IsDiskLoggingActive` / `IsDiskLoggingEnabled` — IBT file logging state
 
 ### Sector Splits (SplitTimeInfo YAML)
+
 Split time sector definitions are available in the YAML, though individual sector times during a live lap are not directly exposed as named telemetry variables — they would need to be calculated by tracking `LapDistPct` thresholds at sector boundaries.
 
 ---

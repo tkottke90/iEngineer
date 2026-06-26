@@ -1,5 +1,4 @@
-import { h } from "preact";
-import type { GapModel } from "@iracing-engineer/types";
+import type { GapModel } from '@iracing-engineer/types';
 
 interface GapTableProps {
   gaps: GapModel[];
@@ -19,9 +18,13 @@ export function GapTable({ gaps }: GapTableProps) {
       <tbody>
         {gaps.map((g) => (
           <tr key={`${g.leadCarIdx}-${g.trailCarIdx}`}>
-            <td>{g.leadCarIdx} → {g.trailCarIdx}</td>
+            <td>
+              {g.leadCarIdx} → {g.trailCarIdx}
+            </td>
             <td>{g.gapSeconds.toFixed(3)}s</td>
-            <td>{g.closingRate > 0 ? "▼" : "▲"} {Math.abs(g.closingRate).toFixed(2)}s/lap</td>
+            <td>
+              {g.closingRate > 0 ? '▼' : '▲'} {Math.abs(g.closingRate).toFixed(2)}s/lap
+            </td>
             <td class={`status-${g.battleStatus}`}>{g.battleStatus}</td>
           </tr>
         ))}

@@ -7,7 +7,7 @@ This document covers how the AI engineer agent can deliver spoken audio to the d
 **Key constraints driving this research:**
 
 - Audio must reach a Windows PC and play through a headset
-- TTS is out of scope here — this is purely about *delivery* of pre-generated audio
+- TTS is out of scope here — this is purely about _delivery_ of pre-generated audio
 - Microphone capture (for driver voice input) is a bonus, not a hard requirement
 - Free and open source solutions are strongly preferred
 
@@ -28,6 +28,7 @@ Most iRacing drivers already run Discord for team communication, so no additiona
 On the server side, a Discord bot created through the official Discord Developer Portal (not a "selfbot" — those are ToS violations) can be written in Python using `discord.py`. The bot joins a voice channel, and plays audio using `discord.FFmpegPCMAudio` to stream a file, or a custom `AudioSource` subclass to stream raw PCM bytes directly from the AI pipeline. The only system dependency is FFmpeg, which must be installed on the server running the bot.
 
 **Architecture:**
+
 ```
 AI Backend (server)
   → generates TTS audio bytes
@@ -38,6 +39,7 @@ AI Backend (server)
 ```
 
 **Tradeoffs:**
+
 - Adds a dependency on Discord's infrastructure (internet required, Discord servers as relay)
 - Introduces ~50–150ms of additional latency through Discord's voice routing vs. a direct connection
 - Requires FFmpeg installed on the server
@@ -53,6 +55,7 @@ If Discord is undesirable (e.g., you want offline/LAN-only operation, lower late
 The AI backend sends audio bytes over a WebSocket connection. The local Python script receives each chunk and plays it through the selected audio device (headset) using `sounddevice` or `pyaudio`. The same script can simultaneously capture microphone input and stream it back to the server.
 
 **Architecture:**
+
 ```
 AI Backend (server)
   → WebSocket server
@@ -81,6 +84,7 @@ This approach has the lowest latency and fewest dependencies, but requires the d
 **Complexity:** Low-to-medium. Creating a bot token and writing 50–80 lines of Python is straightforward. FFmpeg is the only non-Python dependency.
 
 **Key libraries:**
+
 - `discord.py` — [https://github.com/Rapptz/discord.py](https://github.com/Rapptz/discord.py)
 - `discord-ext-voice-recv` — [https://github.com/imayhaveborkedit/discord-ext-voice-recv](https://github.com/imayhaveborkedit/discord-ext-voice-recv)
 - Pycord (discord.py fork) — [https://docs.pycord.dev](https://docs.pycord.dev) (alternative with more voice features)
@@ -104,6 +108,7 @@ This approach has the lowest latency and fewest dependencies, but requires the d
 **Complexity:** Low. ~50–100 lines of Python on each side. The only friction is distributing and running a Python script on the Windows gaming PC.
 
 **Key libraries:**
+
 - `sounddevice` — [https://python-sounddevice.readthedocs.io](https://python-sounddevice.readthedocs.io) / [https://pypi.org/project/sounddevice/](https://pypi.org/project/sounddevice/)
 - `pyaudio` — [https://pypi.org/project/PyAudio/](https://pypi.org/project/PyAudio/)
 - `websockets` — [https://pypi.org/project/websockets/](https://pypi.org/project/websockets/)
@@ -128,6 +133,7 @@ This approach has the lowest latency and fewest dependencies, but requires the d
 **Major concern:** The primary `pymumble` fork (`azlux/pymumble`) is effectively unmaintained. The maintainer posted a notice in the README stating they no longer use Mumble, lack motivation to maintain the library, and that it has architectural problems — specifically that it is not asynchronous, causing latency to increase with connection uptime. Last release was May 2021. The Mumble team is apparently working on a replacement library, but it is not yet available.
 
 **Key libraries:**
+
 - `pymumble` (azlux fork) — [https://github.com/azlux/pymumble](https://github.com/azlux/pymumble)
 - Mumble — [https://github.com/mumble-voip/mumble](https://github.com/mumble-voip/mumble)
 - Example bot (music): `botamusique` — [https://github.com/azlux/botamusique](https://github.com/azlux/botamusique)
@@ -149,6 +155,7 @@ This approach has the lowest latency and fewest dependencies, but requires the d
 **Complexity:** High for self-hosting. Setting up a LiveKit server, configuring STUN/TURN, and building a client for the Windows PC is a significant undertaking compared to other options here. Most appropriate if this project eventually needs multi-user voice rooms or cloud-scale deployment.
 
 **Key libraries:**
+
 - LiveKit server — [https://github.com/livekit/livekit](https://github.com/livekit/livekit)
 - Python SDKs — [https://github.com/livekit/python-sdks](https://github.com/livekit/python-sdks)
 - Agents framework — [https://github.com/livekit/agents](https://github.com/livekit/agents)
@@ -170,6 +177,7 @@ This approach has the lowest latency and fewest dependencies, but requires the d
 **Complexity:** Medium-high. WebRTC signaling, ICE negotiation, and STUN/TURN configuration add significant complexity for what is a relatively simple use case. Using a browser as the "client" on the Windows PC is possible but awkward for a gaming overlay.
 
 **Key libraries:**
+
 - `aiortc` — [https://github.com/aiortc/aiortc](https://github.com/aiortc/aiortc)
 
 ---
@@ -189,6 +197,7 @@ This approach has the lowest latency and fewest dependencies, but requires the d
 **Complexity:** Low-to-medium for basic playback, but the IPC protocol on Windows (named pipes) is awkward to work with from Python and has documented reliability issues with multiple sequential commands.
 
 **Key resources:**
+
 - mpv IPC documentation — [https://github.com/mpv-player/mpv/blob/master/DOCS/man/ipc.rst](https://github.com/mpv-player/mpv/blob/master/DOCS/man/ipc.rst)
 
 ---
@@ -225,16 +234,16 @@ This approach has the lowest latency and fewest dependencies, but requires the d
 
 ## Summary Comparison
 
-| Option | Cost | Complexity | Latency | Mic Input | Client Software Required |
-|---|---|---|---|---|---|
-| **Discord Bot** | Free | Low | Moderate | Yes (ext) | Discord app (likely already installed) |
-| **WebSocket + Python Client** | Free | Low | Very low | Yes | Python + script on Windows PC |
-| **Mumble + pymumble** | Free | Medium | Low | Yes | Mumble app; library unmaintained |
-| **LiveKit** | Free/Cloud | High | Very low | Yes | Browser or native app |
-| **aiortc** | Free | Medium-High | Very low | Yes | Browser tab |
-| **mpv IPC** | Free | Medium | Moderate | No | mpv player |
-| **VLC HTTP** | Free | Medium | High | No | VLC player |
-| **TeamSpeak Bot** | Free* | High | Low | Yes | TeamSpeak app |
+| Option                        | Cost       | Complexity  | Latency  | Mic Input | Client Software Required               |
+| ----------------------------- | ---------- | ----------- | -------- | --------- | -------------------------------------- |
+| **Discord Bot**               | Free       | Low         | Moderate | Yes (ext) | Discord app (likely already installed) |
+| **WebSocket + Python Client** | Free       | Low         | Very low | Yes       | Python + script on Windows PC          |
+| **Mumble + pymumble**         | Free       | Medium      | Low      | Yes       | Mumble app; library unmaintained       |
+| **LiveKit**                   | Free/Cloud | High        | Very low | Yes       | Browser or native app                  |
+| **aiortc**                    | Free       | Medium-High | Very low | Yes       | Browser tab                            |
+| **mpv IPC**                   | Free       | Medium      | Moderate | No        | mpv player                             |
+| **VLC HTTP**                  | Free       | Medium      | High     | No        | VLC player                             |
+| **TeamSpeak Bot**             | Free\*     | High        | Low      | Yes       | TeamSpeak app                          |
 
 ---
 

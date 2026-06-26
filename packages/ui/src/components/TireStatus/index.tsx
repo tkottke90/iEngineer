@@ -1,11 +1,10 @@
-import { h } from "preact";
-import type { TireModel } from "@iracing-engineer/types";
+import type { TireModel } from '@iracing-engineer/types';
 
 interface TireStatusProps {
   model: TireModel;
 }
 
-const signalColor = { nominal: "green", watch: "yellow", critical: "red" } as const;
+const signalColor = { nominal: 'green', watch: 'yellow', critical: 'red' } as const;
 
 export function TireStatus({ model }: TireStatusProps) {
   return (
@@ -16,11 +15,10 @@ export function TireStatus({ model }: TireStatusProps) {
         {model.degradationSignal}
       </span>
       <span class="pace-delta">
-        {model.paceDegradationTrend > 0 ? "+" : ""}{model.paceDegradationTrend.toFixed(3)}s
+        {model.paceDegradationTrend > 0 ? '+' : ''}
+        {model.paceDegradationTrend.toFixed(3)}s
       </span>
-      <span class={`confidence-${model.degradationConfidence}`}>
-        {model.degradationConfidence}
-      </span>
+      <span class={`confidence-${model.degradationConfidence}`}>{model.degradationConfidence}</span>
     </div>
   );
 }

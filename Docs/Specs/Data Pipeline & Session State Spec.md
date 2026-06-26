@@ -47,43 +47,43 @@ The Tauri client reads shared memory at 60 Hz on every tick. It downsamples inte
 
 Variables that change meaningfully within a single corner sequence. Safe window detection and incident classification depend on these at full rate.
 
-| Variable | Description | Consumer |
-|---|---|---|
-| `Brake` | Brake pedal input (0–1) | Safe window, incident |
-| `Throttle` | Throttle input (0–1) | Safe window |
-| `LatAccel` | Lateral acceleration (m/s²) | Safe window, incident |
-| `LongAccel` | Longitudinal acceleration | Incident detection |
-| `Speed` | Car speed (m/s) | Safe window context |
-| `Gear` | Current gear | Context |
-| `SteeringWheelAngle` | Steering input | Context |
-| `CarIdxLapDistPct` | Per-car track position (0–1), all cars | Battle detection, cut window |
+| Variable             | Description                            | Consumer                     |
+| -------------------- | -------------------------------------- | ---------------------------- |
+| `Brake`              | Brake pedal input (0–1)                | Safe window, incident        |
+| `Throttle`           | Throttle input (0–1)                   | Safe window                  |
+| `LatAccel`           | Lateral acceleration (m/s²)            | Safe window, incident        |
+| `LongAccel`          | Longitudinal acceleration              | Incident detection           |
+| `Speed`              | Car speed (m/s)                        | Safe window context          |
+| `Gear`               | Current gear                           | Context                      |
+| `SteeringWheelAngle` | Steering input                         | Context                      |
+| `CarIdxLapDistPct`   | Per-car track position (0–1), all cars | Battle detection, cut window |
 
 ### Session Data — 15 Hz
 
 Variables that change at lap or stint cadence. Processing every 4th tick is sufficient and keeps hub-side load proportionate.
 
-| Variable | Description | Consumer |
-|---|---|---|
-| `CarIdxLapCompleted` | Completed lap count per car | Fuel model, stint tracking |
-| `CarIdxLastLapTime` | Last completed lap time, per car | Gap model, pace |
-| `CarIdxBestLapTime` | Best lap time, per car | Overlay |
-| `CarIdxEstTime` | Estimated current lap time | Gap model |
-| `CarIdxF2Time` | Gap to leader / relative gap | Gap model |
-| `CarIdxOnPitRoad` | Pit road boolean, per car | Event detection |
-| `CarIdxPosition` | Race position, per car | Position change events |
-| `CarIdxTrackSurface` | On track / pit / garage, per car | Car status |
-| `CarIdxTireCompound` | Tire compound, per car | Strategy context |
-| `CarIdxFastRepairsUsed` | Fast repair count | Context |
-| `FuelLevel` | Fuel remaining (liters) | Fuel model |
-| `FuelUsePerHour` | Live burn rate | Fuel model |
-| `SessionFlags` | Active race flags | Event detection |
-| `SessionTimeRemain` | Time remaining (seconds) | Strategy context |
-| `SessionLapsRemain` | Laps remaining | Strategy context |
-| `PlayerCarPosition` | Hero car race position | Racing Engineer |
-| `PlayerCarDriverIncidentCount` | Incident points | Context |
-| `WaterTemp` / `OilTemp` | Engine health | Alert thresholds |
-| `LapCurrentLapTime` | Running current lap time | Pace monitoring |
-| `LapDeltaToBestLap` | Real-time delta to personal best | Racing Engineer |
+| Variable                       | Description                      | Consumer                   |
+| ------------------------------ | -------------------------------- | -------------------------- |
+| `CarIdxLapCompleted`           | Completed lap count per car      | Fuel model, stint tracking |
+| `CarIdxLastLapTime`            | Last completed lap time, per car | Gap model, pace            |
+| `CarIdxBestLapTime`            | Best lap time, per car           | Overlay                    |
+| `CarIdxEstTime`                | Estimated current lap time       | Gap model                  |
+| `CarIdxF2Time`                 | Gap to leader / relative gap     | Gap model                  |
+| `CarIdxOnPitRoad`              | Pit road boolean, per car        | Event detection            |
+| `CarIdxPosition`               | Race position, per car           | Position change events     |
+| `CarIdxTrackSurface`           | On track / pit / garage, per car | Car status                 |
+| `CarIdxTireCompound`           | Tire compound, per car           | Strategy context           |
+| `CarIdxFastRepairsUsed`        | Fast repair count                | Context                    |
+| `FuelLevel`                    | Fuel remaining (liters)          | Fuel model                 |
+| `FuelUsePerHour`               | Live burn rate                   | Fuel model                 |
+| `SessionFlags`                 | Active race flags                | Event detection            |
+| `SessionTimeRemain`            | Time remaining (seconds)         | Strategy context           |
+| `SessionLapsRemain`            | Laps remaining                   | Strategy context           |
+| `PlayerCarPosition`            | Hero car race position           | Racing Engineer            |
+| `PlayerCarDriverIncidentCount` | Incident points                  | Context                    |
+| `WaterTemp` / `OilTemp`        | Engine health                    | Alert thresholds           |
+| `LapCurrentLapTime`            | Running current lap time         | Pace monitoring            |
+| `LapDeltaToBestLap`            | Real-time delta to personal best | Racing Engineer            |
 
 ### Semi-Static Data — On Change
 
@@ -117,12 +117,12 @@ All messages on both streams share a common envelope:
 
 ```typescript
 {
-  sessionId: string;       // iRacing subsession ID — primary key for the session
-  sessionTick: number;     // iRacing tick counter (monotonic within session)
-  sessionTime: number;     // iRacing session time in seconds
-  sessionPhase: string;    // Current SessionPhase enum value
-  source: "driver" | "observer";  // Determines which player-only fields are populated
-  data: Record<string, unknown>;  // Variable payload for this stream
+  sessionId: string; // iRacing subsession ID — primary key for the session
+  sessionTick: number; // iRacing tick counter (monotonic within session)
+  sessionTime: number; // iRacing session time in seconds
+  sessionPhase: string; // Current SessionPhase enum value
+  source: 'driver' | 'observer'; // Determines which player-only fields are populated
+  data: Record<string, unknown>; // Variable payload for this stream
 }
 ```
 
@@ -175,13 +175,13 @@ Phases are derived from the iRacing `SessionState` variable and flag state:
 PreSession → Formation → Racing ⇄ Caution → PostRace
 ```
 
-| Phase | Condition |
-|---|---|
+| Phase        | Condition                                          |
+| ------------ | -------------------------------------------------- |
 | `PreSession` | Session not yet started; cars on grid or in garage |
-| `Formation` | Formation or pace lap in progress |
-| `Racing` | Green flag, pace car not on track |
-| `Caution` | Yellow flag active or safety car deployed |
-| `PostRace` | Checkered flag shown |
+| `Formation`  | Formation or pace lap in progress                  |
+| `Racing`     | Green flag, pace car not on track                  |
+| `Caution`    | Yellow flag active or safety car deployed          |
+| `PostRace`   | Checkered flag shown                               |
 
 Phase transitions emit `session:phase_change` events to the event bus.
 
@@ -356,10 +356,10 @@ TireModel {
 On each lap completion, the model computes the delta between the completed lap time and the driver's median lap time for the current stint (excluding outlap and inlap). A 3-lap rolling average of this delta is the degradation trend.
 
 | `paceDegradationTrend` | `degradationSignal` |
-|---|---|
-| < +0.3s | `nominal` |
-| +0.3s to +0.6s | `watch` |
-| > +0.6s | `critical` |
+| ---------------------- | ------------------- |
+| < +0.3s                | `nominal`           |
+| +0.3s to +0.6s         | `watch`             |
+| > +0.6s                | `critical`          |
 
 This is intentionally coarse. The value of the Tire Model is not precision — it is producing a signal the Racing Engineer can reference in context ("your last 3 laps are 4 tenths slower than your stint median — tires may be going off"). Exact tire wear is inaccessible; pace proxy is the realistic alternative.
 
@@ -387,11 +387,11 @@ GapEntry {
 
 **Battle status transitions:**
 
-| Status | Condition |
-|---|---|
-| `open` | Gap > 2.0s |
-| `closing` | Gap ≤ 2.0s and `closingRate < −0.2s/lap` |
-| `battle` | Gap ≤ 1.0s |
+| Status     | Condition                                                  |
+| ---------- | ---------------------------------------------------------- |
+| `open`     | Gap > 2.0s                                                 |
+| `closing`  | Gap ≤ 2.0s and `closingRate < −0.2s/lap`                   |
+| `battle`   | Gap ≤ 1.0s                                                 |
 | `resolved` | Gap was `battle`, now > 1.5s for 2+ consecutive lap checks |
 
 `closing` and `battle` entries are included in `DerivedSignals.activeBattles`, sorted by relevance score (field position, proximity to hero car).
@@ -414,7 +414,7 @@ A safe window is open when **all three** conditions hold on the current tick:
 
 **Radio Blackout Zones** supplement this signal. If the hero car's `LapDistPct` falls within a driver-configured blackout zone for the current track, `safeWindowOpen` is forced `false` regardless of the three-signal evaluation.
 
-The Cut Window Signal for the Stream Engineer follows analogous logic applied to the *subject car* in the current shot, evaluated at 60 Hz using that car's `LapDistPct` and the track's corner map. The Street Engineer Behavior Spec defines its specific thresholds.
+The Cut Window Signal for the Stream Engineer follows analogous logic applied to the _subject car_ in the current shot, evaluated at 60 Hz using that car's `LapDistPct` and the track's corner map. The Street Engineer Behavior Spec defines its specific thresholds.
 
 ---
 
@@ -424,22 +424,23 @@ Events are discrete notifications published to the Redis Pub/Sub event bus when 
 
 ### Processing Cadence by Event Category
 
-| Category | Evaluated at | Processor |
-|---|---|---|
-| Safe window open/close | 60 Hz | Live Processor |
-| Incident detection (spin, off-track) | 60 Hz | Live Processor |
-| Flag changes, safety car | 15 Hz | Session Processor |
-| Position changes | 15 Hz | Session Processor |
-| Pit road entry / exit | 15 Hz | Session Processor |
-| Gap threshold crossings | 15 Hz | Session Processor |
-| Fuel model updates | Per lap completion | Session Processor |
-| Tire model updates | Per lap completion | Session Processor |
-| Session phase transitions | On Session YAML change | YAML Processor |
-| Camera info changes | On Session YAML change | YAML Processor |
+| Category                             | Evaluated at           | Processor         |
+| ------------------------------------ | ---------------------- | ----------------- |
+| Safe window open/close               | 60 Hz                  | Live Processor    |
+| Incident detection (spin, off-track) | 60 Hz                  | Live Processor    |
+| Flag changes, safety car             | 15 Hz                  | Session Processor |
+| Position changes                     | 15 Hz                  | Session Processor |
+| Pit road entry / exit                | 15 Hz                  | Session Processor |
+| Gap threshold crossings              | 15 Hz                  | Session Processor |
+| Fuel model updates                   | Per lap completion     | Session Processor |
+| Tire model updates                   | Per lap completion     | Session Processor |
+| Session phase transitions            | On Session YAML change | YAML Processor    |
+| Camera info changes                  | On Session YAML change | YAML Processor    |
 
 ### Event Catalog
 
 **Session events**
+
 - `session:phase_change` — includes `from` and `to` phase
 - `session:flag_yellow`
 - `session:flag_green` — caution period ended
@@ -448,6 +449,7 @@ Events are discrete notifications published to the Redis Pub/Sub event bus when 
 - `session:safety_car_cleared`
 
 **Hero car events**
+
 - `hero:pit_entry`
 - `hero:pit_exit`
 - `hero:position_change` — includes `from` and `to` position
@@ -458,11 +460,13 @@ Events are discrete notifications published to the Redis Pub/Sub event bus when 
 - `hero:pace_degradation` — `TireModel.degradationSignal` transitions to `watch` or `critical`
 
 **Competitor events**
+
 - `competitor:pit_entry` — includes `carIdx`, `lap`
 - `competitor:pit_exit` — includes `carIdx`, `lap`, `estimatedPitDuration`
 - `competitor:position_change` — includes `carIdx`, `from`, `to`
 
 **Gap / battle events**
+
 - `gap:closing` — `GapEntry.battleStatus` transitions to `closing`; includes `leadCarIdx`, `trailCarIdx`, `gapSeconds`, `lapsToContact`
 - `gap:battle` — `GapEntry.battleStatus` transitions to `battle`
 - `gap:resolved` — `GapEntry.battleStatus` transitions to `resolved`
@@ -474,12 +478,12 @@ All events share a common envelope. Consumers can filter on `type` and access th
 
 ```typescript
 {
-  type: string;              // e.g. "hero:pit_entry"
+  type: string; // e.g. "hero:pit_entry"
   sessionId: string;
-  sessionTime: number;       // iRacing session time at detection
-  lapNumber: number;         // hero car lap at time of detection
-  lapDistPct: number;        // hero car track position at detection
-  payload: Record<string, unknown>;  // event-specific fields
+  sessionTime: number; // iRacing session time at detection
+  lapNumber: number; // hero car lap at time of detection
+  lapDistPct: number; // hero car track position at detection
+  payload: Record<string, unknown>; // event-specific fields
 }
 ```
 
@@ -526,6 +530,7 @@ When the Racing Engineer calls the LLM for a Tier 3 message or responds to a dri
 **Field array composition:**
 
 The `field` array includes:
+
 - P1 if the hero is not P1
 - Up to 3 cars directly ahead of the hero in position order
 - Up to 3 cars directly behind
@@ -578,13 +583,13 @@ In team endurance events, the "active driver" can change on each driver swap. Th
 
 Redis holds the live, in-session state. All Redis data is treated as ephemeral — it reflects current race state and is not the system of record.
 
-| Key | Content | TTL |
-|---|---|---|
-| `race_state:{sessionId}` | Full RaceState JSON snapshot | 2 hours |
-| `fuel_model:{sessionId}` | Current FuelModel snapshot | 2 hours |
-| `tire_model:{sessionId}` | Current TireModel snapshot | 2 hours |
-| `event_ring:{sessionId}` | Ring buffer of last 100 events | 2 hours |
-| `audio:{clipId}` | TTS audio clip (MP3 bytes) | 60 seconds |
+| Key                      | Content                        | TTL        |
+| ------------------------ | ------------------------------ | ---------- |
+| `race_state:{sessionId}` | Full RaceState JSON snapshot   | 2 hours    |
+| `fuel_model:{sessionId}` | Current FuelModel snapshot     | 2 hours    |
+| `tire_model:{sessionId}` | Current TireModel snapshot     | 2 hours    |
+| `event_ring:{sessionId}` | Ring buffer of last 100 events | 2 hours    |
+| `audio:{clipId}`         | TTS audio clip (MP3 bytes)     | 60 seconds |
 
 Redis Streams (`telemetry:live`, `telemetry:session`) use `MAXLEN ~600` trimming. At 60 Hz, 600 entries = ~10 seconds of history.
 
@@ -592,15 +597,16 @@ Redis Streams (`telemetry:live`, `telemetry:session`) use `MAXLEN ~600` trimming
 
 At session end (on `session:phase_change` to `PostRace`, or on graceful hub shutdown), the hub server writes a durable session record. This is the data needed for post-session debrief and cross-session calibration.
 
-| Table | What is written |
-|---|---|
-| `sessions` | Session metadata: sessionId, track, date, session type, final positions, duration |
-| `stint_fuel_data` | Per-stint burn rate actuals — used as priors for future sessions at same track/car |
-| `tire_stint_data` | Per-stint compound, lap age, and degradation signal observations |
-| `event_log` | Full event history for the session — all events with full payloads |
+| Table                | What is written                                                                                                 |
+| -------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `sessions`           | Session metadata: sessionId, track, date, session type, final positions, duration                               |
+| `stint_fuel_data`    | Per-stint burn rate actuals — used as priors for future sessions at same track/car                              |
+| `tire_stint_data`    | Per-stint compound, lap age, and degradation signal observations                                                |
+| `event_log`          | Full event history for the session — all events with full payloads                                              |
 | `engineer_decisions` | All Racing Engineer recommendations: what was recommended, whether the driver acted, and the observable outcome |
 
 **What is not written:**
+
 - Raw 60 Hz telemetry ticks — too large, not needed for debrief
 - TTS audio clips — ephemeral by design
 - LLM inference call logs — cost and latency data is captured via OpenTelemetry; full prompt/response pairs are not stored
@@ -610,12 +616,14 @@ The post-session iRacing REST API call (for full lap-by-lap data) is scheduled a
 ### Session Lifecycle
 
 **Pre-session**
+
 - Hub server starts, loads broadcast plan from Postgres
 - Awaits first telemetry tick from Tauri client
 - On first YAML publish, initializes Session State (track, driver roster, session type)
 - Seeds Fuel Model burn rate from historical Postgres data if a matching track/car record exists
 
 **Session active**
+
 - Redis Streams ingesting Live and Session telemetry
 - Live Processor updating safe window signal at 60 Hz
 - Session Processor updating Race State and emitting events at 15 Hz
@@ -623,6 +631,7 @@ The post-session iRacing REST API call (for full lap-by-lap data) is scheduled a
 - Race State snapshot written to Redis KV on each Session Processor tick
 
 **Post-race (checkered flag)**
+
 - `session:flag_checkered` event emitted
 - Racing Engineer delivers end-of-race summary (Tier 3)
 - Hub server writes session record to Postgres
@@ -630,6 +639,7 @@ The post-session iRacing REST API call (for full lap-by-lap data) is scheduled a
 - Redis keys continue to exist through TTL (not immediately cleared — debrief screen may still be reading them)
 
 **Session ended or hub shutdown**
+
 - Any in-flight Postgres writes are flushed
 - Redis connection closed cleanly
 - If shutdown is unclean (crash), session record is written on next startup from Redis ring buffer before keys expire

@@ -9,15 +9,15 @@ Remix, and plain React in ways that trip up assumptions.
 
 ## How this framework differs from what you may assume
 
-| You might assume | Here it actually is |
-| --- | --- |
-| Routes come from a `pages/` or `app/` folder | Routes are declared in code in `src/routes.ts` with `defineRoutes(...)` (or `contentRoutes(...)` for content globs). There is no file-system routing. |
-| This is React | This is **Preact**. Import hooks from `preact/hooks`, not `react`. JSX renders through Preact. |
-| Server code can live in the page component | Loaders, actions, and guards live in a colocated `*.server.ts` file (e.g. `home.server.ts` next to `home.tsx`). Server code never ships to the client. |
-| Data is fetched with `getServerSideProps`, route handlers, or `fetch` in `useEffect` | Data comes from `defineLoader` in a `.server.ts`; the page reads it through the loader (typed). |
-| Mutations are ad-hoc POST handlers | Mutations are `defineAction`s; forms submit through them and results come back in a uniform `__outcome` envelope (`useActionResult`, `useFormStatus`). |
-| You cast to get types | The route table is typed end to end: `useParams()` is typed per route and loader data is typed from the loader. Do not cast; let inference work. |
-| Auth checks are sprinkled per handler | Page guards are a single `use: [...]` array on a route node; they gate render and the loader/action RPC together and inherit down the tree. |
+| You might assume                                                                     | Here it actually is                                                                                                                                    |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Routes come from a `pages/` or `app/` folder                                         | Routes are declared in code in `src/routes.ts` with `defineRoutes(...)` (or `contentRoutes(...)` for content globs). There is no file-system routing.  |
+| This is React                                                                        | This is **Preact**. Import hooks from `preact/hooks`, not `react`. JSX renders through Preact.                                                         |
+| Server code can live in the page component                                           | Loaders, actions, and guards live in a colocated `*.server.ts` file (e.g. `home.server.ts` next to `home.tsx`). Server code never ships to the client. |
+| Data is fetched with `getServerSideProps`, route handlers, or `fetch` in `useEffect` | Data comes from `defineLoader` in a `.server.ts`; the page reads it through the loader (typed).                                                        |
+| Mutations are ad-hoc POST handlers                                                   | Mutations are `defineAction`s; forms submit through them and results come back in a uniform `__outcome` envelope (`useActionResult`, `useFormStatus`). |
+| You cast to get types                                                                | The route table is typed end to end: `useParams()` is typed per route and loader data is typed from the loader. Do not cast; let inference work.       |
+| Auth checks are sprinkled per handler                                                | Page guards are a single `use: [...]` array on a route node; they gate render and the loader/action RPC together and inherit down the tree.            |
 
 ## Where things go
 

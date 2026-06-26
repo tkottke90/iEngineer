@@ -45,6 +45,7 @@ The project has four distinct runtime artifacts (Tauri client, hub server, share
 Use a single monorepo managed with npm Workspaces. No additional build orchestration layer (Turborepo, Nx) at this time. Four top-level packages: `apps/tauri-client`, `apps/hub-server`, `packages/ui`, `packages/types`.
 
 **Consequences:**
+
 - Single repository for all first-party code; coordinated changes across packages are a single commit
 - npm Workspaces handles inter-package linking without additional tooling
 - `packages/types` is the single source of truth for shared TypeScript types, consumed by hub server and web UI
@@ -63,6 +64,7 @@ The racing PC client needs to read from iRacing shared memory (a low-level OS op
 Use Tauri 2 with a Rust backend and a Preact-based webview for the minimal client UI. All system-level operations (memory-mapped file reading, audio I/O, hotkey listening, camera control) are implemented in Rust. The webview handles only settings screens and debug output.
 
 **Consequences:**
+
 - Rust is the implementation language for all performance-critical and OS-adjacent logic on the racing PC
 - The client is intentionally lightweight to avoid competing with iRacing and OBS for CPU and GPU resources
 - Preact is shared with the web UI via `packages/ui`, enabling a shared component library
@@ -82,6 +84,7 @@ The hub server needs to serve a full-stack web UI (SSR with hydration, streaming
 Use [hono-preact](https://github.com/sbesh91/hono-preact) — a lightweight pairing of Hono (server) with Preact (browser). It provides SSR with client-side hydration, typed server loaders and actions, streaming, and WebSocket support. Deployed via `nodeAdapter` as a Docker container.
 
 **Consequences:**
+
 - Hono's existing route system (`src/api.ts`) composes cleanly alongside the UI routes
 - WebSocket infrastructure from hono-preact aligns with the OBS WebSocket integration pattern already used elsewhere
 - Preact is used on both the Tauri client webview and the hub server UI, enabling shared components in `packages/ui`
@@ -103,6 +106,7 @@ Use two code generation tools that operate on separate boundaries without confli
 - **tauri-specta** for the Tauri IPC boundary: `#[command]` functions exposed to the Preact webview get typed wrappers generated at build time.
 
 **Consequences:**
+
 - Type contracts across the Rust/TypeScript boundary are enforced by codegen, not convention
 - `packages/types` contains generated types from Rust; the hub server and web UI treat these as authoritative
 - Running `cargo test` in `apps/tauri-client` is required to regenerate types after Rust struct changes — this step must be part of the development workflow
@@ -119,6 +123,7 @@ The Tauri client on the racing PC and the hub server on the homelab server are s
 
 **Decision:**
 Use Redis as the shared data bus, running as a Docker container on the homelab server. Three Redis primitives are used for distinct purposes:
+
 - **Redis Streams** (`telemetry:live`, `telemetry:session`) for high-frequency telemetry ingestion
 - **Pub/Sub** for event broadcasting (camera commands, voice triggers, flag changes, audio URLs)
 - **Key/Value** for current race state snapshot and configuration
@@ -126,6 +131,7 @@ Use Redis as the shared data bus, running as a Docker container on the homelab s
 Redis is used even in solo (single-driver) sessions to maintain a single consistent architecture rather than a conditional solo-vs-team code path.
 
 **Consequences:**
+
 - Redis is a required network dependency for all features; the Tauri client must be able to reach the homelab Redis instance
 - Resilience: Tauri handles Redis unavailability gracefully — if the homelab goes down mid-race, the session continues normally and the engineering layer goes quiet without crashing
 - Stream trimming (`MAXLEN ~600`) prevents unbounded growth; 600 entries at 60 Hz = ~10 seconds of history
@@ -145,6 +151,7 @@ The hub server needs durable storage for data that must survive server restarts 
 Use PostgreSQL, running as a Docker container co-located with the hub server in the same Docker Compose stack on the homelab server.
 
 **Consequences:**
+
 - PostgreSQL is the system of record for all data that must persist across sessions
 - Raw 60 Hz telemetry ticks are explicitly not written to Postgres — too large and not needed for any current use case
 - The post-session record is written on `session:flag_checkered` or graceful hub shutdown; on unclean shutdown, the session record is reconstructed from the Redis ring buffer before keys expire
@@ -163,6 +170,7 @@ The Tauri client on the racing PC needs to persist local configuration: audio de
 Use SQLite via Tauri's built-in SQLite plugin for all local configuration storage on the racing PC.
 
 **Consequences:**
+
 - No server or network dependency for local configuration
 - Configuration is persistent across app restarts without Redis being available
 - SQLite is appropriate for the data volume and access pattern (single process, small structured data); no migration to a networked database is anticipated
@@ -182,6 +190,7 @@ Voice input (driver queries and commands) must be transcribed with low latency d
 Run Whisper via [Speaches](https://github.com/speaches-ai/speaches) as a Docker container on the homelab server, co-located with the hub server. The Tauri client sends buffered audio via HTTP POST to the Speaches `/v1/audio/transcriptions` endpoint on PTT key-release. Starting model: `base.en` (74M parameters, ~200ms inference time on CPU for a 3-second clip). An `initial_prompt` covering racing vocabulary (fuel level, pit window, gap, tire compound) improves domain-specific recognition. Upgrade to `small.en` only if recognition failures are observed.
 
 **Consequences:**
+
 - No cloud dependency or internet requirement for voice input
 - ML inference load is offloaded from the racing PC to the homelab server
 - LAN audio transfer adds ~1–10ms — negligible against ~200ms inference time
@@ -209,6 +218,7 @@ Voice cloning: users supply a pre-recorded reference audio clip (~10 seconds) vi
 MP3 conversion via FFmpeg (separate Docker Compose service) adds ~10–30ms, producing a smaller delivery format than raw WAV.
 
 **Consequences:**
+
 - Natural, expressive voice output with personality consistent with the Racing Engineer character
 - No cloud dependency for TTS
 - Both model variants cannot run simultaneously without loading both into VRAM; active variant is selected per request
@@ -229,6 +239,7 @@ Always-on voice activation requires reliable voice activity detection (VAD) to d
 Use Push-to-Talk (PTT) as the voice activation model. The driver holds a configured hotkey while speaking. The Tauri client starts buffering audio on key-down and sends the buffered clip via HTTP POST to Speaches on key-release. Streaming upload during the PTT hold offers no meaningful latency improvement at the clip sizes involved (~100KB) and is not used.
 
 **Consequences:**
+
 - No VAD required; the PTT key-down/key-up pair cleanly bounds the utterance
 - Requires a hand movement or foot pedal to activate — acceptable for the sim racing context where a button press is a familiar interaction
 - Hotkey bindings are user-configurable; Stream Deck can trigger the same keybind without custom plugin development
@@ -245,6 +256,7 @@ Microphone capture and speaker playback must happen at the system level, outside
 
 **Decision:**
 All audio I/O is owned by the Rust layer in the Tauri client:
+
 - **Capture:** `cpal` crate (cross-platform audio I/O) for microphone input
 - **Resampling:** `rubato` crate for converting captured audio (44.1kHz or 48kHz stereo) to 16kHz mono 16-bit PCM before network transfer
 - **Playback:** `rodio` crate (wraps `cpal`) for MP3 decoding and audio output from fetched TTS clips
@@ -252,6 +264,7 @@ All audio I/O is owned by the Rust layer in the Tauri client:
 The Tauri webview is not involved in either capture or playback.
 
 **Consequences:**
+
 - Audio pipeline is deterministic and not subject to browser-context throttling
 - `cpal` provides cross-platform audio device enumeration; selected device is persisted in SQLite config
 - Playback queue is maintained in-process in Rust; the Redis Pub/Sub channel delivers audio URLs, not audio bytes — Tauri fetches and streams audio from the hub server's HTTP endpoint
@@ -275,6 +288,7 @@ The hub server targets the OpenAI chat completions API shape for all LLM calls. 
 Model name, base URL, and API key are all runtime configuration. The hub server degrades gracefully if the inference service is unreachable.
 
 **Consequences:**
+
 - Model selection, quantization level, and hardware sizing for the local path are operational tuning decisions, not application architecture decisions
 - The inference server is a network dependency (LAN or internet); the app must handle unavailability gracefully rather than failing
 - Using Anthropic's SDK for the frontier path (rather than the raw HTTP API) means both paths are abstracted behind the same call site
@@ -292,6 +306,7 @@ iRacing exposes telemetry via a memory-mapped shared memory file. Several commun
 Implement a custom Rust integration written directly against the official `irsdk_defines.h` specification. No community SDK crate is used for the live telemetry path.
 
 **Consequences:**
+
 - Full ownership of the telemetry reading implementation — no dependency on community crate maintenance or version compatibility
 - Changes to the iRacing SDK specification require updates to this implementation; this is accepted as a maintenance task rather than a dependency management problem
 - The implementation effort is non-trivial; this is a deliberate investment in long-term reliability over short-term convenience
@@ -314,6 +329,7 @@ Classify all telemetry variables into two tracks processed at different rates:
 Tauri downsamples internally before publishing to Redis. The hub server runs two processors (Live Processor at 60 Hz, Session Processor at 15 Hz) consuming from their respective Redis Streams.
 
 **Consequences:**
+
 - Hub server CPU load is proportionate to actual decision-making needs
 - Safe window signal and incident detection operate at full fidelity (60 Hz) without requiring all strategy data to process at the same rate
 - Session Processor triggers derived model updates (Fuel Model, Tire Model, Gap Model) and event detection on each tick
@@ -337,6 +353,7 @@ All Tauri clients publish to the same Redis instance. Each message envelope incl
 On driver swap, the `DriverInfo` YAML update triggers re-evaluation of which connected client is the driving client.
 
 **Consequences:**
+
 - Architecture is identical for solo and team sessions — no conditional code paths
 - If the driving client disconnects mid-stint, the hub emits `source:degraded`, drops to observer-mode estimates for that car, and notifies the race control UI
 - Redis access model (network-level controls) means teammates connect by configuring the homelab Redis URL in their Tauri client — no app-level account system needed for v1
@@ -357,6 +374,7 @@ The hub server hosts overlay HTML pages at stable local URLs. OBS browser source
 The app ships default overlay templates. Advanced users can fork and customize them as long as they use the hub server's data API.
 
 **Consequences:**
+
 - Decouples the overlay rendering engine from the application core
 - OBS manages its own browser source refresh lifecycle; the hub server does not need to track which overlays are currently visible
 - Data latency in overlays is governed by the browser source refresh interval, not by the hub server's push cadence
@@ -375,6 +393,7 @@ The Race Control Center web UI includes a video panel showing the live stream ou
 The Race Control Center video panel consumes an HLS stream served independently of the hub server. The HLS stream URL is operator-configured. How the HLS stream is produced is outside the application's scope — common sources include OBS's built-in HLS output, a media relay receiving an RTMP ingest, or a streaming helper application. The page embeds the URL in a standard `<video>` element with HLS.js for cross-browser support. No video data passes through the hub server.
 
 **Consequences:**
+
 - Video preview quality is not constrained by the OBS WebSocket protocol
 - The hub server is not in the video path; no video buffering or transcoding load on the homelab server
 - The operator must configure and maintain their own HLS output alongside the application; this is accepted as an operator setup step
@@ -393,6 +412,7 @@ Display lag exists in the overlay pipeline: the hub server writes race state, th
 Browser source display latency is accepted. The requirement is not minimum latency but synchronization: overlay data should reflect the state of the race at the moment being broadcast, not the current moment. The hub server exposes a configurable "stream delay offset" parameter. Overlays render state at `now - stream_delay` using a rolling buffer of recent state history maintained by the hub server.
 
 **Consequences:**
+
 - The overlay system requires a rolling history buffer (targeting ~60-second window) rather than a single current-state snapshot
 - Operators configure the stream delay offset to match their OBS stream delay setting
 - Data/video desync is a misconfiguration problem, not an architectural problem
@@ -413,6 +433,7 @@ Use Discord webhooks for v1. A webhook is a static URL created per-channel. The 
 A Discord bot is deferred. It would only be needed if the team wants to query the app via Discord (e.g., "!fuel" to get a fuel estimate), which is a future feature, not MVP.
 
 **Consequences:**
+
 - Integration is send-only — the app cannot receive messages or commands via webhook
 - No @mentions of specific users (would require a bot)
 - Rate limit: 5 requests per 2 seconds per webhook URL — sufficient for the posting cadence anticipated
@@ -433,6 +454,7 @@ For v1, no Stream Deck plugin is built. The Tauri client listens for configurabl
 A proper Stream Deck plugin (with dynamic button labels showing live race data) is deferred to a future iteration pending validation that Stream Deck users want this beyond what hotkeys provide.
 
 **Consequences:**
+
 - Stream Deck button labels are static for v1 — no dynamic fuel level or gap display on button faces
 - No plugin development, no plugin distribution or installation process
 - Any hotkey-capable hardware (foot pedals, button boxes, MIDI controllers) works identically to Stream Deck without additional integration work
@@ -450,6 +472,7 @@ The Stream Engineer requires the ability to switch the in-game camera to any car
 Implement camera switching via SDK broadcast messages and accept the instability risk. Any iRacing-side breakage is treated as a maintenance task, not a design constraint. The Stream Engineer continues to function in all other respects (telemetry processing, overlay data, Discord posting) if camera control breaks.
 
 **Consequences:**
+
 - Camera control is a best-effort feature — it can break without the developer having made a mistake
 - The camera control failure mode is graceful: the stream continues unchanged, the Operator receives an alert, and manual camera control remains available
 - No alternative to this approach exists without iRacing providing an official camera API
@@ -469,6 +492,7 @@ Use Authentik — the homelab's existing identity provider — via OAuth2 author
 The Tauri client uses a pre-shared connection token (configured per-installation) to authenticate with the hub server API and Redis — no full OAuth flow in the native app.
 
 **Consequences:**
+
 - No app-level credential management — no passwords stored in Postgres
 - Requires the homelab operator to register the hub server as an Authentik application; this is a one-time setup step
 - Users without access to the homelab Authentik instance cannot use the web UI — team members must be provisioned in Authentik
@@ -495,6 +519,7 @@ The hub server uses the [tkottke90/js-libraries logger package](https://github.c
 Tauri client logs are shipped to the hub server's log ingestion endpoint (subject to the user's opt-in toggle in SQLite config) and forwarded to Alloy.
 
 **Consequences:**
+
 - Each voice interaction generates a trace ID that correlates all pipeline stages into a single Tempo flamegraph
 - All session-scoped events are tagged with `session_id` for log correlation in Loki
 - Debug-level telemetry logging is off by default to avoid volume at 60 Hz
@@ -513,6 +538,7 @@ The Racing Engineer LLM will be asked questions that require numerical fuel calc
 All fuel arithmetic is performed by the deterministic Fuel Model in the hub server. The model is exposed to the Racing Engineer LLM as a callable tool (`get_fuel_status()`) that returns a structured `FuelModel` object and a pre-formatted `summary` string ready for use in a Tier 3 briefing. The LLM uses the tool output directly rather than performing fuel arithmetic itself. The same pattern applies to the Tire Model.
 
 **Consequences:**
+
 - Fuel and tire calculations are deterministic and consistent across LLM calls
 - The LLM's role is reasoning and communication, not arithmetic
 - Expanding strategy logic (more sophisticated pit window modeling, multi-stint planning) is a code change to the Fuel Model, not a prompt engineering problem
@@ -529,10 +555,10 @@ The original audio pipeline design (ADR 8, ADR 12) assumed STT running on the ho
 
 Three POCs measured each stage against that target:
 
-| POC | What was measured | Key finding |
-|-----|-------------------|-------------|
-| POC-0001 | End-to-end batch pipeline latency | Remote STT: **12,161ms** mean (67% of TTFA). Total TTFA: **18,198ms**. 500ms impossible. |
-| POC-0002 | Local STT via `whisper-rs` (CPU, no GPU) | Base.en CPU: **345ms**. 35× faster than remote. STT bottleneck eliminated. |
+| POC      | What was measured                            | Key finding                                                                                                                                    |
+| -------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| POC-0001 | End-to-end batch pipeline latency            | Remote STT: **12,161ms** mean (67% of TTFA). Total TTFA: **18,198ms**. 500ms impossible.                                                       |
+| POC-0002 | Local STT via `whisper-rs` (CPU, no GPU)     | Base.en CPU: **345ms**. 35× faster than remote. STT bottleneck eliminated.                                                                     |
 | POC-0003 | Streaming LLM→TTS (first sentence) vs. batch | Streaming **50.7% faster** than batch. LLM TTFT is the new floor. `qwen3.5-2b-FLM` cuts TTFT from 2,719ms to **1,298ms** vs. `qwen3.5-9b-FLM`. |
 
 One constraint was confirmed during POC-0002 planning: **the racing PC's GPU is dedicated to iRacing and cannot be shared with any ML inference workload.** This eliminates GPU-accelerated local STT and local LLM inference on the racing PC as options.
@@ -559,16 +585,17 @@ TTS latency for a short first sentence (~5–8 words) is ~972ms. For full respon
 
 Based on measured p95 values with the revised architecture:
 
-| Stage | Architecture | Measured (p95) |
-|-------|-------------|---------------:|
-| STT | `whisper-rs` Base.en, CPU, Tauri client | ~345ms |
-| LLM TTFT | `qwen3.5-2b-FLM`, Lemonade homelab | ~1,494ms |
-| TTS first sentence | Chatterbox, streaming, homelab | ~1,168ms |
-| **Total TTFA** | | **≤3.5s** |
+| Stage              | Architecture                            | Measured (p95) |
+| ------------------ | --------------------------------------- | -------------: |
+| STT                | `whisper-rs` Base.en, CPU, Tauri client |         ~345ms |
+| LLM TTFT           | `qwen3.5-2b-FLM`, Lemonade homelab      |       ~1,494ms |
+| TTS first sentence | Chatterbox, streaming, homelab          |       ~1,168ms |
+| **Total TTFA**     |                                         |      **≤3.5s** |
 
 The original 500ms target was set without latency data. It is not achievable with any homelab-hosted LLM given the ~1.3s minimum TTFT observed, and local LLM on the racing PC is excluded by the GPU constraint. 3.5 seconds is the measured floor with current hardware, not a concession — it is the correct target given the system constraints.
 
 **Consequences:**
+
 - `whisper-rs` must be compiled into the Tauri Rust backend with no GPU feature flags on Windows (CPU-only). Model file (~142MB) is bundled with the client installer or downloaded at first launch.
 - The `qwen3.5-2b-FLM` model on Lemonade must be kept loaded; cold-start TTFT is significantly higher than the steady-state numbers measured here.
 - The streaming LLM→TTS pipeline is the production architecture; the Tauri client must never await the full LLM response before initiating TTS.

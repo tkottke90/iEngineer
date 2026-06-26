@@ -17,36 +17,36 @@ Numerical values read from shared memory. Two categories matter for this product
 
 _Player-only variables_ — available only when the user is driving their own car:
 
-| Variable | Description |
-|---|---|
-| FuelLevel / FuelLevelPct | Actual fuel remaining |
-| FuelUsePerHour | Live consumption rate |
-| Brake / Throttle / Clutch | Pedal inputs |
-| RPM, Gear, Speed | Powertrain state |
-| LapCurrentLapTime | Running lap time |
-| LapDeltaToBestLap | Real-time delta |
-| WaterTemp, OilTemp, OilPress | Engine health |
-| SteeringWheelAngle, LatAccel/LongAccel | Dynamic driving data |
-| PitRepairLeft, PitOptRepairLeft | Time remaining in pit stop |
-| PlayerCarPosition, PlayerCarClassPosition | Race position |
-| PlayerCarDriverIncidentCount | Incident points |
-| TireSetsUsed / Available | Tire inventory |
+| Variable                                  | Description                |
+| ----------------------------------------- | -------------------------- |
+| FuelLevel / FuelLevelPct                  | Actual fuel remaining      |
+| FuelUsePerHour                            | Live consumption rate      |
+| Brake / Throttle / Clutch                 | Pedal inputs               |
+| RPM, Gear, Speed                          | Powertrain state           |
+| LapCurrentLapTime                         | Running lap time           |
+| LapDeltaToBestLap                         | Real-time delta            |
+| WaterTemp, OilTemp, OilPress              | Engine health              |
+| SteeringWheelAngle, LatAccel/LongAccel    | Dynamic driving data       |
+| PitRepairLeft, PitOptRepairLeft           | Time remaining in pit stop |
+| PlayerCarPosition, PlayerCarClassPosition | Race position              |
+| PlayerCarDriverIncidentCount              | Incident points            |
+| TireSetsUsed / Available                  | Tire inventory             |
 
 _All-car variables (CarIdx arrays)_ — indexed by car slot, available for every car on track regardless of whether you are driving or spectating:
 
-| Variable | Description |
-|---|---|
-| CarIdxPosition / CarIdxClassPosition | Race position per car |
-| CarIdxLap / CarIdxLapCompleted | Current lap number |
-| CarIdxLapDistPct | Track position (0–1) |
-| CarIdxLastLapTime / CarIdxBestLapTime | Lap time history |
-| CarIdxEstTime | Estimated current lap time |
-| CarIdxF2Time | Gap to leader / relative gap |
-| CarIdxOnPitRoad | Boolean: car on pit road |
-| CarIdxTireCompound | Tire compound in use |
-| CarIdxFastRepairsUsed | Repair count |
-| CarIdxGear, CarIdxRPM, CarIdxSteer | Live car state (limited use) |
-| CarIdxTrackSurface | On track / pit / garage |
+| Variable                              | Description                  |
+| ------------------------------------- | ---------------------------- |
+| CarIdxPosition / CarIdxClassPosition  | Race position per car        |
+| CarIdxLap / CarIdxLapCompleted        | Current lap number           |
+| CarIdxLapDistPct                      | Track position (0–1)         |
+| CarIdxLastLapTime / CarIdxBestLapTime | Lap time history             |
+| CarIdxEstTime                         | Estimated current lap time   |
+| CarIdxF2Time                          | Gap to leader / relative gap |
+| CarIdxOnPitRoad                       | Boolean: car on pit road     |
+| CarIdxTireCompound                    | Tire compound in use         |
+| CarIdxFastRepairsUsed                 | Repair count                 |
+| CarIdxGear, CarIdxRPM, CarIdxSteer    | Live car state (limited use) |
+| CarIdxTrackSurface                    | On track / pit / garage      |
 
 **Session YAML (semi-static)**
 A YAML string covering session metadata, updated on events:
@@ -63,6 +63,7 @@ A YAML string covering session metadata, updated on events:
 Spectators connect to a session as non-scoring clients. Per SDK documentation, **spectators receive the full SDK feed including all CarIdx variables** — they appear in DriverInfo but not standings. This means a team observer client running on a separate machine gets positions, lap times, gap data, pit road entry/exit, and tire compound for every car on track.
 
 **What is NOT available to observers:**
+
 - The player-only variables (fuel level, exact fuel burn rate, pedal inputs, tire temps/wear by corner, engine temps) — these only populate for the car being actively driven by that client
 - Sector-by-sector splits for competitors (only full-lap times via CarIdxLastLapTime)
 
@@ -81,6 +82,7 @@ A separate HTTP API requiring OAuth authentication. Used for **historical and re
 **Authentication:** OAuth2 (legacy auth removed December 2025). Requires iRacing member credentials.
 
 **What it provides:**
+
 - Session results by subsession ID (lap-by-lap data, finishing order, incidents)
 - Driver/car lookup by customer ID
 - Track and car catalog metadata
@@ -88,6 +90,7 @@ A separate HTTP API requiring OAuth authentication. Used for **historical and re
 - Member career stats and lap records
 
 **What it does NOT provide:**
+
 - Anything real-time — this is a post-session or pre-session API
 - Live telemetry (that is the SDK)
 
@@ -101,17 +104,17 @@ OBS 28 and later ships with a built-in WebSocket server (default port 4455, pass
 
 **Key capabilities:**
 
-| Capability | Request/Event |
-|---|---|
-| Switch live scene | `SetCurrentProgramScene` |
-| Set preview scene (Studio Mode) | `SetCurrentPreviewScene` |
-| Show/hide a source | `SetSceneItemEnabled` |
-| Update browser source settings | `SetInputSettings` |
-| Start / stop streaming | `StartStream` / `StopStream` |
-| Start / stop recording | `StartRecord` / `StopRecord` |
-| Save replay buffer | `SaveReplayBuffer` |
-| Subscribe to scene changes | `SceneTransitionStarted`, `CurrentProgramSceneChanged` |
-| Subscribe to stream status | `StreamStateChanged` |
+| Capability                      | Request/Event                                          |
+| ------------------------------- | ------------------------------------------------------ |
+| Switch live scene               | `SetCurrentProgramScene`                               |
+| Set preview scene (Studio Mode) | `SetCurrentPreviewScene`                               |
+| Show/hide a source              | `SetSceneItemEnabled`                                  |
+| Update browser source settings  | `SetInputSettings`                                     |
+| Start / stop streaming          | `StartStream` / `StopStream`                           |
+| Start / stop recording          | `StartRecord` / `StopRecord`                           |
+| Save replay buffer              | `SaveReplayBuffer`                                     |
+| Subscribe to scene changes      | `SceneTransitionStarted`, `CurrentProgramSceneChanged` |
+| Subscribe to stream status      | `StreamStateChanged`                                   |
 
 A JavaScript library (`obs-websocket-js`) provides a typed client. The protocol uses unique message IDs so every request gets a confirmed response.
 
@@ -134,11 +137,13 @@ Two integration options exist, with very different complexity profiles.
 A Discord webhook is a static URL created per-channel. The app POSTs JSON to that URL — no bot, no OAuth, no SDK.
 
 **Capabilities:**
+
 - Post text messages and rich embeds (cards with fields, colors, titles)
 - Override display name and avatar per message
 - Target a specific thread within a channel
 
 **Limitations:**
+
 - Send-only — cannot receive messages or commands via webhook
 - No @mentions of specific users (use bot for that)
 - Rate limited: 5 requests per 2 seconds per webhook URL
@@ -158,12 +163,14 @@ A proper bot with application credentials. Can read and respond to messages, use
 The Stream Deck app communicates with plugins via a local WebSocket. Plugins are Node.js processes (SDK v2 requires Node 24+, Stream Deck 7.1+).
 
 **How it works:**
+
 1. The plugin process connects to the Stream Deck app WebSocket on startup
 2. Stream Deck sends `keyDown` / `keyUp` events when buttons are pressed
 3. The plugin can update button appearance (text, image, color) in response to app state
 4. A property inspector (HTML/JS page) provides per-button configuration UI
 
 **Key capabilities for this product:**
+
 - Receive button press events and translate them to app commands (e.g. trigger a voice query, force a scene switch)
 - Update button labels dynamically (e.g. show current fuel level or gap on a button face)
 - Multi-action support (one button triggers a sequence)
@@ -176,23 +183,23 @@ The Stream Deck app communicates with plugins via a local WebSocket. Plugins are
 
 ## Summary: Data Availability by Session Context
 
-| Data | Driving | Spectating / Observer |
-|---|---|---|
-| Own fuel level (exact) | ✅ | ❌ |
-| Own fuel burn rate | ✅ | ❌ |
-| Own tire temp/wear | ✅ | ❌ |
-| Own lap time (live) | ✅ | ❌ |
-| Own delta to best | ✅ | ❌ |
-| All cars: position | ✅ | ✅ |
-| All cars: lap count | ✅ | ✅ |
-| All cars: last lap time | ✅ | ✅ |
-| All cars: estimated gap | ✅ | ✅ |
-| All cars: on pit road | ✅ | ✅ |
-| All cars: tire compound | ✅ | ✅ |
-| Session flags (yellow, etc.) | ✅ | ✅ |
-| Weather / track conditions | ✅ | ✅ |
-| Camera control | ✅ | ✅ |
-| Post-session lap data | ✅ (REST API) | ✅ (REST API) |
+| Data                         | Driving       | Spectating / Observer |
+| ---------------------------- | ------------- | --------------------- |
+| Own fuel level (exact)       | ✅            | ❌                    |
+| Own fuel burn rate           | ✅            | ❌                    |
+| Own tire temp/wear           | ✅            | ❌                    |
+| Own lap time (live)          | ✅            | ❌                    |
+| Own delta to best            | ✅            | ❌                    |
+| All cars: position           | ✅            | ✅                    |
+| All cars: lap count          | ✅            | ✅                    |
+| All cars: last lap time      | ✅            | ✅                    |
+| All cars: estimated gap      | ✅            | ✅                    |
+| All cars: on pit road        | ✅            | ✅                    |
+| All cars: tire compound      | ✅            | ✅                    |
+| Session flags (yellow, etc.) | ✅            | ✅                    |
+| Weather / track conditions   | ✅            | ✅                    |
+| Camera control               | ✅            | ✅                    |
+| Post-session lap data        | ✅ (REST API) | ✅ (REST API)         |
 
 ---
 
@@ -207,6 +214,7 @@ The following questions were evaluated and resolved. Each decision has downstrea
 Both STT and TTS will run locally on the racing PC. STT via Whisper (locally hosted). TTS via a self-hosted service (to be selected). This eliminates cloud dependency and network latency from the voice loop — critical given the sub-second response time requirement mid-race.
 
 _Implications:_
+
 - Whisper model size is a tuning decision: `base` or `small` for low latency vs. `medium` for accuracy. A `small.en` model is a reasonable starting point for English-only voice commands.
 - TTS service needs evaluation. Options include Piper TTS (fast, local, open-source), Coqui TTS, or a lightweight ONNX-based model. Latency from text to audible output should target under 300ms.
 - Both services must run as persistent background processes on the PC, not loaded on demand per query.
@@ -219,6 +227,7 @@ _Implications:_
 A dedicated hardware machine on the local network runs the inference server. The app calls it via an OpenAI or Anthropic-compatible API endpoint (e.g., Ollama, LM Studio, vLLM, or similar). No cloud dependency.
 
 _Implications:_
+
 - The app is API-agnostic by design — it targets the OpenAI chat completions interface, which is supported by all major self-hosted LLM servers. This also allows a cloud fallback (swap the base URL) without code changes.
 - The inference server is a network dependency, not a local process. The app must handle inference server unavailability gracefully — degrading to rule-based strategy responses rather than failing entirely.
 - The dedicated hardware is not the racing PC, so the inference server is accessed over LAN. Network latency within a local network is negligible (<1ms), but the call is still async and should be treated as such.
@@ -231,6 +240,7 @@ _Implications:_
 Multiple team clients (each running the iRacing Engineer app) push telemetry to a central coordination server. The server processes data from all clients, with the active driver's telemetry taking priority over observers. Redis is used as the queue to buffer incoming telemetry volume and decouple ingestion from processing.
 
 _Implications:_
+
 - A **Team Coordination Server** is a new architectural component not shown in the current diagram. One team member's machine runs this server (likely the primary driver's PC or a dedicated machine). All team clients connect to it.
 - Redis is now a required infrastructure dependency for team sessions. For solo use, this coordination layer is not needed — the app runs without it.
 - **Driver priority rule:** When the same CarIdx data arrives from both the active driver client and an observer client, the driver's data is used. For player-only variables (fuel, tire temps), only the driving client can provide them; the server should tag the source on ingest.
@@ -250,5 +260,6 @@ Camera switching via SDK broadcast messages is community-documented and may brea
 Display lag in the overlay pipeline is acceptable. The operator already applies an artificial stream delay (cheater protection), so overlay data needs to be synchronized with that delay rather than minimized. The requirement is **sync between data and video**, not minimum latency.
 
 _Implications:_
+
 - The overlay system should expose a configurable "stream delay offset" so displayed data (gaps, positions, fuel estimates) reflects the state of the race at the moment being broadcast, not the current moment. This is a deliberate design parameter, not a bug to fix.
 - This actually simplifies the overlay design — a small buffer of state history (e.g., rolling 60-second window) can be maintained, and overlays render the state at `now - stream_delay` rather than `now`.

@@ -12,16 +12,16 @@ services:
 
   postgres:
     ports:
-      - "5432:5432"
+      - '5432:5432'
 
   redis:
     ports:
-      - "6379:6379"
+      - '6379:6379'
 
   speaches:
     ports:
-      - "8000:8000"
+      - '8000:8000'
 
   chatterbox:
     ports:
-      - "8001:8001"
+      - '8001:8001'

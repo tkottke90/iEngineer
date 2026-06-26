@@ -1,11 +1,6 @@
-export type SessionPhase =
-  | "PreSession"
-  | "Formation"
-  | "Racing"
-  | "Caution"
-  | "PostRace";
+export type SessionPhase = 'PreSession' | 'Formation' | 'Racing' | 'Caution' | 'PostRace';
 
-export type TelemetrySource = "driver" | "observer";
+export type TelemetrySource = 'driver' | 'observer';
 
 export interface TelemetryEnvelope {
   sessionId: string;
