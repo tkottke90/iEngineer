@@ -1,5 +1,9 @@
 use serde::{Deserialize, Serialize};
+use std::sync::Mutex;
+use tokio::sync::watch;
 use ts_rs::TS;
+
+use crate::iracing::types::{ConnectionStatus, SessionInfo, TelemetryField};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -25,15 +29,28 @@ impl Default for AppConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
-pub enum ConnectionStatus {
-    Connected,
-    Disconnected,
-    Connecting,
+pub struct AppState {
+    pub config: Mutex<AppConfig>,
+    pub field_cache: Mutex<Vec<TelemetryField>>,
+    pub watchlist: Mutex<Vec<String>>,
+    pub current_session: Mutex<Option<SessionInfo>>,
+    pub iracing_status: watch::Sender<ConnectionStatus>,
+    // Kept alive so watch::Sender::send() does not fail with "no receivers".
+    // Without a live receiver, send() returns Err and borrow() always sees the
+    // initial Disconnected value regardless of what the watcher tries to write.
+    _iracing_status_rx: watch::Receiver<ConnectionStatus>,
 }
 
-#[derive(Debug, Default)]
-pub struct AppState {
-    pub config: std::sync::Mutex<AppConfig>,
+impl Default for AppState {
+    fn default() -> Self {
+        let (tx, rx) = watch::channel(ConnectionStatus::Disconnected);
+        Self {
+            config: Mutex::new(AppConfig::default()),
+            field_cache: Mutex::new(Vec::new()),
+            watchlist: Mutex::new(Vec::new()),
+            current_session: Mutex::new(None),
+            iracing_status: tx,
+            _iracing_status_rx: rx,
+        }
+    }
 }

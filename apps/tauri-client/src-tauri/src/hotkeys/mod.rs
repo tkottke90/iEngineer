@@ -12,7 +12,9 @@ pub enum HotkeyEvent {
     PttReleased,
 }
 
-pub fn spawn_hotkey_listener(config: HotkeyConfig) -> (JoinHandle<()>, mpsc::Receiver<HotkeyEvent>) {
+pub fn spawn_hotkey_listener(
+    config: HotkeyConfig,
+) -> (JoinHandle<()>, mpsc::Receiver<HotkeyEvent>) {
     let (tx, rx) = mpsc::channel(32);
     let handle = tokio::spawn(async move {
         ptt::run_listener(&config.ptt_key, tx).await;

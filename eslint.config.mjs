@@ -6,7 +6,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 export default tseslint.config(
   // Global ignores — dist, generated, and experimental POC code
   {
-    ignores: ['**/dist/**', '**/node_modules/**', 'pocs/**', 'scripts/**', '**/*.d.ts'],
+    ignores: ['**/dist/**', '**/node_modules/**', '**/target/**', 'pocs/**', 'scripts/**', '**/*.d.ts'],
   },
 
   // TypeScript-ESLint recommended rules for all .ts / .tsx files

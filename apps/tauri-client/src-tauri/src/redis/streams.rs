@@ -18,7 +18,7 @@ impl StreamPublisher {
         for (k, v) in fields {
             cmd.arg(k).arg(v);
         }
-        cmd.query_async(&mut self.conn).await?;
+        let _: () = cmd.query_async(&mut self.conn).await?;
         Ok(())
     }
 }

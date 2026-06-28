@@ -1,6 +1,6 @@
 use anyhow::Result;
-use redis::AsyncCommands;
 use redis::aio::PubSub;
+use redis::AsyncCommands;
 use tokio::task::JoinHandle;
 
 pub struct PubSubListener;
@@ -32,8 +32,12 @@ impl PubSubListener {
         Ok(handle)
     }
 
-    pub async fn publish(conn: &mut redis::aio::MultiplexedConnection, channel: &str, message: &str) -> Result<()> {
-        conn.publish(channel, message).await?;
+    pub async fn publish(
+        conn: &mut redis::aio::MultiplexedConnection,
+        channel: &str,
+        message: &str,
+    ) -> Result<()> {
+        let _: () = conn.publish(channel, message).await?;
         Ok(())
     }
 }

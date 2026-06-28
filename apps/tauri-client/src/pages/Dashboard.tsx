@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'preact/hooks';
-import { FuelGauge, TireStatus } from '@iracing-engineer/ui';
-import type { FuelModel, TireModel } from '@iracing-engineer/types';
+
+// Placeholder types until @iracing-engineer/ui and @iracing-engineer/types packages are built
+type FuelModel = Record<string, unknown>;
+type TireModel = Record<string, unknown>;
+const FuelGauge = (_: { model: FuelModel }) => null;
+const TireStatus = (_: { model: TireModel }) => null;
 
 export function Dashboard() {
   const [pttActive, _setPttActive] = useState(false);

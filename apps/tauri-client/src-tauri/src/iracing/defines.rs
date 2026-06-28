@@ -1,10 +1,30 @@
 // Constants derived from irsdk_defines.h
 
+// Header status
+pub const IRSDK_STATUS_CONNECTED: i32 = 1;
+
+// Variable header size (bytes): matches sizeof(irsdk_varHeader) = 144
+pub const VAR_HEADER_SIZE: usize = 144;
+
+// Header byte offsets (all i32 fields)
+pub const STATUS_OFFSET: usize = 4;
+pub const TICK_RATE_OFFSET: usize = 8;
+pub const SESSION_INFO_UPDATE_OFFSET: usize = 12;
+pub const SESSION_INFO_LEN_OFFSET: usize = 16;
+pub const SESSION_INFO_OFFSET_OFFSET: usize = 20;
+pub const NUM_VARS_OFFSET: usize = 24;
+pub const VAR_HEADER_OFFSET_OFFSET: usize = 28;
+
 pub const IRSDK_MEMMAPFILE: &str = "Local\\IRSDKMemMapFileName";
 pub const IRSDK_BROADCASTMSGNAME: &str = "IRSDK_BROADCASTMSG";
 pub const IRSDK_DATAVALIDEVENTNAME: &str = "Local\\IRSDKDataValidEvent";
 
 pub const IRSDK_MAX_BUFS: usize = 4;
+
+// irsdk_header varBuf array (follows the 32-byte diskSubHeader at offset 48)
+pub const NUM_BUF_OFFSET: usize = 32;   // int numBuf
+pub const VAR_BUF_OFFSET: usize = 48;   // irsdk_varBuf[4] starts here (live memory has no diskSubHeader)
+pub const VAR_BUF_STRIDE: usize = 16;   // sizeof(irsdk_varBuf) = tickCount+bufOffset+pad[2]
 pub const IRSDK_MAX_STRING: usize = 32;
 pub const IRSDK_MAX_DESC: usize = 64;
 
