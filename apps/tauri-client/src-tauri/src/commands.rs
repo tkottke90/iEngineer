@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 use ts_rs::TS;
 
-use crate::iracing::types::{ConnectionStatus, SessionInfo, TelemetryField};
+use crate::iracing::types::{ConnectionStatus, SessionInfo, TelemetryField, TelemetryValue};
 use crate::state::{AppConfig, AppState};
 
 // ── Audio helpers (unchanged) ─────────────────────────────────────────────────
@@ -122,6 +122,62 @@ pub async fn set_watchlist(fields: Vec<String>, state: State<'_, AppState>) -> R
     let mut wl = state.watchlist.lock().map_err(|e| e.to_string())?;
     *wl = fields;
     Ok(())
+}
+
+/// Resolves the current camera car (CamCarIdx) and returns its per-car telemetry
+/// fields as scalar values — useful for stream overlays and camera-follow panels.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FocusedCarData {
+    pub cam_car_idx: i32,
+    pub cam_group:   i32,
+    pub cam_num:     i32,
+    pub fields: std::collections::HashMap<String, TelemetryValue>,
+}
+
+/// CarIdx* fields to resolve for the focused car, in display order.
+const FOCUSED_FIELDS: &[&str] = &[
+    "CarIdxPosition",
+    "CarIdxClassPosition",
+    "CarIdxLapCompleted",
+    "CarIdxLapDistPct",
+    "CarIdxF2Time",
+    "CarIdxEstTime",
+    "CarIdxGear",
+    "CarIdxRPM",
+    "CarIdxTrackSurface",
+    "CarIdxOnPitRoad",
+    "CarIdxSteer",
+];
+
+#[tauri::command]
+pub async fn get_focused_car_data() -> Result<Option<FocusedCarData>, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use crate::iracing::sdk::IracingSDK;
+        let mut sdk = match IracingSDK::open() {
+            Ok(s) if s.is_connected() => s,
+            _ => return Ok(None),
+        };
+        sdk.populate_var_offsets();
+
+        let cam_car_idx = match sdk.read_var_int("CamCarIdx") {
+            Some(v) if v >= 0 => v,
+            _ => return Ok(None),
+        };
+        let cam_group = sdk.read_var_int("CamGroupNumber").unwrap_or(-1);
+        let cam_num   = sdk.read_var_int("CamCameraNumber").unwrap_or(-1);
+
+        let mut fields = std::collections::HashMap::new();
+        for &name in FOCUSED_FIELDS {
+            if let Some(value) = sdk.read_var_array_element(name, cam_car_idx as usize) {
+                fields.insert(name.to_string(), value);
+            }
+        }
+
+        return Ok(Some(FocusedCarData { cam_car_idx, cam_group, cam_num, fields }));
+    }
+    #[cfg(not(target_os = "windows"))]
+    Ok(None)
 }
 
 #[tauri::command]

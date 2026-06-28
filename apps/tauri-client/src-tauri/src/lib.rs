@@ -25,6 +25,7 @@ pub fn run() {
             list_telemetry_fields,
             get_watchlist,
             set_watchlist,
+            get_focused_car_data,
             get_sdk_debug,
         ])
         .setup(|app| {

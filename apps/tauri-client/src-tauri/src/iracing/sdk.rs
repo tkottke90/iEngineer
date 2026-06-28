@@ -298,6 +298,24 @@ impl IracingSDK {
         }
     }
 
+    /// Read a single element from an array variable at the given index.
+    /// `CamCarIdx` is the typical index source — used to resolve CarIdx* fields
+    /// for the car currently on camera without fetching the entire array.
+    pub fn read_var_array_element(&self, name: &str, idx: usize) -> Option<TelemetryValue> {
+        let &(var_type, offset, count) = self.var_offsets.get(name)?;
+        if idx >= count as usize {
+            return None;
+        }
+        // Element stride: Bool and Char are 1 byte; Double is 8; everything else is 4.
+        let stride: usize = match var_type {
+            0 | 1 => 1,
+            5 => 8,
+            _ => 4,
+        };
+        let element_offset = offset as usize + idx * stride;
+        Some(self.read_value_at(var_type, element_offset, 1))
+    }
+
     // ── Convenience accessors ────────────────────────────────────────────────────
 
     pub fn read_var_float(&self, name: &str) -> Option<f32> {
