@@ -123,3 +123,17 @@ pub async fn set_watchlist(fields: Vec<String>, state: State<'_, AppState>) -> R
     *wl = fields;
     Ok(())
 }
+
+#[tauri::command]
+pub async fn get_sdk_debug() -> Result<std::collections::HashMap<String, String>, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use crate::iracing::sdk::IracingSDK;
+        if let Ok(mut sdk) = IracingSDK::open() {
+            return Ok(sdk.debug_info());
+        }
+        return Ok(std::collections::HashMap::new());
+    }
+    #[cfg(not(target_os = "windows"))]
+    Ok(std::collections::HashMap::new())
+}

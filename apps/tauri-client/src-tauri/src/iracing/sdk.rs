@@ -54,20 +54,34 @@ impl IracingSDK {
     #[cfg(target_os = "windows")]
     pub fn open() -> Result<Self> {
         use windows::core::PCSTR;
-        use windows::Win32::System::Memory::{MapViewOfFile, OpenFileMappingA, FILE_MAP_READ};
+        use windows::Win32::System::Memory::{
+            MapViewOfFile, OpenFileMappingA, VirtualQuery,
+            MEMORY_BASIC_INFORMATION, FILE_MAP_READ,
+        };
 
         let name = format!("{}\0", IRSDK_MEMMAPFILE);
         let handle = unsafe { OpenFileMappingA(FILE_MAP_READ.0, false, PCSTR(name.as_ptr())) };
         let handle =
             handle.map_err(|_| anyhow!("OpenFileMappingA failed — iRacing not running"))?;
 
-        let ptr = unsafe { MapViewOfFile(handle, FILE_MAP_READ, 0, 0, 1024 * 1024) };
+        // Pass 0 to map the entire file mapping object — iRacing sessions with many
+        // cars / long YAML can push the data buffers past the 1 MB mark, so a fixed
+        // 1 MB limit silently truncates the mapping and all variable reads return
+        // Unavailable because buf_offset + var_offset exceeds data.len().
+        let ptr = unsafe { MapViewOfFile(handle, FILE_MAP_READ, 0, 0, 0) };
         if ptr.Value.is_null() {
             return Err(anyhow!("MapViewOfFile failed"));
         }
 
+        // VirtualQuery tells us the actual size of the mapped region.
+        let mut mbi: MEMORY_BASIC_INFORMATION = unsafe { std::mem::zeroed() };
+        let queried = unsafe {
+            VirtualQuery(Some(ptr.Value), &mut mbi, std::mem::size_of_val(&mbi))
+        };
+        let map_size = if queried > 0 { mbi.RegionSize } else { 2 * 1024 * 1024 };
+
         let data =
-            unsafe { std::slice::from_raw_parts(ptr.Value as *const u8, 1024 * 1024).to_vec() };
+            unsafe { std::slice::from_raw_parts(ptr.Value as *const u8, map_size).to_vec() };
 
         unsafe { windows::Win32::System::Memory::UnmapViewOfFile(ptr).ok() };
         unsafe { windows::Win32::Foundation::CloseHandle(handle).ok() };
@@ -334,6 +348,47 @@ impl IracingSDK {
                 })
                 .collect(),
         )
+    }
+
+    /// Return diagnostic info about the current shared-memory snapshot.
+    /// Shows raw header values, varBuf entries, computed buf_offset, and whether
+    /// key telemetry variables are resolvable — useful for debugging Unavailable values.
+    pub fn debug_info(&mut self) -> HashMap<String, String> {
+        let mut m = HashMap::new();
+
+        m.insert("status".into(), format!("{}", read_i32(&self.data, STATUS_OFFSET).unwrap_or(-1)));
+        m.insert("num_buf".into(), format!("{}", read_i32(&self.data, NUM_BUF_OFFSET).unwrap_or(-1)));
+        m.insert("num_vars".into(), format!("{}", read_i32(&self.data, NUM_VARS_OFFSET).unwrap_or(-1)));
+        m.insert("var_hdr_off".into(), format!("{}", read_i32(&self.data, VAR_HEADER_OFFSET_OFFSET).unwrap_or(-1)));
+        m.insert("buf_offset".into(), format!("{}", self.buf_offset));
+
+        for i in 0..IRSDK_MAX_BUFS {
+            let tick = read_i32(&self.data, VAR_BUF_OFFSET + i * VAR_BUF_STRIDE).unwrap_or(-1);
+            let off  = read_i32(&self.data, VAR_BUF_OFFSET + i * VAR_BUF_STRIDE + 4).unwrap_or(-1);
+            m.insert(format!("vb{i}_tick"), format!("{tick}"));
+            m.insert(format!("vb{i}_off"),  format!("{off}"));
+        }
+
+        // Raw hex of bytes 40–112: covers pad1[2] and all 4 irsdk_varBuf entries.
+        let end = 112usize.min(self.data.len());
+        let hex = self.data[40..end]
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        m.insert("raw_40_112".into(), hex);
+
+        self.populate_var_offsets();
+        m.insert("n_vars_found".into(), format!("{}", self.var_offsets.len()));
+
+        for key in &["SessionTime", "SessionTick", "Throttle", "Brake", "Gear", "Speed", "RPM"] {
+            let entry = self.var_offsets.get(*key)
+                .map(|&(t, o, c)| format!("type={t} off={o} cnt={c}"))
+                .unwrap_or_else(|| "not_found".into());
+            m.insert(format!("var_{key}"), entry);
+        }
+
+        m
     }
 
     pub fn read_watchlist_values(&self, watchlist: &[String]) -> HashMap<String, TelemetryValue> {

@@ -25,6 +25,7 @@ pub fn run() {
             list_telemetry_fields,
             get_watchlist,
             set_watchlist,
+            get_sdk_debug,
         ])
         .setup(|app| {
             iracing::spawn_connection_watcher(app.handle().clone());
