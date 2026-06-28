@@ -79,8 +79,22 @@ pub async fn set_audio_device(_device: AudioDevice) -> Result<(), String> {
 // ── iRacing commands ──────────────────────────────────────────────────────────
 
 #[tauri::command]
-pub async fn get_iracing_status(state: State<'_, AppState>) -> Result<ConnectionStatus, String> {
-    Ok(state.iracing_status.borrow().clone())
+pub async fn get_iracing_status(_state: State<'_, AppState>) -> Result<ConnectionStatus, String> {
+    // Read live from shared memory rather than the watch channel.
+    // The watch channel is still updated by the watcher for event emissions,
+    // but polling via invoke always reflects the true current state.
+    #[cfg(target_os = "windows")]
+    {
+        use crate::iracing::sdk::IracingSDK;
+        if let Ok(sdk) = IracingSDK::open() {
+            if sdk.is_connected() {
+                return Ok(ConnectionStatus::Connected);
+            }
+        }
+        return Ok(ConnectionStatus::Disconnected);
+    }
+    #[cfg(not(target_os = "windows"))]
+    Ok(ConnectionStatus::Disconnected)
 }
 
 #[tauri::command]

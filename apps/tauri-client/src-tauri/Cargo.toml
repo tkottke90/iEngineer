@@ -3,6 +3,11 @@ name = "iracing-engineer"
 version = "0.0.1"
 edition = "2021"
 
+[features]
+# Required for production builds — enables serving bundled assets via WebView custom protocol.
+# tauri dev strips this; tauri build (or manual --features custom-protocol) adds it.
+custom-protocol = ["tauri/custom-protocol"]
+
 [lib]
 name = "iracing_engineer_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]

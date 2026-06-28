@@ -20,6 +20,11 @@ pub const IRSDK_BROADCASTMSGNAME: &str = "IRSDK_BROADCASTMSG";
 pub const IRSDK_DATAVALIDEVENTNAME: &str = "Local\\IRSDKDataValidEvent";
 
 pub const IRSDK_MAX_BUFS: usize = 4;
+
+// irsdk_header varBuf array (follows the 32-byte diskSubHeader at offset 48)
+pub const NUM_BUF_OFFSET: usize = 32;   // int numBuf
+pub const VAR_BUF_OFFSET: usize = 48;   // irsdk_varBuf[4] starts here (live memory has no diskSubHeader)
+pub const VAR_BUF_STRIDE: usize = 16;   // sizeof(irsdk_varBuf) = tickCount+bufOffset+pad[2]
 pub const IRSDK_MAX_STRING: usize = 32;
 pub const IRSDK_MAX_DESC: usize = 64;
 

@@ -43,67 +43,145 @@ function formatValue(v: TelemetryValue): string {
   return '—';
 }
 
+interface LogEntry {
+  ts: string;
+  msg: string;
+}
+
+function nowHMS(): string {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}.${String(d.getMilliseconds()).padStart(3, '0')}`;
+}
+
+const MAX_LOG = 50;
+
 export function Diagnostics() {
   const [status, setStatus] = useState<ConnectionStatus>('Disconnected');
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [fields, setFields] = useState<TelemetryField[]>([]);
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [tickValues, setTickValues] = useState<Record<string, TelemetryValue>>({});
+  const [log, setLog] = useState<LogEntry[]>([{ ts: nowHMS(), msg: 'Diagnostics mounted' }]);
+
+  function addLog(msg: string) {
+    setLog((prev) => [{ ts: nowHMS(), msg }, ...prev].slice(0, MAX_LOG));
+  }
 
   useEffect(() => {
     const unlisteners: UnlistenFn[] = [];
+    let cancelled = false;
 
+    // ── Try each event listener independently; failures are logged, not fatal ──
+    const registerListeners = async () => {
+      try {
+        unlisteners.push(
+          await listen<ConnectionStatus>('iracing://status-changed', async (e) => {
+            if (cancelled) return;
+            addLog(`EVENT status → ${e.payload}`);
+            setStatus(e.payload);
+            if (e.payload === 'Connected') {
+              const f = await invoke<TelemetryField[]>('list_telemetry_fields').catch(() => []);
+              if (!cancelled) { setFields(f); addLog(`fields: ${f.length}`); }
+            } else {
+              setFields([]);
+              setSession(null);
+            }
+          }),
+        );
+        addLog('event OK: status-changed');
+      } catch (e) {
+        addLog(`event FAIL: status-changed (${String(e)})`);
+      }
+
+      try {
+        unlisteners.push(
+          await listen<SessionInfo | null>('iracing://session-changed', async (e) => {
+            if (cancelled) return;
+            const info = e.payload;
+            addLog(info ? `EVENT session → ${info.track_name}` : 'EVENT session → null');
+            setSession(info);
+            if (info) {
+              const f = await invoke<TelemetryField[]>('list_telemetry_fields').catch(() => []);
+              if (!cancelled) { setFields(f); addLog(`fields: ${f.length}`); }
+            }
+          }),
+        );
+        addLog('event OK: session-changed');
+      } catch (e) {
+        addLog(`event FAIL: session-changed (${String(e)})`);
+      }
+
+      try {
+        unlisteners.push(
+          await listen<Record<string, TelemetryValue>>('iracing://telemetry-tick', (e) => {
+            if (!cancelled) setTickValues(e.payload);
+          }),
+        );
+        addLog('event OK: telemetry-tick');
+      } catch (e) {
+        addLog(`event FAIL: telemetry-tick (${String(e)})`);
+      }
+    };
+
+    // ── Initial state sync via invoke (reliable regardless of event status) ──
+    const syncState = async () => {
+      addLog('syncing initial state...');
+
+      const s = await invoke<ConnectionStatus>('get_iracing_status').catch((e) => {
+        addLog(`invoke error (status): ${String(e)}`);
+        return 'Disconnected' as ConnectionStatus;
+      });
+      if (cancelled) return;
+      setStatus(s);
+      addLog(`status: ${s}`);
+
+      const sess = await invoke<SessionInfo | null>('get_session_data').catch((e) => {
+        addLog(`invoke error (session): ${String(e)}`);
+        return null;
+      });
+      if (cancelled) return;
+      setSession(sess);
+      addLog(sess ? `session: ${sess.track_name} / ${sess.session_type}` : 'session: none');
+
+      const wl = await invoke<string[]>('get_watchlist').catch(() => []);
+      if (!cancelled) setWatchlist(wl);
+
+      if (s === 'Connected' || sess !== null) {
+        const f = await invoke<TelemetryField[]>('list_telemetry_fields').catch(() => []);
+        if (!cancelled) { setFields(f); addLog(`fields: ${f.length}`); }
+      }
+
+      addLog('init done');
+    };
+
+    // Register listeners first, then sync — run them in order but independently
     (async () => {
-      // ── Initialise from current state ──────────────────────────────────────
-      const s = await invoke<ConnectionStatus>('get_iracing_status').catch(() => 'Disconnected' as ConnectionStatus);
+      await registerListeners();
+      await syncState();
+    })();
+
+    // ── 2-second polling fallback (catches status/session if events don't fire) ──
+    const poll = setInterval(async () => {
+      if (cancelled) return;
+      const s = await invoke<ConnectionStatus>('get_iracing_status').catch(() => null);
+      if (s === null || cancelled) return;
       setStatus(s);
 
       const sess = await invoke<SessionInfo | null>('get_session_data').catch(() => null);
+      if (cancelled) return;
       setSession(sess);
 
-      const wl = await invoke<string[]>('get_watchlist').catch(() => []);
-      setWatchlist(wl);
-
-      // If already connected, populate field browser
-      if (s === 'Connected') {
+      if (s === 'Connected' || sess !== null) {
         const f = await invoke<TelemetryField[]>('list_telemetry_fields').catch(() => []);
-        setFields(f);
+        if (!cancelled) setFields(f);
+      } else {
+        setFields([]);
       }
-
-      // ── Live event listeners ───────────────────────────────────────────────
-      unlisteners.push(
-        await listen<ConnectionStatus>('iracing://status-changed', async (e) => {
-          setStatus(e.payload);
-          if (e.payload === 'Connected') {
-            // Populate field browser as soon as we connect (avoids race with session-changed)
-            const f = await invoke<TelemetryField[]>('list_telemetry_fields').catch(() => []);
-            setFields(f);
-          } else {
-            setFields([]);
-            setSession(null);
-          }
-        }),
-      );
-
-      unlisteners.push(
-        await listen<SessionInfo | null>('iracing://session-changed', async (e) => {
-          setSession(e.payload);
-          if (e.payload) {
-            // Re-enumerate — new session may expose different fields
-            const f = await invoke<TelemetryField[]>('list_telemetry_fields').catch(() => []);
-            setFields(f);
-          }
-        }),
-      );
-
-      unlisteners.push(
-        await listen<Record<string, TelemetryValue>>('iracing://telemetry-tick', (e) => {
-          setTickValues(e.payload);
-        }),
-      );
-    })();
+    }, 2000);
 
     return () => {
+      cancelled = true;
+      clearInterval(poll);
       unlisteners.forEach((u) => u());
     };
   }, []);
@@ -249,6 +327,27 @@ export function Diagnostics() {
             </tbody>
           </table>
         )}
+      </section>
+
+      {/* ── Debug Log ───────────────────────────────────────────────────── */}
+      <section style={{ marginTop: '1.5rem' }}>
+        <h2 style={{ margin: '0 0 0.5rem' }}>Debug Log</h2>
+        <div
+          style={{
+            maxHeight: '180px',
+            overflowY: 'auto',
+            border: '1px solid #333',
+            background: '#0a0a0a',
+            padding: '0.25rem 0.5rem',
+          }}
+        >
+          {log.map((e, i) => (
+            <div key={i} style={{ fontSize: '0.75rem', lineHeight: '1.5', color: '#aaa' }}>
+              <span style={{ color: '#555', marginRight: '0.5rem' }}>{e.ts}</span>
+              {e.msg}
+            </div>
+          ))}
+        </div>
       </section>
     </div>
   );

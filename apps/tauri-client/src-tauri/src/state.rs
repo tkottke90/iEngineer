@@ -35,17 +35,22 @@ pub struct AppState {
     pub watchlist: Mutex<Vec<String>>,
     pub current_session: Mutex<Option<SessionInfo>>,
     pub iracing_status: watch::Sender<ConnectionStatus>,
+    // Kept alive so watch::Sender::send() does not fail with "no receivers".
+    // Without a live receiver, send() returns Err and borrow() always sees the
+    // initial Disconnected value regardless of what the watcher tries to write.
+    _iracing_status_rx: watch::Receiver<ConnectionStatus>,
 }
 
 impl Default for AppState {
     fn default() -> Self {
-        let (tx, _rx) = watch::channel(ConnectionStatus::Disconnected);
+        let (tx, rx) = watch::channel(ConnectionStatus::Disconnected);
         Self {
             config: Mutex::new(AppConfig::default()),
             field_cache: Mutex::new(Vec::new()),
             watchlist: Mutex::new(Vec::new()),
             current_session: Mutex::new(None),
             iracing_status: tx,
+            _iracing_status_rx: rx,
         }
     }
 }

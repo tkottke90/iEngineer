@@ -37,10 +37,20 @@ fn parse_session_info(yaml: &str) -> SessionInfo {
         cur.as_str().unwrap_or("unknown").to_string()
     };
 
+    // Drivers is a YAML sequence — must use numeric index, not string key.
+    let car_name = doc
+        .get("DriverInfo")
+        .and_then(|d| d.get("Drivers"))
+        .and_then(|d| d.get(0usize))
+        .and_then(|d| d.get("CarScreenNameShort"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+
     SessionInfo {
         track_name: get_str(&["WeekendInfo", "TrackName"]),
         session_type: get_str(&["WeekendInfo", "EventType"]),
-        car_name: get_str(&["DriverInfo", "Drivers", "0", "CarScreenNameShort"]),
+        car_name,
         wall_clock_time: wall_clock_hms(),
     }
 }
@@ -144,6 +154,11 @@ pub fn spawn_connection_watcher(handle: AppHandle) {
                 wl
             };
             if !watchlist.is_empty() {
+                // populate_var_offsets is cheap (header parse only, no value reads).
+                // We call it every tick because each IracingSDK is a fresh snapshot —
+                // var_offsets are not carried over from the session-update branch.
+                let mut sdk = sdk;
+                sdk.populate_var_offsets();
                 let values = sdk.read_watchlist_values(&watchlist);
                 let _ = handle.emit("iracing://telemetry-tick", &values);
             }
