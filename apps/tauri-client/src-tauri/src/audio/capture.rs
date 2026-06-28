@@ -23,7 +23,9 @@ impl AudioCapture {
                 .input_devices()?
                 .find(|d| d.name().ok().as_deref() == Some(name))
                 .ok_or_else(|| anyhow::anyhow!("device not found: {name}"))?,
-            None => host.default_input_device().ok_or_else(|| anyhow::anyhow!("no default input device"))?,
+            None => host
+                .default_input_device()
+                .ok_or_else(|| anyhow::anyhow!("no default input device"))?,
         };
 
         let config = device.default_input_config()?;
@@ -44,6 +46,9 @@ impl AudioCapture {
             None,
         )?;
         stream.play()?;
+        // cpal::Stream is !Send so it can't be captured by tokio::spawn.
+        // Forget it here — the underlying audio stream keeps running until process exit.
+        std::mem::forget(stream);
 
         tokio::spawn(async move {
             while let Some(pressed) = ptt_rx.recv().await {
@@ -58,7 +63,6 @@ impl AudioCapture {
                     }
                 }
             }
-            drop(stream);
         });
 
         Ok(())

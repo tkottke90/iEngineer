@@ -1,5 +1,20 @@
 // Constants derived from irsdk_defines.h
 
+// Header status
+pub const IRSDK_STATUS_CONNECTED: i32 = 1;
+
+// Variable header size (bytes): matches sizeof(irsdk_varHeader) = 144
+pub const VAR_HEADER_SIZE: usize = 144;
+
+// Header byte offsets (all i32 fields)
+pub const STATUS_OFFSET: usize = 4;
+pub const TICK_RATE_OFFSET: usize = 8;
+pub const SESSION_INFO_UPDATE_OFFSET: usize = 12;
+pub const SESSION_INFO_LEN_OFFSET: usize = 16;
+pub const SESSION_INFO_OFFSET_OFFSET: usize = 20;
+pub const NUM_VARS_OFFSET: usize = 24;
+pub const VAR_HEADER_OFFSET_OFFSET: usize = 28;
+
 pub const IRSDK_MEMMAPFILE: &str = "Local\\IRSDKMemMapFileName";
 pub const IRSDK_BROADCASTMSGNAME: &str = "IRSDK_BROADCASTMSG";
 pub const IRSDK_DATAVALIDEVENTNAME: &str = "Local\\IRSDKDataValidEvent";

@@ -1,7 +1,7 @@
+use super::downsampler::Downsampler;
+use crate::iracing::IracingSDK;
 use std::sync::Arc;
 use tokio::time::{interval, Duration};
-use crate::iracing::IracingSDK;
-use super::downsampler::Downsampler;
 
 const SAMPLE_RATE_HZ: u64 = 60;
 

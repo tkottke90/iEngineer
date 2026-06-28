@@ -1,5 +1,5 @@
-use tokio::sync::mpsc;
 use super::HotkeyEvent;
+use tokio::sync::mpsc;
 
 pub async fn run_listener(key: &str, tx: mpsc::Sender<HotkeyEvent>) {
     // Windows implementation: RegisterHotKey via windows crate

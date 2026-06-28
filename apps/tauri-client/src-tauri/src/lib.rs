@@ -20,9 +20,16 @@ pub fn run() {
             save_config,
             list_audio_devices,
             set_audio_device,
-            get_connection_status,
-            test_connection,
+            get_iracing_status,
+            get_session_data,
+            list_telemetry_fields,
+            get_watchlist,
+            set_watchlist,
         ])
+        .setup(|app| {
+            iracing::spawn_connection_watcher(app.handle().clone());
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
