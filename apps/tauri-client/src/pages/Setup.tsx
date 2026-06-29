@@ -7,6 +7,15 @@ interface AudioDevice {
   isDefault: boolean;
 }
 
+interface AppConfig {
+  redis_url: string;
+  hub_url: string;
+  connection_token: string;
+  audio_input_device: string | null;
+  audio_output_device: string | null;
+  ptt_hotkey: string;
+}
+
 export function Setup() {
   const [devices, setDevices] = useState<AudioDevice[]>([]);
   const [redisUrl, setRedisUrl] = useState('redis://localhost:6379');
@@ -15,6 +24,7 @@ export function Setup() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>(
     'disconnected',
   );
+  const [config, setConfig] = useState<AppConfig | null>(null);
 
   useEffect(() => {
     invoke<AudioDevice[]>('list_audio_devices').then(setDevices).catch(console.error);
@@ -23,7 +33,33 @@ export function Setup() {
         setConnectionStatus(s as 'connected' | 'disconnected');
       })
       .catch(console.error);
+    // T028: load stored config (including Redis URL) from AppState on mount
+    invoke<AppConfig>('get_config')
+      .then((c) => {
+        setConfig(c);
+        setRedisUrl(c.redis_url);
+        setHubUrl(c.hub_url);
+      })
+      .catch(console.error);
   }, []);
+
+  const handleSave = () => {
+    const updated: AppConfig = {
+      ...(config ?? {
+        redis_url: redisUrl,
+        hub_url: hubUrl,
+        connection_token: '',
+        audio_input_device: null,
+        audio_output_device: null,
+        ptt_hotkey: pttKey,
+      }),
+      redis_url: redisUrl,
+      hub_url: hubUrl,
+    };
+    invoke('save_config', { config: updated })
+      .then(() => setConfig(updated))
+      .catch(console.error);
+  };
 
   const inputDevices = devices.filter((d) => d.direction === 'input');
   const outputDevices = devices.filter((d) => d.direction === 'output');
@@ -43,6 +79,7 @@ export function Setup() {
           Hub URL{' '}
           <input value={hubUrl} onInput={(e) => setHubUrl((e.target as HTMLInputElement).value)} />
         </label>
+        <button onClick={handleSave}>Save</button>
         <span class={`status ${connectionStatus}`}>{connectionStatus}</span>
       </section>
 

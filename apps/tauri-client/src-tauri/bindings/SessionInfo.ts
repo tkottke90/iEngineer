@@ -4,4 +4,8 @@ export type SessionInfo = { track_name: string, session_type: string, car_name: 
 /**
  * HH:MM:SS in local time, captured from system clock at emission
  */
-wall_clock_time: string, };
+wall_clock_time: string, 
+/**
+ * Player car index; from DriverInfo.DriverCarIdx (root-level) in session YAML
+ */
+player_car_idx: number, };

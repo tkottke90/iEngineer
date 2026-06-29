@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      # Step 1: Verify docker-compose uses redis:7-alpine (gate check)
+      - uses: actions/checkout@v4
+
+      - name: "Step 1: Verify redis:7-alpine in docker-compose"
+        run: grep -q "redis:7-alpine" infra/docker-compose.yml
+
+      # Step 2: Redis service is provided above via services.redis
+
+      # Step 3: Run Rust integration tests (single-threaded — streams are ordered)
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/tauri-client/src-tauri
+
+      - name: "Step 3: cargo test"
+        run: cargo test -p iracing-engineer-lib -- --test-threads=1
+        working-directory: apps/tauri-client/src-tauri
+        env:
+          REDIS_URL: redis://localhost:6379
+
+      # Step 4: Build hub-server (catches TypeScript errors in the node package)
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: "Step 4: Build hub-server"
+        run: npm run build -w apps/hub-server

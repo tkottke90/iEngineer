@@ -1,0 +1,109 @@
+# Data Model: Redis Telemetry Publishing
+
+## ConnectionEvent
+
+Published to `iracing:events:connection` on iRacing state changes and as a snapshot on Redis connect/reconnect.
+
+```json
+{ "status": "Connected", "ts": 1719619200000 }
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `status` | `"Connected" \| "Disconnected"` | Current iRacing connection state |
+| `ts` | number | Unix epoch milliseconds |
+
+---
+
+## SessionEvent
+
+Published to `iracing:events:session` when a session begins, changes type, or ends.
+
+**Active session:**
+
+```json
+{
+  "active": true,
+  "track_name": "Watkins Glen Boot",
+  "player_car_name": "BMW M4 GT3",
+  "player_car_idx": 3,
+  "session_type": "Race",
+  "wall_clock_time": "14:32:07",
+  "ts": 1719619200000
+}
+```
+
+**No session:**
+
+```json
+{ "active": false, "ts": 1719619200000 }
+```
+
+> **`player_car_idx`** — use this value to index into all `CarIdx*` arrays in the telemetry streams.
+> It comes from `DriverInfo.DriverCarIdx` (root-level) in the iRacing session YAML, which is more
+> reliable than `Drivers[0].CarIdx` for multi-driver teams.
+
+---
+
+## LiveTelemetryFrame
+
+Published to `iracing:telemetry:live` at ≥ 60 Hz during an active session.
+Wire format: flattened Redis Streams key-value pairs with one key per SDK field plus `_ts`.
+
+**Field categories (60 Hz):**
+
+| Category | Fields |
+|----------|--------|
+| Vehicle dynamics | `Speed`, `RPM`, `Gear`, `Throttle`, `Brake`, `SteeringWheelAngle` |
+| Acceleration | `LatAccel`, `LongAccel`, `VertAccel` |
+| Velocity | `VelocityX`, `VelocityY`, `VelocityZ` |
+| Orientation | `Yaw`, `Pitch`, `Roll`, `YawRate`, `PitchRate`, `RollRate` |
+| Position | `LapDistPct`, `LapDist` |
+| Session state | `SessionTime`, `SessionTick`, `PlayerCarIdx`, `SessionFlags` |
+| On-track state | `IsOnTrack`, `IsInGarage`, `OnPitRoad` |
+| Camera | `CamCarIdx`, `CamGroupNumber`, `CamCameraNumber` |
+| All-car position | `CarIdxLapDistPct`, `CarIdxTrackSurface` |
+| All-car dynamics | `CarIdxGear`, `CarIdxRPM`, `CarIdxSteer` |
+| Weather | `AirTemp`, `TrackTemp`, `TrackWetness`, `WeatherDeclaredWet` |
+
+Array fields are serialized as JSON arrays: `"[0.12, 0.45, ...]"`.
+
+---
+
+## SessionTelemetryFrame
+
+Published to `iracing:telemetry:session` at ≥ 15 Hz (every 4th live tick).
+
+**Field categories (15 Hz):**
+
+| Category | Fields |
+|----------|--------|
+| Fuel | `FuelLevel`, `FuelLevelPct`, `FuelUsePerHour` |
+| Coolant / oil | `WaterTemp`, `OilTemp`, `OilPress` |
+| Tire temps LF | `LFtempCL`, `LFtempCM`, `LFtempCR` |
+| Tire temps RF | `RFtempCL`, `RFtempCM`, `RFtempCR` |
+| Tire temps LR | `LRtempCL`, `LRtempCM`, `LRtempCR` |
+| Tire temps RR | `RRtempCL`, `RRtempCM`, `RRtempCR` |
+| Tire wear LF | `LFwearL`, `LFwearM`, `LFwearR` |
+| Tire wear RF | `RFwearL`, `RFwearM`, `RFwearR` |
+| Tire wear LR | `LRwearL`, `LRwearM`, `LRwearR` |
+| Tire wear RR | `RRwearL`, `RRwearM`, `RRwearR` |
+| Lap timing | `LapCurrentLapTime`, `LapLastLapTime`, `LapBestLapTime`, `LapDeltaToBestLap`, `LapDeltaToOptimalLap` |
+| Session remaining | `SessionTimeRemain`, `SessionLapsRemain` |
+| Hero position | `PlayerCarClassPosition`, `PlayerCarPosition`, `IncidentCount` |
+| All-car positions | `CarIdxPosition`, `CarIdxClassPosition` |
+| All-car laps | `CarIdxLap`, `CarIdxLapCompleted` |
+| All-car timing | `CarIdxLastLapTime`, `CarIdxBestLapTime`, `CarIdxEstTime`, `CarIdxF2Time` |
+| All-car status | `CarIdxOnPitRoad`, `CarIdxTireCompound`, `CarIdxFastRepairsUsed` |
+| Pit service | `PitSvFlags`, `PitOptRepairLeft`, `PitRepairLeft` |
+
+---
+
+## Classification Rule
+
+A field not in the session-rate set is published on the live stream (default).
+
+```
+if field_name IN SESSION_RATE_FIELDS → iracing:telemetry:session (15 Hz)
+else                                  → iracing:telemetry:live    (60 Hz)
+```

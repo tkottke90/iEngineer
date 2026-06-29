@@ -21,6 +21,8 @@ pub struct SessionInfo {
     pub car_name: String,
     /// HH:MM:SS in local time, captured from system clock at emission
     pub wall_clock_time: String,
+    /// Player car index; from DriverInfo.DriverCarIdx (root-level) in session YAML
+    pub player_car_idx: u32,
 }
 
 // ── Telemetry types ───────────────────────────────────────────────────────────

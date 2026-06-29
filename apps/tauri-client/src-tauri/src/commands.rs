@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use tauri::State;
+use tracing::info;
 use ts_rs::TS;
 
 use crate::iracing::types::{ConnectionStatus, SessionInfo, TelemetryField, TelemetryValue};
@@ -23,8 +24,15 @@ pub async fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String>
 
 #[tauri::command]
 pub async fn save_config(config: AppConfig, state: State<'_, AppState>) -> Result<(), String> {
+    let new_url = config.redis_url.clone();
     let mut current = state.config.lock().map_err(|e| e.to_string())?;
+    let url_changed = current.redis_url != new_url;
     *current = config;
+    drop(current);
+    if url_changed {
+        let _ = state.redis_url_watch_tx.send(new_url);
+        info!("redis url updated — will apply on next reconnect");
+    }
     Ok(())
 }
 

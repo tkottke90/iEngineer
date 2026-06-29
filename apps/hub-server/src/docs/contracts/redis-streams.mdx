@@ -1,0 +1,81 @@
+# Redis Streams Contract
+
+## Stream Inventory
+
+| Stream | MAXLEN | Purpose |
+|--------|--------|---------|
+| `iracing:events:connection` | 100 | Connection state change events |
+| `iracing:events:session` | 100 | Session metadata events |
+| `iracing:telemetry:live` | 3600 | High-frequency live telemetry (60 Hz) |
+| `iracing:telemetry:session` | 900 | Session-rate strategy telemetry (15 Hz) |
+
+---
+
+## Wire Format
+
+### Event streams
+
+Each entry has a single `payload` field containing a JSON-encoded event object.
+
+```bash
+XADD iracing:events:connection MAXLEN ~ 100 * payload '{"status":"Connected","ts":1719619200000}'
+XADD iracing:events:session    MAXLEN ~ 100 * payload '{"active":true,"track_name":"Watkins Glen Boot","player_car_name":"BMW M4 GT3","player_car_idx":3,"session_type":"Race","wall_clock_time":"14:32:07","ts":1719619200000}'
+```
+
+### Telemetry streams
+
+Each entry has one key per SDK field plus a `_ts` timestamp. Array fields are JSON-encoded strings.
+
+```bash
+XADD iracing:telemetry:live MAXLEN ~ 3600 *
+  _ts      1719619200123
+  Speed    42.37
+  RPM      6800
+  Gear     4
+  Throttle 0.82
+  Brake    0.0
+  CarIdxLapDistPct "[0.12, 0.45, 0.67]"
+
+XADD iracing:telemetry:session MAXLEN ~ 900 *
+  _ts        1719619200456
+  FuelLevel  28.5
+  LapLastLapTime 92.341
+  CarIdxPosition "[1,3,2,4]"
+```
+
+---
+
+## Publisher Guarantees
+
+- `iracing:events:connection` and `iracing:events:session` are always published within 500 ms of a state transition.
+- Telemetry entries are only published during an active on-track session (`active: true`).
+- On Redis reconnect, a snapshot of current connection and session state is published before telemetry resumes (FR-009).
+- All four streams use approximate MAXLEN trimming (`~`) to bound memory usage.
+
+---
+
+## Consumer Patterns
+
+### Read latest connection state
+
+```bash
+redis-cli XREVRANGE iracing:events:connection + - COUNT 1
+```
+
+### Block until the next session event
+
+```bash
+redis-cli XREAD COUNT 1 BLOCK 5000 STREAMS iracing:events:session $
+```
+
+### Read a window of live telemetry
+
+```bash
+redis-cli XRANGE iracing:telemetry:live - + COUNT 20
+```
+
+### Read all session-rate entries since a known ID
+
+```bash
+redis-cli XRANGE iracing:telemetry:session <last-id> + COUNT 100
+```

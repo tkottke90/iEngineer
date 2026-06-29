@@ -280,6 +280,60 @@ Derived models (`FuelModelCalculator`, `TireModelCalculator`, `GapModelCalculato
 
 ---
 
+## Building & Deploying for Local Testing
+
+The Tauri client targets Windows but is developed on macOS. There is no Windows machine in the loop during development — the binary is cross-compiled on the Mac and delivered via a shared SMB network volume.
+
+### How it works
+
+```
+Mac (dev)  →  MinGW cross-compile  →  SMB share  →  Windows (test)
+              x86_64-pc-windows-gnu      /Volumes/Video Editing/
+```
+
+- **Cross-compiler**: MinGW (`mingw-w64`) provides a GCC-based Windows toolchain on macOS. Installed via Homebrew — no CRT download required at build time.
+- **Cargo config**: `.cargo/config.toml` at the repo root configures `x86_64-pc-windows-gnu` to use `x86_64-w64-mingw32-gcc` as the linker and statically links libgcc/pthreads so the exe has no external DLL dependencies.
+- **Frontend embed**: `--features custom-protocol` tells Tauri to embed the Vite `dist/` into the binary. You **must** run `pnpm build` before `cargo build` or the old assets stay embedded.
+- **SMB share**: the share at `/Volumes/Video Editing/` is the delivery channel. It must be mounted in Finder before running the build script.
+
+### One-time setup
+
+```bash
+brew install mingw-w64
+rustup target add x86_64-pc-windows-gnu
+```
+
+### Build and push
+
+```bash
+./scripts/build-windows-push.sh           # release build (use for manual test runs)
+./scripts/build-windows-push.sh --debug   # debug build (faster compile, larger binary)
+```
+
+The script:
+1. Confirms the SMB share is mounted — exits with a clear error if not.
+2. Runs `pnpm build` in `apps/tauri-client/` to produce the Vite frontend assets.
+3. Runs `cargo build --target x86_64-pc-windows-gnu --features custom-protocol --release` in `src-tauri/`.
+4. Copies the resulting `.exe` to `/Volumes/Video Editing/iracing-engineer.exe`.
+
+**Output location on the Mac:** `apps/tauri-client/src-tauri/target/x86_64-pc-windows-gnu/release/iracing-engineer.exe`
+
+### Why `cargo build` instead of `tauri build`
+
+`tauri build --target x86_64-pc-windows-gnu` requires NSIS or WiX Toolset to produce a Windows installer, neither of which is available on macOS. For local testing we only need the raw `.exe` — Tauri's `build.rs` still runs (embedding the frontend and generating icons/manifests), so the binary is fully functional. The Tauri CLI bundler step is simply skipped.
+
+### Testing on Windows
+
+Once the `.exe` is on the share, run it from the Windows machine at whatever drive letter the share maps to (commonly `Z:\`):
+
+```
+Z:\iracing-engineer.exe
+```
+
+No installer needed. The app is a single self-contained executable.
+
+---
+
 ## Docker / Infra
 
 The hub-server runs in Docker (`infra/docker-compose.yml`). Co-located services: Redis, PostgreSQL, Speaches (Whisper STT), Chatterbox TTS, OTel collector.

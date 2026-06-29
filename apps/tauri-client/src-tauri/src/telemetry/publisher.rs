@@ -1,10 +1,13 @@
 use anyhow::Result;
 use redis::aio::MultiplexedConnection;
-use redis::AsyncCommands;
 
-const LIVE_STREAM: &str = "telemetry:live";
-const SESSION_STREAM: &str = "telemetry:session";
-const LIVE_MAXLEN: u64 = 600; // 10 seconds at 60 Hz
+const LIVE_STREAM: &str = "iracing:telemetry:live";
+const SESSION_STREAM: &str = "iracing:telemetry:session";
+const EVENT_CONNECTION_STREAM: &str = "iracing:events:connection";
+const EVENT_SESSION_STREAM: &str = "iracing:events:session";
+const LIVE_MAXLEN: u64 = 3600; // 60 seconds at 60 Hz
+const SESSION_MAXLEN: u64 = 900; // 60 seconds at 15 Hz
+const EVENT_MAXLEN: u64 = 100;
 
 pub struct RedisPublisher {
     conn: MultiplexedConnection,
@@ -17,31 +20,50 @@ impl RedisPublisher {
         Ok(Self { conn })
     }
 
-    pub async fn publish_live(&mut self, fields: Vec<(&str, String)>) -> Result<()> {
-        let items: Vec<(&str, &str)> = fields.iter().map(|(k, v)| (*k, v.as_str())).collect();
+    pub async fn publish_live(&mut self, fields: Vec<(&str, &str)>) -> Result<()> {
         let _: String = redis::cmd("XADD")
             .arg(LIVE_STREAM)
             .arg("MAXLEN")
             .arg("~")
             .arg(LIVE_MAXLEN)
             .arg("*")
-            .arg(items.as_slice())
+            .arg(fields.as_slice())
             .query_async(&mut self.conn)
             .await?;
         Ok(())
     }
 
-    pub async fn publish_session(&mut self, fields: Vec<(&str, String)>) -> Result<()> {
-        let items: Vec<(&str, &str)> = fields.iter().map(|(k, v)| (*k, v.as_str())).collect();
+    pub async fn publish_session(&mut self, fields: Vec<(&str, &str)>) -> Result<()> {
         let _: String = redis::cmd("XADD")
             .arg(SESSION_STREAM)
             .arg("MAXLEN")
             .arg("~")
-            .arg(600u64)
+            .arg(SESSION_MAXLEN)
             .arg("*")
-            .arg(items.as_slice())
+            .arg(fields.as_slice())
             .query_async(&mut self.conn)
             .await?;
         Ok(())
+    }
+
+    pub async fn publish_event(&mut self, stream: &str, payload_json: &str) -> Result<()> {
+        let _: String = redis::cmd("XADD")
+            .arg(stream)
+            .arg("MAXLEN")
+            .arg("~")
+            .arg(EVENT_MAXLEN)
+            .arg("*")
+            .arg(&[("payload", payload_json)])
+            .query_async(&mut self.conn)
+            .await?;
+        Ok(())
+    }
+
+    pub fn connection_stream() -> &'static str {
+        EVENT_CONNECTION_STREAM
+    }
+
+    pub fn session_stream() -> &'static str {
+        EVENT_SESSION_STREAM
     }
 }
