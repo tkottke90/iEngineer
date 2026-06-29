@@ -1,0 +1,4 @@
+# cargo-xwin provides the MSVC toolchain for Windows cross-compilation from macOS.
+# Install with: cargo install cargo-xwin
+[target.x86_64-pc-windows-msvc]
+runner = "cargo-xwin"
