@@ -30,6 +30,7 @@ pub fn run() {
         ])
         .setup(|app| {
             iracing::spawn_connection_watcher(app.handle().clone());
+            tauri::async_runtime::spawn(telemetry::spawn_publisher_task(app.handle().clone()));
             Ok(())
         })
         .run(tauri::generate_context!())

@@ -36,21 +36,31 @@ pub struct AppState {
     pub current_session: Mutex<Option<SessionInfo>>,
     pub iracing_status: watch::Sender<ConnectionStatus>,
     // Kept alive so watch::Sender::send() does not fail with "no receivers".
-    // Without a live receiver, send() returns Err and borrow() always sees the
-    // initial Disconnected value regardless of what the watcher tries to write.
     _iracing_status_rx: watch::Receiver<ConnectionStatus>,
+    /// Notifies publisher_task when session changes (watcher.rs sends here).
+    pub session_watch_tx: watch::Sender<Option<SessionInfo>>,
+    _session_watch_rx: watch::Receiver<Option<SessionInfo>>,
+    /// Notifies publisher_task when Redis URL is saved; URL read from config at reconnect.
+    pub redis_url_watch_tx: watch::Sender<String>,
+    _redis_url_rx: watch::Receiver<String>,
 }
 
 impl Default for AppState {
     fn default() -> Self {
-        let (tx, rx) = watch::channel(ConnectionStatus::Disconnected);
+        let (iracing_tx, iracing_rx) = watch::channel(ConnectionStatus::Disconnected);
+        let (session_tx, session_rx) = watch::channel(None);
+        let (redis_url_tx, redis_url_rx) = watch::channel(AppConfig::default().redis_url);
         Self {
             config: Mutex::new(AppConfig::default()),
             field_cache: Mutex::new(Vec::new()),
             watchlist: Mutex::new(Vec::new()),
             current_session: Mutex::new(None),
-            iracing_status: tx,
-            _iracing_status_rx: rx,
+            iracing_status: iracing_tx,
+            _iracing_status_rx: iracing_rx,
+            session_watch_tx: session_tx,
+            _session_watch_rx: session_rx,
+            redis_url_watch_tx: redis_url_tx,
+            _redis_url_rx: redis_url_rx,
         }
     }
 }

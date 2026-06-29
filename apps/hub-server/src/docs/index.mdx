@@ -1,0 +1,18 @@
+# Redis Telemetry Publishing
+
+The iRacing Engineer publishes live telemetry and session metadata from the iRacing SDK
+to Redis Streams, making all data flows inspectable without connecting to a running session.
+
+## Streams
+
+| Stream | Rate | Description |
+|--------|------|-------------|
+| `iracing:events:connection` | on change | iRacing connection state (Connected / Disconnected) |
+| `iracing:events:session` | on change | Session metadata (track, car, session type) |
+| `iracing:telemetry:live` | 60 Hz | High-frequency vehicle dynamics and position data |
+| `iracing:telemetry:session` | 15 Hz | Strategy telemetry (fuel, tires, lap times, positions) |
+
+## Documentation
+
+- [Data Model](/docs/data-model) — Entity schemas and field classification
+- [Redis Streams Contract](/docs/contracts/redis-streams) — Wire format, XADD examples, consumer patterns
