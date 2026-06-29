@@ -287,19 +287,20 @@ The Tauri client targets Windows but is developed on macOS. There is no Windows 
 ### How it works
 
 ```
-Mac (dev)  →  cargo-xwin cross-compile  →  SMB share  →  Windows (test)
-              x86_64-pc-windows-msvc          /Volumes/Video Editing/
+Mac (dev)  →  MinGW cross-compile  →  SMB share  →  Windows (test)
+              x86_64-pc-windows-gnu      /Volumes/Video Editing/
 ```
 
-- **Cross-compiler**: `cargo-xwin` provides the MSVC toolchain on macOS. It downloads the Windows CRT automatically on first use (~30 seconds). Subsequent builds skip the download.
-- **Cargo runner**: `.cargo/config.toml` in `apps/tauri-client/src-tauri/` registers `cargo-xwin` as the runner for `x86_64-pc-windows-msvc`, so `cargo build` and `cargo check` work transparently without extra flags.
+- **Cross-compiler**: MinGW (`mingw-w64`) provides a GCC-based Windows toolchain on macOS. Installed via Homebrew — no CRT download required at build time.
+- **Cargo config**: `.cargo/config.toml` at the repo root configures `x86_64-pc-windows-gnu` to use `x86_64-w64-mingw32-gcc` as the linker and statically links libgcc/pthreads so the exe has no external DLL dependencies.
+- **Frontend embed**: `--features custom-protocol` tells Tauri to embed the Vite `dist/` into the binary. You **must** run `pnpm build` before `cargo build` or the old assets stay embedded.
 - **SMB share**: the share at `/Volumes/Video Editing/` is the delivery channel. It must be mounted in Finder before running the build script.
 
 ### One-time setup
 
 ```bash
-rustup target add x86_64-pc-windows-msvc
-cargo install cargo-xwin
+brew install mingw-w64
+rustup target add x86_64-pc-windows-gnu
 ```
 
 ### Build and push
@@ -311,15 +312,15 @@ cargo install cargo-xwin
 
 The script:
 1. Confirms the SMB share is mounted — exits with a clear error if not.
-2. Runs `npm run build -w apps/tauri-client` to produce the Vite frontend assets.
-3. Runs `cargo xwin build --release --target x86_64-pc-windows-msvc` in `src-tauri/`. Tauri's `build.rs` picks up the Vite `dist/` automatically.
+2. Runs `pnpm build` in `apps/tauri-client/` to produce the Vite frontend assets.
+3. Runs `cargo build --target x86_64-pc-windows-gnu --features custom-protocol --release` in `src-tauri/`.
 4. Copies the resulting `.exe` to `/Volumes/Video Editing/iracing-engineer.exe`.
 
-**Output location on the Mac:** `apps/tauri-client/src-tauri/target/x86_64-pc-windows-msvc/release/iracing-engineer.exe`
+**Output location on the Mac:** `apps/tauri-client/src-tauri/target/x86_64-pc-windows-gnu/release/iracing-engineer.exe`
 
-### Why `cargo xwin build` instead of `tauri build`
+### Why `cargo build` instead of `tauri build`
 
-`tauri build --target x86_64-pc-windows-msvc` requires NSIS or WiX Toolset to produce a Windows installer, neither of which is available on macOS. For local testing we only need the raw `.exe` — Tauri's `build.rs` still runs (embedding the frontend and generating icons/manifests), so the binary is fully functional. The Tauri CLI bundler step is simply skipped.
+`tauri build --target x86_64-pc-windows-gnu` requires NSIS or WiX Toolset to produce a Windows installer, neither of which is available on macOS. For local testing we only need the raw `.exe` — Tauri's `build.rs` still runs (embedding the frontend and generating icons/manifests), so the binary is fully functional. The Tauri CLI bundler step is simply skipped.
 
 ### Testing on Windows
 

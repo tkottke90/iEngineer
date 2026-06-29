@@ -2,13 +2,13 @@
 # Cross-compile the Tauri app for Windows and push the exe to the SMB share.
 # Run from repo root: ./scripts/build-windows-push.sh [--debug]
 #
-# Uses cargo-xwin directly (not `tauri build`) so we get just the exe without
-# needing NSIS/WiX installers on macOS. Tauri's build.rs still runs and embeds
-# the frontend assets from apps/tauri-client/dist.
+# Uses MinGW (x86_64-pc-windows-gnu) — no cargo-xwin or MSVC toolchain needed.
+# --features custom-protocol embeds the Vite dist/ into the binary.
+# pnpm build MUST run before cargo build or old frontend assets stay embedded.
 set -euo pipefail
 
 DEST="/Volumes/Video Editing/iracing-engineer.exe"
-TARGET="x86_64-pc-windows-msvc"
+TARGET="x86_64-pc-windows-gnu"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD_MODE="release"
 CARGO_PROFILE_FLAG="--release"
@@ -26,14 +26,16 @@ EXE_PATH="$SRC_TAURI/target/$TARGET/$BUILD_MODE/iracing-engineer.exe"
 
 echo "→ Checking prerequisites..."
 
+if ! command -v x86_64-w64-mingw32-gcc &>/dev/null; then
+  echo ""
+  echo "ERROR: MinGW not found. Install it first:"
+  echo "  brew install mingw-w64"
+  exit 1
+fi
+
 if ! rustup target list --installed | grep -q "$TARGET"; then
   echo "  Adding Rust target $TARGET..."
   rustup target add "$TARGET"
-fi
-
-if ! cargo xwin --version &>/dev/null 2>&1; then
-  echo "  Installing cargo-xwin (Windows cross-compiler)..."
-  cargo install cargo-xwin
 fi
 
 # ── SMB share check ───────────────────────────────────────────────────────────
@@ -47,19 +49,19 @@ if [[ ! -d "$SHARE_DIR" ]]; then
 fi
 
 # ── Build frontend ────────────────────────────────────────────────────────────
+# Must run before cargo build — assets are embedded into the binary via
+# --features custom-protocol. Skipping this leaves old UI in the exe.
 
 echo "→ Building frontend..."
-cd "$REPO_ROOT"
-npm run build -w apps/tauri-client
+cd "$REPO_ROOT/apps/tauri-client"
+pnpm build
 
 # ── Cross-compile Rust binary ─────────────────────────────────────────────────
-# Use cargo-xwin directly. Tauri's build.rs reads CARGO_MANIFEST_DIR and picks
-# up the dist/ assets from the distDir in tauri.conf.json automatically.
 
 echo "→ Cross-compiling for Windows ($BUILD_MODE)..."
 cd "$SRC_TAURI"
 # shellcheck disable=SC2086
-cargo xwin build $CARGO_PROFILE_FLAG --target "$TARGET"
+cargo build $CARGO_PROFILE_FLAG --target "$TARGET" --features custom-protocol
 
 # ── Push ──────────────────────────────────────────────────────────────────────
 
