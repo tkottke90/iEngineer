@@ -16,7 +16,7 @@ export function FuelGauge({ model }: FuelGaugeProps) {
       <div class="fuel-stats">
         <span>{model.fuelRemaining.toFixed(1)}L remaining</span>
         <span>{model.burnRatePerLap.toFixed(3)}L/lap</span>
-        <span>{model.lapsRemaining.toFixed(1)} laps</span>
+        <span>{model.lapsRemaining != null ? model.lapsRemaining.toFixed(1) : '—'} laps</span>
         {isDeficit && <span class="deficit">+{model.fuelDeficit.toFixed(2)}L needed</span>}
       </div>
       <div class="fuel-meta">

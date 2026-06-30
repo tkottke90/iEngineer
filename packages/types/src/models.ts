@@ -5,12 +5,14 @@ export interface FuelModel {
   burnRatePerLap: number;
   burnRateConfidence: number;
   fuelRemaining: number;
-  lapsRemaining: number;
+  lapsRemaining: number | null;
   fuelToFinish: number;
   fuelDeficit: number;
   confidenceLevel: ConfidenceLevel;
   dataSource: FuelDataSource;
   lapsSinceCalibration: number;
+  summary: string;
+  timeRemaining: number | null;
 }
 
 export type DegradationSignal = 'nominal' | 'watch' | 'critical';

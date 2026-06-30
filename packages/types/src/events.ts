@@ -19,7 +19,8 @@ export type EventType =
   | 'gap:closing'
   | 'gap:battle'
   | 'gap:resolved'
-  | 'gap:pulling_away';
+  | 'gap:pulling_away'
+  | 'source:upgraded';
 
 export interface RaceEvent {
   type: EventType;

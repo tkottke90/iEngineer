@@ -70,6 +70,7 @@ export interface CarState {
   pitExitTime: number | null;
   lastPitLap: number | null;
   lapsSinceLastPit: number | null;
+  estimatedPitDuration: number | null;
 }
 
 export interface HeroState extends CarState {
@@ -98,6 +99,7 @@ export interface DerivedSignals {
   safeWindowOpen: boolean;
   cutWindowOpen: boolean;
   activeBattles: ActiveBattle[];
+  pitWindowOpen: boolean;
 }
 
 export interface RaceState {
