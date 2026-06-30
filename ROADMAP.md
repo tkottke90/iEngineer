@@ -1,7 +1,7 @@
 # iRacing Engineer — Implementation Roadmap
 
 **Status:** Living document  
-**Last updated:** 2026-06-29
+**Last updated:** 2026-06-30
 
 Each milestone is self-contained and deployable. A milestone gate is: the feature can be used in a real iRacing session (or meaningfully tested without one) without depending on an unbuilt milestone.
 
@@ -13,8 +13,9 @@ Each milestone is self-contained and deployable. A milestone gate is: the featur
 |------|-------------------|
 | **001 — iRacing SDK Diagnostics** | Tauri client connects to the iRacing shared memory API, reads telemetry variables and session YAML, diagnostic UI confirms data flow |
 | **002 — Redis Telemetry Publishing** | Tauri publishes `telemetry:live` (60 Hz) and `telemetry:session` (15 Hz) to Redis Streams; `session:yaml` on change to Pub/Sub; message envelope with source/sessionId tags |
+| **003 — Race State Engine** | Hub server consumes Redis Streams; SessionProcessor drives Fuel/Tire/Gap models and phase state machine; LiveProcessor computes safe window signal at 60 Hz; Event Bus emits full event catalog; race state KV snapshot written each cycle; 32 unit tests passing |
 
-The data tap is live. Every milestone below reads from Redis — nothing touches the SDK directly from here on.
+The data tap is live and the race state backbone is running. Every milestone below reads from Redis — nothing touches the SDK directly from here on.
 
 ---
 
@@ -32,25 +33,23 @@ POCs are run, results documented in `pocs/<name>/results/`, and findings folded 
 
 ---
 
-## M3 — Race State Engine
+## ✅ M3 — Race State Engine *(complete)*
 
 **Theme:** The data backbone. Hub server reads the Redis telemetry streams and produces a live Race State that every downstream consumer depends on.
 
-**What it delivers:**
-- Hub server consumes `telemetry:live`, `telemetry:session`, and `session:yaml`
-- In-memory Race State: `SessionState`, `FieldState` (all CarIdx), `HeroState` (player-only)
-- `SessionPhase` state machine with transitions
-- **Fuel Model** (Level 1–3 fidelity, rolling burn rate, laps-to-finish)
-- **Tire Model** (lap age, pace degradation signal, 3-state classification)
-- **Gap Model** (per-pair gap tracking, closure rate, battle status transitions)
-- **Safe Window signal** computed at 60 Hz from Live stream (LatAccel + Throttle + brake history)
-- Event Bus: Redis Pub/Sub event emission for the full event catalog (session, hero, competitor, gap events)
-- Race State KV snapshot written to Redis (`race_state:{sessionId}`) at 15 Hz
-- Observability: structured logging, event emission latency metrics
-
-**Deploy test:** Run a mock telemetry replay into Redis; verify that correct events fire at correct moments, race state reflects telemetry, and the safe window signal toggles believably through a corner sequence.
-
-**Does not include:** Any consumer of the Event Bus (Racing Engineer, Stream Engineer). Those are M4+.
+**Delivered:**
+- Hub server consumes `iracing:telemetry:live`, `iracing:telemetry:session`, and `iracing:events:session` via independent Redis Streams consumer loops (XREADGROUP, XAUTOCLAIM, XREVRANGE startup seed)
+- In-memory Race State: `SessionState`, `FieldState` (all CarIdx auto-seeded from telemetry arrays), `HeroState` (player-only)
+- `SessionPhase` state machine: PreSession → Formation → Racing ⇄ Caution → PostRace
+- **Fuel Model** — rolling N-lap burn rate, outlap/inlap exclusion, lap-based and time-based laps-to-finish summary
+- **Tire Model** — lap age, pace degradation trend (`last_lap − first_lap`), 3-state classification (nominal/watch/critical)
+- **Gap Model** — per-pair gap tracking, closure rate, battle state machine, `gap:pulling_away` events
+- **Safe Window signal** computed at 60 Hz from Live stream (LatAccel < 0.4g, throttle > 0.7, brake distance ≥ 150m)
+- Event Bus: Redis Pub/Sub + ring buffer for the full event catalog (session, hero, competitor, gap events)
+- Race State KV snapshot written to `hub:race-state:latest` and `hub:race-state:{sessionId}` each cycle
+- OTel spans on processor cycles; structured latency logging (FR-027/028)
+- `/api/race-state`, `/api/fuel-model`, `/api/tire-model`, `/api/events/recent` endpoints
+- 32 unit tests passing; all quickstart scenarios verified
 
 ---
 
@@ -225,8 +224,8 @@ POCs are run, results documented in `pocs/<name>/results/`, and findings folded 
 |---|-----------|----------|
 | ✅ 001 | SDK Diagnostics | SDK connection, diagnostic UI |
 | ✅ 002 | Redis Telemetry Publish | Live + session telemetry on Redis Streams |
+| ✅ M3 | Race State Engine | Fuel/Tire/Gap models, event bus, safe window signal |
 | 🔲 POC Gate | Audio pipeline, STT latency, streaming LLM+TTS | De-risks voice pipeline |
-| 🔲 M3 | Race State Engine | Fuel/Tire/Gap models, event bus, safe window signal |
 | 🔲 M4 | RE: Rule-Based Alerts + Voice | Tier 1/2 messages, TTS, audio playback — drivable |
 | 🔲 M5 | RE: LLM + PTT | Whisper STT, Tier 3, personality, override tracking |
 | 🔲 M6 | SE: OBS Control + Broadcast Plan | Autonomous camera direction, Postgres schema |
