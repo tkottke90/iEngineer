@@ -20,6 +20,10 @@ function pipelinePlugin(): Plugin {
 }
 
 export default defineConfig({
+  // Bind all interfaces so the Windows test rig can reach the hub over the LAN
+  // (the Tauri client fetches audio clips from hub_url). Vite defaults to
+  // localhost-only, which blocks cross-machine access.
+  server: { host: true },
   plugins: [mdx({ jsxImportSource: 'preact' }), honoPreact({ adapter: nodeAdapter() }), pipelinePlugin()],
   ssr: {
     // hono-preact uses import.meta.env.PROD which requires Vite's transform

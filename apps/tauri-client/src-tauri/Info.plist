@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Required for WKWebView getUserMedia (mic input level meter in the audio
+       test panel). Merged into the bundled app's Info.plist by Tauri. -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>iRacing Engineer uses your microphone for the audio device test panel and push-to-talk.</string>
+</dict>
+</plist>
