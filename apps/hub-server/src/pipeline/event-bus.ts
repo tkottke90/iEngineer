@@ -1,5 +1,6 @@
 import type Redis from 'ioredis';
 import type { RaceEvent, EventType } from '@iracing-engineer/types';
+import { logger } from '../logger.js';
 
 // Allowlist of all valid event types (used for schema validation stub per T027)
 export const VALID_EVENT_TYPES: Set<EventType> = new Set([
@@ -14,7 +15,9 @@ export const VALID_EVENT_TYPES: Set<EventType> = new Set([
   'hero:position_change',
   'hero:incident',
   'hero:blue_flag',
+  'hero:blue_flag_cleared',
   'hero:fuel_critical',
+  'hero:pit_limiter_active',
   'hero:pit_window_open',
   'hero:pace_degradation',
   'competitor:pit_entry',
@@ -46,11 +49,10 @@ export async function publishEvent(
     ),
   ]);
 
-  console.log(JSON.stringify({
-    msg: '[hub] Event published',
+  logger.info('[hub] Event published', {
     type: event.type,
     sessionId,
     sessionTime: event.sessionTime,
     emitLatencyMs,
-  }));
+  });
 }

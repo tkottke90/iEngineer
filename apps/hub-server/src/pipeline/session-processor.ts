@@ -7,6 +7,7 @@ import { withSpan } from '../telemetry.js';
 import type { FuelModelEngine } from '../models/fuel-model.js';
 import type { TireModelEngine } from '../models/tire-model.js';
 import type { GapModelEngine } from '../models/gap-model.js';
+import { logger } from '../logger.js';
 
 interface DriverInfo {
   carIdx: number;
@@ -86,8 +87,13 @@ export class SessionProcessor {
     let data: Record<string, unknown>;
     try {
       data = JSON.parse(payload);
-    } catch {
-      console.error('[hub] Failed to parse session telemetry');
+    } catch (err) {
+      logger.error('[hub] Failed to parse session telemetry', {
+        reason: err instanceof Error ? err.message : String(err),
+        payloadLength: payload.length,
+        // Truncated snippet so the log stays readable but shows what arrived.
+        payloadSnippet: payload.slice(0, 200),
+      });
       return;
     }
 
@@ -122,7 +128,7 @@ export class SessionProcessor {
     }
     for (const [pos, idxes] of Object.entries(positionSeen)) {
       if (idxes.length > 1) {
-        console.log(JSON.stringify({ msg: '[hub] Duplicate position detected', duplicatePosition: pos, carIdxes: idxes }));
+        logger.warn('[hub] Duplicate position detected', { duplicatePosition: pos, carIdxes: idxes });
       }
     }
 
@@ -345,10 +351,10 @@ export class SessionProcessor {
     const cycleLatencyMs = Date.now() - cycleStart;
 
     if (eventCount.length > 0) {
-      console.log(JSON.stringify({ msg: '[hub] Session processor cycle', cycleLatencyMs, eventCount: eventCount.length, sessionTime }));
+      logger.debug('[hub] Session processor cycle', { cycleLatencyMs, eventCount: eventCount.length, sessionTime });
     } else {
       // FR-028: no-event cycle log
-      console.log(JSON.stringify({ msg: '[hub] Session processor cycle (no events)', cycleLatencyMs, eventCount: 0, sessionTime }));
+      logger.debug('[hub] Session processor cycle (no events)', { cycleLatencyMs, eventCount: 0, sessionTime });
     }
   }
 

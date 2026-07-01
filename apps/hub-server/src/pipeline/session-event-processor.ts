@@ -3,6 +3,7 @@ import type { SessionEvent } from '@iracing-engineer/types';
 import * as raceState from '../state/race-state.js';
 import { publishEvent } from './event-bus.js';
 import type { FuelModelEngine } from '../models/fuel-model.js';
+import { logger } from '../logger.js';
 
 export class SessionEventProcessor {
   private commandConn: Redis;
@@ -22,8 +23,12 @@ export class SessionEventProcessor {
     let event: SessionEvent & { driver_info?: { drivers?: Array<{ carIdx: number; userName: string; carNumber: string; teamName: string; carClassID: number }> } };
     try {
       event = JSON.parse(payload);
-    } catch {
-      console.error('[hub] Failed to parse SessionEvent', payload);
+    } catch (err) {
+      logger.error('[hub] Failed to parse SessionEvent', {
+        reason: err instanceof Error ? err.message : String(err),
+        payloadLength: payload.length,
+        payloadSnippet: payload.slice(0, 200),
+      });
       return;
     }
 
@@ -49,7 +54,7 @@ export class SessionEventProcessor {
         sessionId,
         detectedAt,
       );
-      console.log(JSON.stringify({ msg: '[hub] Session ended', sessionId }));
+      logger.info('[hub] Session ended', { sessionId });
       return;
     }
 
@@ -97,11 +102,11 @@ export class SessionEventProcessor {
       playerCarIdx,
     } as any);
 
-    console.log(JSON.stringify({ msg: '[hub] Session started', sessionId, trackName: event.track_name, heroCarIdx: playerCarIdx }));
+    logger.info('[hub] Session started', { sessionId, trackName: event.track_name, heroCarIdx: playerCarIdx });
 
     // Mid-race re-derive: hero carIdx changed
     if (existingSession?.sessionPhase === 'Racing' && prevPlayerCarIdx !== null && prevPlayerCarIdx !== playerCarIdx) {
-      console.log(JSON.stringify({ msg: '[hub] Hero carIdx changed during race', from: prevPlayerCarIdx, to: playerCarIdx }));
+      logger.warn('[hub] Hero carIdx changed during race', { from: prevPlayerCarIdx, to: playerCarIdx });
     }
   }
 }

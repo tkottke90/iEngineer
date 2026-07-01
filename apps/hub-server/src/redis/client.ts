@@ -1,10 +1,11 @@
 import Redis from 'ioredis';
+import { logger } from '../logger.js';
 
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
 
 function makeRetryStrategy(attempt: number): number | null {
   const delay = Math.min(1000 * 2 ** attempt, 15000);
-  console.log(JSON.stringify({ msg: '[hub] Redis reconnecting', attempt, delayMs: delay }));
+  logger.info('[hub] Redis reconnecting', { attempt, delayMs: delay });
   return delay;
 }
 
