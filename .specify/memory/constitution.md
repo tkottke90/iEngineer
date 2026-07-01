@@ -1,18 +1,24 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.1.0 → 1.1.1 (PATCH — TypeScript test framework changed from vitest to mocha + chai)
+Version change: 1.1.1 → 1.1.2 (PATCH — Clarified Postgres audit gate scope in Principle V)
 
 Modified principles:
-- VI. Test-Backed Change — replaced `vitest` with `mocha + chai` as the required TypeScript
-  unit test framework
+- V. Observability-Driven — The Postgres audit log gate now explicitly applies to LLM-backed
+  agent capabilities only. Rule-based agent capabilities (no LLM inference in the decision
+  path) are exempt until M5, provided structured console logs are emitted for all decisions
+  and failures. Rationale: Postgres audit tables exist to make LLM decisions forensically
+  reproducible. A deterministic rule engine has no hidden state to audit beyond its inputs
+  and the structured logs that already capture them.
 
 Added sections: N/A
 Removed sections: N/A
 
 Templates requiring updates: none (no principle-level semantics changed)
 
-Follow-up TODOs: none
+Follow-up TODOs:
+- M5: Add Postgres `engineer_events` table when LLM inference is introduced to the Racing
+  Engineer path. At that point the gate applies without exemption.
 -->
 
 # iRacing Engineer Constitution
@@ -96,8 +102,10 @@ All data flows MUST be inspectable:
 - OBS WebSocket events (scene changes, source visibility) MUST be logged with timestamps
 - No silent failures: every agent decision that does not produce output MUST emit a structured
   log entry explaining why
-- **Gate**: Every new agent capability MUST include a Postgres table or column for its audit
-  log before the feature is considered complete
+- **Gate**: Every new **LLM-backed** agent capability MUST include a Postgres table or column
+  for its audit log before the feature is considered complete. Rule-based agent capabilities
+  (no LLM inference in the decision path) are exempt from this gate until M5, provided
+  structured console logs are emitted for all decisions and failures
 
 **Rationale:** When an AI makes a wrong call mid-race, post-session forensics require a
 complete, timestamped log of what the agent saw and decided. Without it, debugging is
@@ -183,4 +191,4 @@ Amendments require:
 
 All feature plans MUST include a Constitution Check gate before Phase 0 research.
 
-**Version**: 1.1.1 | **Ratified**: 2026-06-26 | **Last Amended**: 2026-06-26
+**Version**: 1.1.2 | **Ratified**: 2026-06-26 | **Last Amended**: 2026-06-30

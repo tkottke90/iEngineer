@@ -68,6 +68,7 @@ POCs are run, results documented in `pocs/<name>/results/`, and findings folded 
 - **TTS integration** — Chatterbox/Speaches server: text → audio clip → stored in Redis
 - **Tauri audio playback** — hub pushes audio clip reference; Tauri fetches and plays
 - Basic Personality stubs: Chattiness (Low/Default — suppresses Tier 2 or not); Familiarity and Aggression are default-only placeholders until M5
+- **Audio device test panel** (Tauri settings): mic input level meter, PTT trigger test, and playback test (plays a sample TTS clip through the configured output device) — for troubleshooting device selection and configuration without needing an active session
 
 **Deploy test:** Drive a full practice lap at a real iRacing track. Engineer delivers a pit window alert through speakers at the correct lap. Fuel critical fires at the right threshold.
 
