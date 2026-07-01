@@ -6,10 +6,18 @@ import { LiveProcessor } from './pipeline/live-processor.js';
 import { FuelModelEngine } from './models/fuel-model.js';
 import { TireModelEngine } from './models/tire-model.js';
 import { GapModelEngine } from './models/gap-model.js';
+import { getSnapshot } from './state/race-state.js';
+import { AudioStore, setAudioStore } from './engineer/audio-store.js';
+import { PriorityMessageQueue } from './engineer/message-queue.js';
+import { DedupTracker } from './engineer/dedup-tracker.js';
+import { RacingEngineerService } from './engineer/racing-engineer.js';
+import { loadEngineerConfig, loadBlackoutZones } from './engineer/personality-config.js';
+import { logger } from './logger.js';
 
 let _started = false;
 let _abortSignal: { aborted: boolean } | null = null;
 let _liveProcessor: LiveProcessor | null = null;
+let _engineer: RacingEngineerService | null = null;
 
 export async function startPipeline(): Promise<void> {
   if (_started) return;
@@ -31,9 +39,27 @@ export async function startPipeline(): Promise<void> {
   _liveProcessor = new LiveProcessor(commandConn);
 
   _liveProcessor.start();
-  console.log(JSON.stringify({ msg: '[hub] Live Processor started (60 Hz)' }));
-  console.log(JSON.stringify({ msg: '[hub] Session Processor started (15 Hz)' }));
-  console.log(JSON.stringify({ msg: '[hub] Awaiting telemetry...' }));
+  logger.info('[hub] Live Processor started (60 Hz)');
+  logger.info('[hub] Session Processor started (15 Hz)');
+  logger.info('[hub] Awaiting telemetry...');
+
+  // Racing Engineer (M4) — subscribes to hub:events, alerts via TTS.
+  const engineerConfig = loadEngineerConfig();
+  const audioStore = new AudioStore(engineerConfig.audioIdleCleanupIntervalMs);
+  setAudioStore(audioStore);
+  _engineer = new RacingEngineerService(
+    commandConn,
+    audioStore,
+    new PriorityMessageQueue(),
+    new DedupTracker(),
+    getSnapshot,
+    loadBlackoutZones(),
+    engineerConfig,
+  );
+  _engineer.start().then(
+    () => logger.info('[hub] Racing Engineer started'),
+    (err) => logger.error('[hub] Racing Engineer failed to start', { error: String(err) }),
+  );
 
   // Start the consumer loop (runs indefinitely)
   streamConsumerLoop(
@@ -44,7 +70,7 @@ export async function startPipeline(): Promise<void> {
     (payload) => sessionEventProcessor.onSessionEvent(payload),
     _abortSignal,
   ).catch(err => {
-    console.error(JSON.stringify({ msg: '[hub] Consumer loop fatal error', error: String(err) }));
+    logger.error('[hub] Consumer loop fatal error', { error: String(err) });
   });
 
   process.on('SIGTERM', () => shutdown(consumerConn, commandConn));
@@ -52,9 +78,10 @@ export async function startPipeline(): Promise<void> {
 }
 
 async function shutdown(consumerConn: InstanceType<typeof import('ioredis').default>, commandConn: InstanceType<typeof import('ioredis').default>): Promise<void> {
-  console.log(JSON.stringify({ msg: '[hub] Graceful shutdown initiated' }));
+  logger.info('[hub] Graceful shutdown initiated');
   if (_abortSignal) _abortSignal.aborted = true;
   if (_liveProcessor) _liveProcessor.stop();
+  if (_engineer) await _engineer.stop();
   await consumerConn.quit();
   await commandConn.quit();
   process.exit(0);

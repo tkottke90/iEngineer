@@ -25,6 +25,9 @@ pub async fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String>
 #[tauri::command]
 pub async fn save_config(config: AppConfig, state: State<'_, AppState>) -> Result<(), String> {
     let new_url = config.redis_url.clone();
+    // Capture values for the hub Chattiness sync before moving `config`.
+    let chattiness = config.chattiness.clone();
+    let redis_url = config.redis_url.clone();
     let mut current = state.config.lock().map_err(|e| e.to_string())?;
     let url_changed = current.redis_url != new_url;
     *current = config;
@@ -33,6 +36,27 @@ pub async fn save_config(config: AppConfig, state: State<'_, AppState>) -> Resul
         let _ = state.redis_url_watch_tx.send(new_url);
         info!("redis url updated — will apply on next reconnect");
     }
+
+    // Tauri→hub Chattiness sync: write the preference to a Redis key the
+    // RacingEngineerService reads at each dispatcher tick (T037). Best-effort —
+    // a Redis failure must not block saving the local config.
+    tokio::spawn(async move {
+        if let Err(e) = write_chattiness(&redis_url, &chattiness).await {
+            tracing::warn!(error = %e, "failed to write hub:config:chattiness");
+        }
+    });
+
+    Ok(())
+}
+
+async fn write_chattiness(redis_url: &str, value: &str) -> anyhow::Result<()> {
+    let client = redis::Client::open(redis_url)?;
+    let mut conn = client.get_multiplexed_async_connection().await?;
+    let _: () = redis::cmd("SET")
+        .arg("hub:config:chattiness")
+        .arg(value)
+        .query_async(&mut conn)
+        .await?;
     Ok(())
 }
 
@@ -81,6 +105,81 @@ pub async fn list_audio_devices() -> Result<Vec<AudioDevice>, String> {
 
 #[tauri::command]
 pub async fn set_audio_device(_device: AudioDevice) -> Result<(), String> {
+    Ok(())
+}
+
+// ── Service connection checks ─────────────────────────────────────────────────
+
+/// PING Redis at the given URL. Returns true if reachable, false otherwise.
+/// Never errors — an unreachable service is a normal `false`, not a failure.
+#[tauri::command]
+pub async fn check_redis(url: String) -> Result<bool, String> {
+    let fut = async {
+        let client = redis::Client::open(url)?;
+        let mut conn = client.get_multiplexed_async_connection().await?;
+        let pong: String = redis::cmd("PING").query_async(&mut conn).await?;
+        anyhow::Ok(pong == "PONG")
+    };
+    match tokio::time::timeout(std::time::Duration::from_secs(3), fut).await {
+        Ok(Ok(ok)) => Ok(ok),
+        _ => Ok(false),
+    }
+}
+
+/// GET the hub's /healthz endpoint. Returns true on a 2xx response.
+#[tauri::command]
+pub async fn check_hub(url: String) -> Result<bool, String> {
+    let base = url.trim_end_matches('/');
+    let resp = reqwest::Client::new()
+        .get(format!("{base}/healthz"))
+        .timeout(std::time::Duration::from_secs(3))
+        .send()
+        .await;
+    Ok(resp.map(|r| r.status().is_success()).unwrap_or(false))
+}
+
+/// Audio device test panel (T038): ask the hub to synthesize a fixed test phrase,
+/// then enqueue the returned clip into the Racing Engineer playback queue. Always
+/// routes through the hub endpoint so AudioStore TTL tracking + structured logging
+/// apply (never calls Chatterbox directly).
+#[tauri::command]
+pub async fn test_audio_playback(state: State<'_, AppState>) -> Result<(), String> {
+    let (hub_url, tx) = {
+        let hub_url = state
+            .config
+            .lock()
+            .map_err(|e| e.to_string())?
+            .hub_url
+            .clone();
+        let tx = state
+            .engineer_playback_tx
+            .lock()
+            .map_err(|e| e.to_string())?
+            .clone();
+        (hub_url, tx)
+    };
+    let tx = tx.ok_or_else(|| "playback queue not ready".to_string())?;
+
+    let base = hub_url.trim_end_matches('/');
+    #[derive(serde::Deserialize)]
+    struct TestClip {
+        #[serde(rename = "clipUrl")]
+        clip_url: String,
+    }
+    let resp = reqwest::Client::new()
+        .post(format!("{base}/api/audio/test"))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("hub returned {status}: {body}"));
+    }
+    let clip: TestClip = resp.json().await.map_err(|e| e.to_string())?;
+
+    let absolute = format!("{}{}", base, clip.clip_url);
+    tx.send(absolute).map_err(|e| e.to_string())?;
     Ok(())
 }
 

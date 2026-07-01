@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
-use tokio::sync::watch;
+use tokio::sync::{mpsc, watch};
 use ts_rs::TS;
 
 use crate::iracing::types::{ConnectionStatus, SessionInfo, TelemetryField};
@@ -14,17 +14,25 @@ pub struct AppConfig {
     pub audio_input_device: Option<String>,
     pub audio_output_device: Option<String>,
     pub ptt_hotkey: String,
+    /// Chattiness: "Low" suppresses Tier 2 alerts, "Default" allows all (FR-011).
+    pub chattiness: String,
+    /// M5 personality stubs — no behavioral effect in M4 (FR-012).
+    pub familiarity: String,
+    pub aggression: String,
 }
 
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
             redis_url: "redis://localhost:6379".into(),
-            hub_url: "http://localhost:3000".into(),
+            hub_url: "http://localhost:5173".into(),
             connection_token: String::new(),
             audio_input_device: None,
             audio_output_device: None,
             ptt_hotkey: "F13".into(),
+            chattiness: "Default".into(),
+            familiarity: "Default".into(),
+            aggression: "Default".into(),
         }
     }
 }
@@ -43,6 +51,9 @@ pub struct AppState {
     /// Notifies publisher_task when Redis URL is saved; URL read from config at reconnect.
     pub redis_url_watch_tx: watch::Sender<String>,
     _redis_url_rx: watch::Receiver<String>,
+    /// Sender into the Racing Engineer playback queue — set once the engineer task
+    /// spawns (mod.rs). The audio test panel command (T038) enqueues clip URLs here.
+    pub engineer_playback_tx: Mutex<Option<mpsc::UnboundedSender<String>>>,
 }
 
 impl Default for AppState {
@@ -61,6 +72,7 @@ impl Default for AppState {
             _session_watch_rx: session_rx,
             redis_url_watch_tx: redis_url_tx,
             _redis_url_rx: redis_url_rx,
+            engineer_playback_tx: Mutex::new(None),
         }
     }
 }
