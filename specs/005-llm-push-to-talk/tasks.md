@@ -183,9 +183,9 @@
 
 **Independent Test**: quickstart.md Scenario 7.
 
-- [ ] T062 [US6] Extend `session-memory.ts` — capture the latest M3 fuel-calibration snapshot (from the `hub:fuel-model:${sessionId}` KV / model) and surface the recommendation log + override outcomes as a memory excerpt.
-- [ ] T063 [US6] Ensure `context-assembler.ts` includes the memory excerpt in `ReasoningContext` for driver-query and briefings (within the token budget; truncation from T022 applies).
-- [ ] T064 [P] [US6] Integration test in `apps/hub-server/tests/integration/session-memory.test.ts` — a recommendation made earlier is referenced in a later PTT answer (consistent with the log); forcing over-budget context emits `context-truncated` and stays within the ceiling (SC-009).
+- [X] T062 [US6] Extend `session-memory.ts` — capture the latest M3 fuel-calibration snapshot (from the `hub:fuel-model:${sessionId}` KV / model) and surface the recommendation log + override outcomes as a memory excerpt.
+- [X] T063 [US6] Ensure `context-assembler.ts` includes the memory excerpt in `ReasoningContext` for driver-query and briefings (within the token budget; truncation from T022 applies).
+- [X] T064 [P] [US6] Integration test in `apps/hub-server/tests/integration/session-memory.test.ts` — a recommendation made earlier is referenced in a later PTT answer (consistent with the log); forcing over-budget context emits `context-truncated` and stays within the ceiling (SC-009).
 
 **Checkpoint**: Memory-informed reasoning works (Scenario 7).
 

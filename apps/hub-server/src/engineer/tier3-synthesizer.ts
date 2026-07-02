@@ -81,7 +81,13 @@ export class Tier3Synthesizer {
     const race = this.getRaceState();
     const sessionId = race.session?.sessionId ?? '';
 
-    // 3. Context assembly (token-budgeted).
+    // Refresh session memory with the latest M3 fuel calibration so the context
+    // reflects current model state (US6, T062).
+    const fuel = this.tools.run('get_fuel_status');
+    if (fuel.available) this.memory.setFuelCalibration(fuel.data ?? null);
+
+    // 3. Context assembly (token-budgeted) — includes the recommendation log,
+    //    override outcomes, deference state, and fuel calibration (FR-011/018).
     const context = assembleContext(race, this.memory.get(), this.config.llm.tokenBudget);
 
     // 4. Prompt build (versioned files + personality substitution).
