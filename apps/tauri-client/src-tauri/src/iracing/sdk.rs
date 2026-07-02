@@ -208,7 +208,12 @@ impl IracingSDK {
         }
         let raw = &self.data[offset..offset + len];
         let end = raw.iter().position(|&b| b == 0).unwrap_or(len);
-        String::from_utf8(raw[..end].to_vec()).ok()
+        // iRacing's session YAML is Latin-1/CP-1252 — driver, team, and track names
+        // routinely contain non-UTF-8 bytes (e.g. "Müller", "José"). Strict from_utf8
+        // returned None on the first such byte, so the whole session read as "no
+        // active session" and telemetry was suppressed. Decode lossily instead: a
+        // stray byte becomes U+FFFD rather than dropping the entire session.
+        Some(String::from_utf8_lossy(&raw[..end]).into_owned())
     }
 
     /// Read a variable value from the active data buffer.
@@ -565,6 +570,25 @@ mod tests {
         let data = vec![0u8; 64];
         let sdk = make_sdk(data);
         assert!(sdk.read_session_info().is_none());
+    }
+
+    #[test]
+    fn read_session_info_survives_non_utf8_names() {
+        // A driver name with a CP-1252 'ü' (0xFC) — invalid UTF-8. Must NOT drop the
+        // session (regression: strict from_utf8 returned None → "no active session").
+        let mut yaml = b"WeekendInfo:\n  TrackName: Sebring\nDriverInfo:\n  Name: M".to_vec();
+        yaml.push(0xFC); // 'ü' in CP-1252
+        yaml.extend_from_slice(b"ller\n");
+        let yaml_offset: usize = 512;
+        let mut data = vec![0u8; 4096];
+        write_i32(&mut data, SESSION_INFO_LEN_OFFSET, yaml.len() as i32);
+        write_i32(&mut data, SESSION_INFO_OFFSET_OFFSET, yaml_offset as i32);
+        data[yaml_offset..yaml_offset + yaml.len()].copy_from_slice(&yaml);
+
+        let sdk = make_sdk(data);
+        let result = sdk.read_session_info();
+        assert!(result.is_some(), "non-UTF-8 name must not drop the session");
+        assert!(result.unwrap().contains("Sebring"));
     }
 
     // ── buf_offset ────────────────────────────────────────────────────────────
