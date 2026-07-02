@@ -17,9 +17,10 @@ export type AlertEventType =
   | 'gap:pulling_away'
   | 'hero:pace_degradation';
 
-// A queued alert, ready for TTS
+// A queued rule-based alert, ready for TTS. Rule-based alerts are Tier 1 or 2
+// only; Tier 3 (LLM-synthesized) uses QueuedTier3 below.
 export interface QueuedAlert {
-  tier: AlertTier;
+  tier: 1 | 2;
   eventType: AlertEventType;
   messageText: string; // pre-rendered string, e.g. "Fuel critical — 2 laps remaining"
   lapNumber: number;
@@ -32,7 +33,10 @@ export interface QueuedAlert {
   enqueuedAt?: number;
 }
 
-// Reference pushed to Tauri over the voice:audio pub/sub channel
+// Reference pushed to Tauri over the voice:audio pub/sub channel.
+// Tier 1/2 clips carry `eventType`; Tier 3 (LLM-synthesized) clips carry
+// `tier3Type` instead. COUPLING: the Rust `subscriber.rs` AudioClipRef struct
+// must make `eventType` optional and add `tier3Type` to match (Phase E / Tauri).
 export interface AudioClipRef {
   audioId: string; // UUID
   // RELATIVE path `/api/audio/${audioId}` — the Tauri subscriber prepends its
@@ -40,7 +44,8 @@ export interface AudioClipRef {
   // client reaches it by).
   clipUrl: string;
   tier: AlertTier;
-  eventType: AlertEventType;
+  eventType?: AlertEventType; // Tier 1/2 only
+  tier3Type?: Tier3Type; // Tier 3 only
   generatedAt: number; // epoch ms — same instant as AudioStore storedAt
 }
 
@@ -111,6 +116,19 @@ export interface Tier3Message {
   personality: PersonalityConfig; // snapshot at synthesis time
   createdAtMs: number;
 }
+
+// A single per-sentence Tier 3 clip enqueued into the PriorityMessageQueue. The
+// dispatcher turns it into TTS + an AudioClipRef, dispatched after all pending
+// Tier 1/2 items (FR-015). Within Tier 3, driver-query outranks proactive commentary.
+export interface QueuedTier3 {
+  tier: 3;
+  tier3Type: Tier3Type;
+  messageText: string;
+  sentenceIndex: number; // order within one synthesized message
+}
+
+// Anything the PriorityMessageQueue can hold. Discriminated by `tier`.
+export type QueuedMessage = QueuedAlert | QueuedTier3;
 
 // Driver push-to-talk query (Tauri → hub over the engineer:query pub/sub channel)
 export interface EngineerQuery {

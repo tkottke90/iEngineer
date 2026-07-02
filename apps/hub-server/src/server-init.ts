@@ -12,12 +12,24 @@ import { PriorityMessageQueue } from './engineer/message-queue.js';
 import { DedupTracker } from './engineer/dedup-tracker.js';
 import { RacingEngineerService } from './engineer/racing-engineer.js';
 import { loadEngineerConfig, loadBlackoutZones } from './engineer/personality-config.js';
+import { createTools } from './engineer/tools.js';
+import { SessionMemoryStore } from './engineer/session-memory.js';
+import { Tier3Synthesizer } from './engineer/tier3-synthesizer.js';
+import { runMigrations } from './db/client.js';
 import { logger } from './logger.js';
 
 let _started = false;
 let _abortSignal: { aborted: boolean } | null = null;
 let _liveProcessor: LiveProcessor | null = null;
 let _engineer: RacingEngineerService | null = null;
+let _synthesizer: Tier3Synthesizer | null = null;
+
+// Exposed so the engineer:query subscription (T038) and proactive triggers (T049)
+// can drive Tier 3 synthesis. Shares the RacingEngineerService priority queue so
+// Tier 3 clips are dispatched after pending Tier 1/2 (Model A, FR-015).
+export function getTier3Synthesizer(): Tier3Synthesizer | null {
+  return _synthesizer;
+}
 
 export async function startPipeline(): Promise<void> {
   if (_started) return;
@@ -47,10 +59,12 @@ export async function startPipeline(): Promise<void> {
   const engineerConfig = loadEngineerConfig();
   const audioStore = new AudioStore(engineerConfig.audioIdleCleanupIntervalMs);
   setAudioStore(audioStore);
+  // One shared priority queue: the dispatcher drains it for all tiers (Model A).
+  const queue = new PriorityMessageQueue();
   _engineer = new RacingEngineerService(
     commandConn,
     audioStore,
-    new PriorityMessageQueue(),
+    queue,
     new DedupTracker(),
     getSnapshot,
     loadBlackoutZones(),
@@ -60,6 +74,32 @@ export async function startPipeline(): Promise<void> {
     () => logger.info('[hub] Racing Engineer started'),
     (err) => logger.error('[hub] Racing Engineer failed to start', { error: String(err) }),
   );
+
+  // M5 Tier 3 reasoning engine — Postgres audit + LLM synthesizer sharing the queue.
+  // Migrations are best-effort: a Postgres outage degrades Tier 3 (audit fail-closed)
+  // but never blocks the M4 rule path (Constitution I).
+  runMigrations().then(
+    (applied) => logger.info('[hub] engineer_events migrations applied', { applied }),
+    (err) => logger.error('[hub] engineer_events migrations failed — Tier 3 audit degraded', { error: String(err) }),
+  );
+  const tools = createTools({
+    getFuelModel: () => {
+      try {
+        return fuelModel.getSnapshot();
+      } catch {
+        return null;
+      }
+    },
+    getTireModel: () => {
+      try {
+        return tireModel.getSnapshot();
+      } catch {
+        return null;
+      }
+    },
+  });
+  _synthesizer = new Tier3Synthesizer(getSnapshot, new SessionMemoryStore(), tools, queue, engineerConfig);
+  logger.info('[hub] Tier 3 synthesizer ready (triggers wired in M5 US1/US2)');
 
   // Start the consumer loop (runs indefinitely)
   streamConsumerLoop(

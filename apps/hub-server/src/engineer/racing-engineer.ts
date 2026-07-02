@@ -5,7 +5,7 @@ import type {
   EngineerConfig,
   RadioBlackoutZone,
   AudioClipRef,
-  QueuedAlert,
+  QueuedMessage,
   PersonalityConfig,
 } from '@iracing-engineer/types';
 import { AudioStore } from './audio-store.js';
@@ -119,39 +119,40 @@ export class RacingEngineerService {
 
     void this.readPersonality().then((personality) => {
       if (this._generating) return;
-      const alert = this.queue.dequeueNext(lapDistPct, this.zones);
-      if (!alert) return;
+      const msg = this.queue.dequeueNext(lapDistPct, this.zones);
+      if (!msg) return;
 
       // Energy=1 (Tranquil) suppresses Tier 2 alerts at dequeue time (FR-017).
-      if (shouldSuppressAlert(alert, personality)) {
-        logger.info('[engineer] Alert suppressed', { alertType: alert.eventType, reason: 'Energy:1' });
+      // Tier 3 commentary suppression is enforced earlier, in the synthesizer.
+      if (msg.tier !== 3 && shouldSuppressAlert(msg, personality)) {
+        logger.info('[engineer] Alert suppressed', { alertType: msg.eventType, reason: 'Energy:1' });
         return;
       }
 
       this._generating = true;
-      void this.generateAndPublish(alert);
+      void this.generateAndPublish(msg);
     });
   }
 
-  private async generateAndPublish(alert: QueuedAlert): Promise<void> {
+  // Single dispatch point for all tiers (Model A): the queued message — a Tier 1/2
+  // alert or a Tier 3 sentence clip — is synthesized to TTS and published to
+  // voice:audio. Tier 1/2 refs carry eventType; Tier 3 refs carry tier3Type.
+  private async generateAndPublish(msg: QueuedMessage): Promise<void> {
+    const label = msg.tier === 3 ? msg.tier3Type : msg.eventType;
     try {
-      const buffer = await generateClip(alert.messageText, this.config);
-      logger.info('[engineer] Clip generated', { alertType: alert.eventType, tier: alert.tier, lapNumber: alert.lapNumber });
+      const buffer = await generateClip(msg.messageText, this.config);
+      logger.info('[engineer] Clip generated', { label, tier: msg.tier });
       const { audioId, clipUrl, storedAt } = this.audioStore.store(buffer);
-      const ref: AudioClipRef = {
-        audioId,
-        clipUrl,
-        tier: alert.tier,
-        eventType: alert.eventType,
-        generatedAt: storedAt,
-      };
+      const ref: AudioClipRef =
+        msg.tier === 3
+          ? { audioId, clipUrl, tier: 3, tier3Type: msg.tier3Type, generatedAt: storedAt }
+          : { audioId, clipUrl, tier: msg.tier, eventType: msg.eventType, generatedAt: storedAt };
       await this.commandConn.publish('voice:audio', JSON.stringify(ref));
-      logger.info('[engineer] Clip published', { alertType: alert.eventType, tier: alert.tier, audioId });
+      logger.info('[engineer] Clip published', { label, tier: msg.tier, audioId });
     } catch (err) {
       logger.error('[engineer] TTS failure', {
-        alertType: alert.eventType,
-        tier: alert.tier,
-        lapNumber: alert.lapNumber,
+        label,
+        tier: msg.tier,
         failureReason: err instanceof Error ? err.message : String(err),
       });
     } finally {
