@@ -61,19 +61,6 @@ export async function startPipeline(): Promise<void> {
   setAudioStore(audioStore);
   // One shared priority queue: the dispatcher drains it for all tiers (Model A).
   const queue = new PriorityMessageQueue();
-  _engineer = new RacingEngineerService(
-    commandConn,
-    audioStore,
-    queue,
-    new DedupTracker(),
-    getSnapshot,
-    loadBlackoutZones(),
-    engineerConfig,
-  );
-  _engineer.start().then(
-    () => logger.info('[hub] Racing Engineer started'),
-    (err) => logger.error('[hub] Racing Engineer failed to start', { error: String(err) }),
-  );
 
   // M5 Tier 3 reasoning engine — Postgres audit + LLM synthesizer sharing the queue.
   // Migrations are best-effort: a Postgres outage degrades Tier 3 (audit fail-closed)
@@ -99,7 +86,21 @@ export async function startPipeline(): Promise<void> {
     },
   });
   _synthesizer = new Tier3Synthesizer(getSnapshot, new SessionMemoryStore(), tools, queue, engineerConfig);
-  logger.info('[hub] Tier 3 synthesizer ready (triggers wired in M5 US1/US2)');
+
+  _engineer = new RacingEngineerService(
+    commandConn,
+    audioStore,
+    queue,
+    new DedupTracker(),
+    getSnapshot,
+    loadBlackoutZones(),
+    engineerConfig,
+    _synthesizer,
+  );
+  _engineer.start().then(
+    () => logger.info('[hub] Racing Engineer started (Tier 1/2 alerts + Tier 3 PTT queries)'),
+    (err) => logger.error('[hub] Racing Engineer failed to start', { error: String(err) }),
+  );
 
   // Start the consumer loop (runs indefinitely)
   streamConsumerLoop(
