@@ -152,10 +152,10 @@
 
 **Independent Test**: quickstart.md Scenario 5.
 
-- [ ] T055 [US4] Implement `apps/hub-server/src/engineer/override-tracker.ts` — watch `hub:events`; a pit `RecommendationLogEntry` transitions `pending→overridden` when the car completes the recommended lap (start/finish crossing) without a pit entry, `pending→followed` on a pit entry within the window (FR-019, Q2); persist outcomes into `session-memory`.
-- [ ] T056 [US4] Extend `tier3-synthesizer.ts`/`racing-engineer.ts` — record a `RecommendationLogEntry` when the engineer emits a pit recommendation; after `overridden`, suppress re-issuing that type within the window context and frame subsequent related speech around the driver's decision (FR-019).
-- [ ] T057 [P] [US4] Unit tests in `apps/hub-server/tests/unit/engineer/override-tracker.test.ts` — S/F crossing without pit entry → overridden; pit entry within window → followed; state transitions match data-model.
-- [ ] T058 [P] [US4] Integration test in `apps/hub-server/tests/integration/override.test.ts` — after an override, the same pit recommendation is not re-issued within the window (SC-006); later speech reflects staying out.
+- [X] T055 [US4] Implement `apps/hub-server/src/engineer/override-tracker.ts` — watch `hub:events`; a pit `RecommendationLogEntry` transitions `pending→overridden` when the car completes the recommended lap (start/finish crossing) without a pit entry, `pending→followed` on a pit entry within the window (FR-019, Q2); persist outcomes into `session-memory`.
+- [X] T056 [US4] Extend `tier3-synthesizer.ts`/`racing-engineer.ts` — record a `RecommendationLogEntry` when the engineer emits a pit recommendation; after `overridden`, suppress re-issuing that type within the window context and frame subsequent related speech around the driver's decision (FR-019).
+- [X] T057 [P] [US4] Unit tests in `apps/hub-server/tests/unit/engineer/override-tracker.test.ts` — S/F crossing without pit entry → overridden; pit entry within window → followed; state transitions match data-model.
+- [X] T058 [P] [US4] Integration test in `apps/hub-server/tests/integration/override.test.ts` — after an override, the same pit recommendation is not re-issued within the window (SC-006); later speech reflects staying out.
 
 **Checkpoint**: Override detection + no-repeat works (Scenario 5).
 

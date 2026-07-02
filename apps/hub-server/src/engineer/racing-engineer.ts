@@ -17,6 +17,7 @@ import { evaluateTier1, evaluateTier2 } from './alert-rules.js';
 import { generateClip } from './tts-client.js';
 import { shouldSuppressAlert, parsePersonality } from './personality-config.js';
 import type { Tier3Synthesizer } from './tier3-synthesizer.js';
+import type { OverrideTracker } from './override-tracker.js';
 import { logger } from '../logger.js';
 
 const DISPATCH_INTERVAL_MS = 100;
@@ -52,6 +53,7 @@ export class RacingEngineerService {
     private config: EngineerConfig,
     private synthesizer: Tier3Synthesizer | null = null,
     private generateClipFn: ClipGenerator = generateClip,
+    private overrides: OverrideTracker | null = null,
   ) {}
 
   async start(): Promise<void> {
@@ -197,6 +199,13 @@ export class RacingEngineerService {
     // Proactive Tier 3 briefings (additive to the rule path).
     this.maybeProactive(event);
 
+    // Feed override tracking (US4): pit entry / lap completion drive the outcome
+    // of any pending pit recommendation.
+    if (this.overrides) {
+      if (event.type === 'hero:pit_entry') this.overrides.onPitEntry(event.lapNumber);
+      else if (event.type === 'hero:lap_complete') this.overrides.onLapComplete(event.lapNumber);
+    }
+
     const signals = this.getRaceState().signals;
     const alert = evaluateTier1(event, this.config) ?? evaluateTier2(event, signals, this.config);
     if (!alert) return;
@@ -208,6 +217,12 @@ export class RacingEngineerService {
     this.dedup.recordFired(alert.eventType, alert.lapNumber);
     this.queue.enqueue(alert);
     logger.info('[engineer] Alert enqueued', { alertType: alert.eventType, tier: alert.tier, lapNumber: alert.lapNumber });
+
+    // The pit-window-open alert IS the pit recommendation (US4) — log it so the
+    // override tracker can resolve it as followed/overridden.
+    if (this.overrides && alert.eventType === 'hero:pit_window_open') {
+      this.overrides.recordRecommendation('pit', alert.lapNumber);
+    }
   }
 
   private async readPersonality(): Promise<PersonalityConfig> {

@@ -15,6 +15,7 @@ import { loadEngineerConfig, loadBlackoutZones } from './engineer/personality-co
 import { createTools } from './engineer/tools.js';
 import { SessionMemoryStore } from './engineer/session-memory.js';
 import { Tier3Synthesizer } from './engineer/tier3-synthesizer.js';
+import { OverrideTracker } from './engineer/override-tracker.js';
 import { runMigrations } from './db/client.js';
 import { logger } from './logger.js';
 
@@ -85,7 +86,11 @@ export async function startPipeline(): Promise<void> {
       }
     },
   });
-  _synthesizer = new Tier3Synthesizer(getSnapshot, new SessionMemoryStore(), tools, queue, engineerConfig);
+  // One session memory shared by the synthesizer (reads it into context) and the
+  // override tracker (writes recommendation outcomes + deference state).
+  const sessionMemory = new SessionMemoryStore();
+  _synthesizer = new Tier3Synthesizer(getSnapshot, sessionMemory, tools, queue, engineerConfig);
+  const overrideTracker = new OverrideTracker(sessionMemory, engineerConfig.deferenceThreshold);
 
   _engineer = new RacingEngineerService(
     commandConn,
@@ -96,6 +101,8 @@ export async function startPipeline(): Promise<void> {
     loadBlackoutZones(),
     engineerConfig,
     _synthesizer,
+    undefined,
+    overrideTracker,
   );
   _engineer.start().then(
     () => logger.info('[hub] Racing Engineer started (Tier 1/2 alerts + Tier 3 PTT queries)'),
