@@ -81,7 +81,13 @@ describe('personality-config — parsePersonality (M5 fallback)', () => {
     expect(p).to.deep.equal(DEFAULTS);
   });
   it('falls back per-trait when a value is out of range or non-integer', () => {
-    const raw = JSON.stringify({ openness: 9, warmth: 2, energy: 0, conscientiousness: 2.5, assertiveness: 4 });
+    const raw = JSON.stringify({
+      openness: 9,
+      warmth: 2,
+      energy: 0,
+      conscientiousness: 2.5,
+      assertiveness: 4,
+    });
     const { personality: p, usedFallback } = parsePersonality(raw, DEFAULTS);
     expect(usedFallback).to.be.true;
     expect(p.openness).to.equal(3); // 9 out of range → default

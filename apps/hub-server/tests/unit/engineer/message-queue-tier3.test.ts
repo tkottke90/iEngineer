@@ -1,6 +1,12 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
-import type { QueuedAlert, QueuedTier3, AlertEventType, Tier3Type, RadioBlackoutZone } from '@iracing-engineer/types';
+import type {
+  QueuedAlert,
+  QueuedTier3,
+  AlertEventType,
+  Tier3Type,
+  RadioBlackoutZone,
+} from '@iracing-engineer/types';
 import { PriorityMessageQueue } from '../../../src/engineer/message-queue.js';
 
 function a(tier: 1 | 2, eventType: AlertEventType): QueuedAlert {

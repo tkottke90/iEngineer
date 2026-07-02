@@ -15,7 +15,9 @@ describe('sentence-splitter — splitSentences (POC-0003 hardening)', () => {
   });
 
   it('splits multiple real sentences', () => {
-    const { sentences, remainder } = splitSentences('Box this lap. Fuel is tight. Keep it clean now');
+    const { sentences, remainder } = splitSentences(
+      'Box this lap. Fuel is tight. Keep it clean now',
+    );
     expect(sentences).to.deep.equal(['Box this lap.', 'Fuel is tight.']);
     expect(remainder).to.equal('Keep it clean now');
   });

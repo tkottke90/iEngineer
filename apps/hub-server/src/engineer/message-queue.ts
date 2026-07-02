@@ -1,4 +1,9 @@
-import type { QueuedAlert, QueuedTier3, QueuedMessage, RadioBlackoutZone } from '@iracing-engineer/types';
+import type {
+  QueuedAlert,
+  QueuedTier3,
+  QueuedMessage,
+  RadioBlackoutZone,
+} from '@iracing-engineer/types';
 import { logger } from '../logger.js';
 
 // Tier 2 alert is dropped if it cannot be delivered within this window because

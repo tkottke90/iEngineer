@@ -26,7 +26,11 @@ pub fn spawn_ptt_pipeline(
 ) {
     let input_device = {
         let state = app_handle.state::<AppState>();
-        state.config.lock().ok().and_then(|c| c.audio_input_device.clone())
+        state
+            .config
+            .lock()
+            .ok()
+            .and_then(|c| c.audio_input_device.clone())
     };
 
     // Capture pushes each released clip to the STT worker over a std channel, which

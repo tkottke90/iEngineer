@@ -211,8 +211,8 @@ export function Setup() {
       <section>
         <h2>Engineer Personality</h2>
         <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: 0 }}>
-          Five traits, each 1–5. Energy at 1 (Tranquil) keeps the engineer quiet — it
-          suppresses Tier 2 alerts and Tier 3 commentary.
+          Five traits, each 1–5. Energy at 1 (Tranquil) keeps the engineer quiet — it suppresses
+          Tier 2 alerts and Tier 3 commentary.
         </p>
         <PersonalityPanel value={personality} onChange={setPersonality} />
         <button onClick={handleSave}>Save</button>

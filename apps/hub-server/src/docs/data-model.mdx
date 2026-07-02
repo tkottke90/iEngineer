@@ -107,3 +107,40 @@ A field not in the session-rate set is published on the live stream (default).
 if field_name IN SESSION_RATE_FIELDS → iracing:telemetry:session (15 Hz)
 else                                  → iracing:telemetry:live    (60 Hz)
 ```
+
+---
+
+## M5 — Racing Engineer: LLM + Push-to-Talk
+
+The Racing Engineer adds an LLM reasoning tier (Tier 3) on top of the M4 rule
+engine. Delivery uses **Model A**: one `PriorityMessageQueue` drains all tiers, so
+a Tier 1 alert preempts still-pending Tier 3 sentences (T1 > T2 > T3, FR-015).
+
+### Channels
+
+| Channel | Direction | Payload | Purpose |
+|---|---|---|---|
+| `engineer:query` | Tauri → hub (pub/sub) | `EngineerQuery` | transcribed push-to-talk question |
+| `voice:audio` | hub → Tauri (pub/sub) | `AudioClipRef` | one per synthesized sentence (Tier 1/2 carry `eventType`, Tier 3 carry `tier3Type`) |
+| `hub:config:personality` | Tauri → hub (KV) | 5-trait JSON | OCEAN personality, read by the engineer |
+
+### Tier 3 pipeline (`tier3-synthesizer.ts`)
+
+`trigger → suppression (Energy=1) → deference check → context assembly (token
+budget) → versioned prompt (system-base + personality + per-type) → audit
+pre-write → streamed LLM (tool loop + timeout) → sentence split → enqueue Tier 3
+→ dispatcher TTS + publish → audit finalize`. LLM unreachable ⇒ skip + log; a
+driver-query gets a canned line; Tier 1/2 are never affected.
+
+### `engineer_events` (Postgres audit — FR-022, SC-008)
+
+One row per LLM interaction, written **before** acting on the response. Columns:
+`id, session_id, tier3_type, prompt, response, tools_called, latency_ms, outcome,
+created_at`. See `migrations/001_engineer_events.sql` and
+`contracts/engineer-events-audit.md`.
+
+### STT
+
+Push-to-talk transcription is **in-client** (`whisper-rs` base.en, POC-0002),
+published to `engineer:query`. The Whisper model (`ggml-base.en.bin`) is provided
+via `apps/tauri-client/src-tauri/models/download.sh` or `WHISPER_MODEL_PATH`.

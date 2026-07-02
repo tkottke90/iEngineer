@@ -1,5 +1,9 @@
 import { createConsumerConnection, createCommandConnection } from './redis/client.js';
-import { setupConsumerGroups, reclaimPendingMessages, streamConsumerLoop } from './redis/consumer.js';
+import {
+  setupConsumerGroups,
+  reclaimPendingMessages,
+  streamConsumerLoop,
+} from './redis/consumer.js';
 import { SessionEventProcessor } from './pipeline/session-event-processor.js';
 import { SessionProcessor } from './pipeline/session-processor.js';
 import { LiveProcessor } from './pipeline/live-processor.js';
@@ -68,7 +72,10 @@ export async function startPipeline(): Promise<void> {
   // but never blocks the M4 rule path (Constitution I).
   runMigrations().then(
     (applied) => logger.info('[hub] engineer_events migrations applied', { applied }),
-    (err) => logger.error('[hub] engineer_events migrations failed — Tier 3 audit degraded', { error: String(err) }),
+    (err) =>
+      logger.error('[hub] engineer_events migrations failed — Tier 3 audit degraded', {
+        error: String(err),
+      }),
   );
   const tools = createTools({
     getFuelModel: () => {
@@ -117,7 +124,7 @@ export async function startPipeline(): Promise<void> {
     (payload) => sessionProcessor.onSessionTelemetry(payload),
     (payload) => sessionEventProcessor.onSessionEvent(payload),
     _abortSignal,
-  ).catch(err => {
+  ).catch((err) => {
     logger.error('[hub] Consumer loop fatal error', { error: String(err) });
   });
 
@@ -125,7 +132,10 @@ export async function startPipeline(): Promise<void> {
   process.on('SIGINT', () => shutdown(consumerConn, commandConn));
 }
 
-async function shutdown(consumerConn: InstanceType<typeof import('ioredis').default>, commandConn: InstanceType<typeof import('ioredis').default>): Promise<void> {
+async function shutdown(
+  consumerConn: InstanceType<typeof import('ioredis').default>,
+  commandConn: InstanceType<typeof import('ioredis').default>,
+): Promise<void> {
   logger.info('[hub] Graceful shutdown initiated');
   if (_abortSignal) _abortSignal.aborted = true;
   if (_liveProcessor) _liveProcessor.stop();

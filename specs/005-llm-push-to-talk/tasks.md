@@ -195,10 +195,10 @@
 
 - [ ] T065 [P] Run all quickstart.md scenarios (1–8) end-to-end against local infra.
 - [ ] T066 Deploy test (SC-010): live/simulated stint — ask "Do we pit this lap?" and hear a briefing < 5 s; override a pit recommendation and confirm it is not repeated.
-- [ ] T067 [P] Update hub docs (`apps/hub-server/src/docs/data-model.mdx` and/or a new contracts page) to cover `engineer_events`, the Tier 3 pipeline, and `engineer:query`; note whisper model provisioning.
-- [ ] T068 Workspace gates (CI): `npm test` (hub — unit + integration, **excludes evals**) + `cargo test` (tauri) + `npm run build && npm run typecheck` + ESLint/Prettier + rustfmt/clippy — all green.
+- [X] T067 [P] Update hub docs (`apps/hub-server/src/docs/data-model.mdx` and/or a new contracts page) to cover `engineer_events`, the Tier 3 pipeline, and `engineer:query`; note whisper model provisioning.
+- [X] T068 Workspace gates (CI): `npm test` (hub — unit + integration, **excludes evals**) + `cargo test` (tauri) + `npm run build && npm run typecheck` + ESLint/Prettier + rustfmt/clippy — all green.
 - [ ] T069 [P] Run `npm run eval` (separate from CI) against Lemonade `user.Ornith-1.0-35B-GGUF` and confirm all agent evals pass (tool-calling T040, personality T054); add any missing override-framing eval.
-- [ ] T070 Governance: verify implementation aligns with constitution **v1.2.0** — the Tier 3 ≤5 s latency budget (Principle I) and in-client `whisper-rs` STT (Technology Constraints) were ratified 2026-07-02; confirm no further drift before merge.
+- [X] T070 Governance: verify implementation aligns with constitution **v1.2.0** — the Tier 3 ≤5 s latency budget (Principle I) and in-client `whisper-rs` STT (Technology Constraints) were ratified 2026-07-02; confirm no further drift before merge.
 
 ---
 

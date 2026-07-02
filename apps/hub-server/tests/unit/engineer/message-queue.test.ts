@@ -1,11 +1,23 @@
-import { describe, it, beforeEach, afterEach } from 'mocha';
+import { describe, it } from 'mocha';
 import { expect } from 'chai';
-import type { QueuedAlert, AlertTier, AlertEventType, RadioBlackoutZone } from '@iracing-engineer/types';
+import type {
+  QueuedAlert,
+  AlertTier,
+  AlertEventType,
+  RadioBlackoutZone,
+} from '@iracing-engineer/types';
 import { PriorityMessageQueue } from '../../../src/engineer/message-queue.js';
 import { logger } from '../../../src/logger.js';
 
 function alert(tier: AlertTier, eventType: AlertEventType, lapNumber = 1): QueuedAlert {
-  return { tier, eventType, messageText: `${eventType}`, lapNumber, sessionTime: 0, dedupKey: eventType };
+  return {
+    tier,
+    eventType,
+    messageText: `${eventType}`,
+    lapNumber,
+    sessionTime: 0,
+    dedupKey: eventType,
+  };
 }
 
 const ZONE: RadioBlackoutZone[] = [{ lapDistPctStart: 0.4, lapDistPctEnd: 0.6 }];

@@ -90,7 +90,12 @@ export class RacingEngineerService {
       logger.info('[engineer] PTT query ignored — empty transcript', { queryId: q.queryId });
       return;
     }
-    this.enqueueSynth({ type: 'driver-query', triggerSource: q.queryId, userText: q.transcript, isDriverQuery: true });
+    this.enqueueSynth({
+      type: 'driver-query',
+      triggerSource: q.queryId,
+      userText: q.transcript,
+      isDriverQuery: true,
+    });
   }
 
   // Enqueue a Tier 3 synthesis request. PTT queries are bounded by queueDepthCap
@@ -140,7 +145,8 @@ export class RacingEngineerService {
         this.enqueueSynth({
           type: 'pit-entry',
           triggerSource: 'hero:pit_entry',
-          userText: 'Give a brief pit-lane entry briefing — what to expect this stop given the current strategy.',
+          userText:
+            'Give a brief pit-lane entry briefing — what to expect this stop given the current strategy.',
           isDriverQuery: false,
         });
         break;
@@ -148,7 +154,8 @@ export class RacingEngineerService {
         this.enqueueSynth({
           type: 'safety-car',
           triggerSource: 'session:safety_car_deployed',
-          userText: 'A safety car has been deployed. Brief the driver on what it means for their position and strategy.',
+          userText:
+            'A safety car has been deployed. Brief the driver on what it means for their position and strategy.',
           isDriverQuery: false,
         });
         break;
@@ -211,12 +218,19 @@ export class RacingEngineerService {
     if (!alert) return;
 
     if (!this.dedup.shouldFire(alert.eventType, alert.lapNumber)) {
-      logger.info('[engineer] Alert deduplicated', { alertType: alert.eventType, lapNumber: alert.lapNumber });
+      logger.info('[engineer] Alert deduplicated', {
+        alertType: alert.eventType,
+        lapNumber: alert.lapNumber,
+      });
       return;
     }
     this.dedup.recordFired(alert.eventType, alert.lapNumber);
     this.queue.enqueue(alert);
-    logger.info('[engineer] Alert enqueued', { alertType: alert.eventType, tier: alert.tier, lapNumber: alert.lapNumber });
+    logger.info('[engineer] Alert enqueued', {
+      alertType: alert.eventType,
+      tier: alert.tier,
+      lapNumber: alert.lapNumber,
+    });
 
     // The pit-window-open alert IS the pit recommendation (US4) — log it so the
     // override tracker can resolve it as followed/overridden.
@@ -235,9 +249,12 @@ export class RacingEngineerService {
     const { personality, usedFallback } = parsePersonality(raw, this.config.personality);
     if (usedFallback && !this._personalityWarnEmitted) {
       this._personalityWarnEmitted = true;
-      logger.warn('[engineer] Personality key absent, malformed, or out of range — using config defaults', {
-        reason: 'personality-key-fallback',
-      });
+      logger.warn(
+        '[engineer] Personality key absent, malformed, or out of range — using config defaults',
+        {
+          reason: 'personality-key-fallback',
+        },
+      );
     }
     return personality;
   }
@@ -255,7 +272,10 @@ export class RacingEngineerService {
       // Energy=1 (Tranquil) suppresses Tier 2 alerts at dequeue time (FR-017).
       // Tier 3 commentary suppression is enforced earlier, in the synthesizer.
       if (msg.tier !== 3 && shouldSuppressAlert(msg, personality)) {
-        logger.info('[engineer] Alert suppressed', { alertType: msg.eventType, reason: 'Energy:1' });
+        logger.info('[engineer] Alert suppressed', {
+          alertType: msg.eventType,
+          reason: 'Energy:1',
+        });
         return;
       }
 

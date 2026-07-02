@@ -43,14 +43,33 @@ const CONFIG = {
   audioIdleCleanupIntervalMs: 60_000,
   queueDepthCap: 3,
   personality: { openness: 3, warmth: 3, energy: 3, conscientiousness: 3, assertiveness: 3 },
-  llm: { baseUrl: 'x', model: 'm', provider: 'openai-compatible', timeoutMs: 1000, maxResponseTokens: 300, tokenBudget: 6000 },
+  llm: {
+    baseUrl: 'x',
+    model: 'm',
+    provider: 'openai-compatible',
+    timeoutMs: 1000,
+    maxResponseTokens: 300,
+    tokenBudget: 6000,
+  },
 } as unknown as EngineerConfig;
 
 function raceState(): RaceState {
   return {
     session: { sessionId: 's1', sessionPhase: 'Race', lapsRemaining: 20, flags: 0 },
     field: {},
-    hero: { position: 4, lapDistPct: 0.5, fuelLevel: 18, tireCompound: 'soft', lastLapTime: 92, onPitRoad: false, fuelUsePerHour: 40, lapDeltaToBest: 0.3, gapToLeader: 12, waterTemp: 88, oilTemp: 95 },
+    hero: {
+      position: 4,
+      lapDistPct: 0.5,
+      fuelLevel: 18,
+      tireCompound: 'soft',
+      lastLapTime: 92,
+      onPitRoad: false,
+      fuelUsePerHour: 40,
+      lapDeltaToBest: 0.3,
+      gapToLeader: 12,
+      waterTemp: 88,
+      oilTemp: 95,
+    },
     signals: { pitWindowOpen: true, safeWindowOpen: true },
   } as unknown as RaceState;
 }
@@ -80,7 +99,14 @@ describe('graceful degradation — LLM unreachable (US7)', () => {
       finalizeEvent: async () => {},
       runLlm: async () => ({ status: 'unreachable', error: 'ECONNREFUSED' }) as LlmResult,
     };
-    const synth = new Tier3Synthesizer(raceState, new SessionMemoryStore('s1'), createTools({ getFuelModel: () => null, getTireModel: () => null }), queue, CONFIG, deps);
+    const synth = new Tier3Synthesizer(
+      raceState,
+      new SessionMemoryStore('s1'),
+      createTools({ getFuelModel: () => null, getTireModel: () => null }),
+      queue,
+      CONFIG,
+      deps,
+    );
     const engineer = new RacingEngineerService(
       conn as unknown as Redis,
       new AudioStore(CONFIG.audioIdleCleanupIntervalMs),
@@ -96,12 +122,24 @@ describe('graceful degradation — LLM unreachable (US7)', () => {
     await engineer.start();
 
     // Rule path: a Tier 1 alert enqueued directly must still be dispatched (SC-003).
-    queue.enqueue({ tier: 1, eventType: 'hero:fuel_critical', messageText: 'Fuel critical', lapNumber: 1, sessionTime: 0, dedupKey: 'hero:fuel_critical' });
+    queue.enqueue({
+      tier: 1,
+      eventType: 'hero:fuel_critical',
+      messageText: 'Fuel critical',
+      lapNumber: 1,
+      sessionTime: 0,
+      dedupKey: 'hero:fuel_critical',
+    });
     // PTT query during the outage.
-    conn.deliver('engineer:query', JSON.stringify({ queryId: 'q1', transcript: 'do we pit?', sessionId: 's1', capturedAtMs: 1 }));
+    conn.deliver(
+      'engineer:query',
+      JSON.stringify({ queryId: 'q1', transcript: 'do we pit?', sessionId: 's1', capturedAtMs: 1 }),
+    );
 
     await waitUntil(() => conn.published.filter((p) => p.channel === 'voice:audio').length >= 2);
-    const refs = conn.published.filter((p) => p.channel === 'voice:audio').map((p) => JSON.parse(p.message) as AudioClipRef);
+    const refs = conn.published
+      .filter((p) => p.channel === 'voice:audio')
+      .map((p) => JSON.parse(p.message) as AudioClipRef);
     // Tier 1 fuel alert delivered (rule path unaffected)
     expect(refs.some((r) => r.tier === 1 && r.eventType === 'hero:fuel_critical')).to.be.true;
     // Canned Tier 3 line for the driver-query
@@ -122,17 +160,42 @@ describe('graceful degradation — LLM unreachable (US7)', () => {
         return { status: 'ok', text: 'Box now.', toolsCalled: [], latencyMs: 5 };
       },
     };
-    const synth = new Tier3Synthesizer(raceState, new SessionMemoryStore('s1'), createTools({ getFuelModel: () => null, getTireModel: () => null }), queue, CONFIG, deps);
-    const engineer = new RacingEngineerService(conn as unknown as Redis, new AudioStore(CONFIG.audioIdleCleanupIntervalMs), queue, new DedupTracker(), raceState, [], CONFIG, synth, async () => Buffer.from('mp3'));
+    const synth = new Tier3Synthesizer(
+      raceState,
+      new SessionMemoryStore('s1'),
+      createTools({ getFuelModel: () => null, getTireModel: () => null }),
+      queue,
+      CONFIG,
+      deps,
+    );
+    const engineer = new RacingEngineerService(
+      conn as unknown as Redis,
+      new AudioStore(CONFIG.audioIdleCleanupIntervalMs),
+      queue,
+      new DedupTracker(),
+      raceState,
+      [],
+      CONFIG,
+      synth,
+      async () => Buffer.from('mp3'),
+    );
     active = engineer;
     await engineer.start();
 
-    conn.deliver('engineer:query', JSON.stringify({ queryId: 'q1', transcript: 'do we pit?', sessionId: 's1', capturedAtMs: 1 }));
+    conn.deliver(
+      'engineer:query',
+      JSON.stringify({ queryId: 'q1', transcript: 'do we pit?', sessionId: 's1', capturedAtMs: 1 }),
+    );
     await waitUntil(() => conn.published.length >= 1); // canned line while down
     up = true; // endpoint recovers
-    conn.deliver('engineer:query', JSON.stringify({ queryId: 'q2', transcript: 'and now?', sessionId: 's1', capturedAtMs: 2 }));
+    conn.deliver(
+      'engineer:query',
+      JSON.stringify({ queryId: 'q2', transcript: 'and now?', sessionId: 's1', capturedAtMs: 2 }),
+    );
     await waitUntil(() => conn.published.filter((p) => p.channel === 'voice:audio').length >= 2);
-    const refs = conn.published.filter((p) => p.channel === 'voice:audio').map((p) => JSON.parse(p.message) as AudioClipRef);
+    const refs = conn.published
+      .filter((p) => p.channel === 'voice:audio')
+      .map((p) => JSON.parse(p.message) as AudioClipRef);
     expect(refs.length).to.be.greaterThan(1); // synthesis resumed without a restart
   });
 });

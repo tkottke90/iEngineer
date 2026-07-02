@@ -16,12 +16,36 @@ interface PersonalityPanelProps {
 
 type TraitKey = keyof PersonalityValue;
 
-const TRAITS: Array<{ key: TraitKey; label: string; words: [string, string, string, string, string] }> = [
-  { key: 'openness', label: 'Openness', words: ['Conventional', 'Cautious', 'Balanced', 'Inquisitive', 'Visionary'] },
-  { key: 'warmth', label: 'Warmth', words: ['Detached', 'Reserved', 'Cordial', 'Empathetic', 'Nurturing'] },
-  { key: 'energy', label: 'Energy', words: ['Tranquil', 'Measured', 'Steady', 'Animated', 'Exuberant'] },
-  { key: 'conscientiousness', label: 'Conscientiousness', words: ['Spontaneous', 'Flexible', 'Organized', 'Methodical', 'Meticulous'] },
-  { key: 'assertiveness', label: 'Assertiveness', words: ['Deferential', 'Accommodating', 'Diplomatic', 'Confident', 'Commanding'] },
+const TRAITS: Array<{
+  key: TraitKey;
+  label: string;
+  words: [string, string, string, string, string];
+}> = [
+  {
+    key: 'openness',
+    label: 'Openness',
+    words: ['Conventional', 'Cautious', 'Balanced', 'Inquisitive', 'Visionary'],
+  },
+  {
+    key: 'warmth',
+    label: 'Warmth',
+    words: ['Detached', 'Reserved', 'Cordial', 'Empathetic', 'Nurturing'],
+  },
+  {
+    key: 'energy',
+    label: 'Energy',
+    words: ['Tranquil', 'Measured', 'Steady', 'Animated', 'Exuberant'],
+  },
+  {
+    key: 'conscientiousness',
+    label: 'Conscientiousness',
+    words: ['Spontaneous', 'Flexible', 'Organized', 'Methodical', 'Meticulous'],
+  },
+  {
+    key: 'assertiveness',
+    label: 'Assertiveness',
+    words: ['Deferential', 'Accommodating', 'Diplomatic', 'Confident', 'Commanding'],
+  },
 ];
 
 /**
@@ -55,7 +79,14 @@ export function PersonalityPanel({ value, onChange }: PersonalityPanelProps) {
               onInput={(e) => set(t.key, Number((e.currentTarget as HTMLInputElement).value))}
               style={{ width: '100%' }}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#9ca3af' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: '0.75rem',
+                color: '#9ca3af',
+              }}
+            >
               <span>{t.words[0]}</span>
               <span>{t.words[4]}</span>
             </div>

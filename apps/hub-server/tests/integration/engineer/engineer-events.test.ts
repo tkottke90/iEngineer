@@ -27,7 +27,11 @@ describe('engineer-events — Postgres round-trip', function () {
 
   it('records a provisional row then finalizes it (SC-008)', async () => {
     const sessionId = `it-${Date.now()}`;
-    const id = await recordEvent({ sessionId, tier3Type: 'driver-query', prompt: 'do we pit this lap?' });
+    const id = await recordEvent({
+      sessionId,
+      tier3Type: 'driver-query',
+      prompt: 'do we pit this lap?',
+    });
 
     const provisional = await getPool().query('SELECT * FROM engineer_events WHERE id = $1', [id]);
     expect(provisional.rowCount).to.equal(1);

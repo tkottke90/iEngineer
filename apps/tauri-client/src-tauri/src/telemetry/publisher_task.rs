@@ -208,11 +208,15 @@ pub async fn publish_snapshot(
                 ts: unix_ms(),
             };
             let conn_json = serde_json::to_string(&conn_payload)?;
-            publisher.publish_event(CONN_EVENT_STREAM, &conn_json).await?;
+            publisher
+                .publish_event(CONN_EVENT_STREAM, &conn_json)
+                .await?;
 
             let sess_payload = session_event_payload(&None);
             let sess_json = serde_json::to_string(&sess_payload)?;
-            publisher.publish_event(SESSION_EVENT_STREAM, &sess_json).await?;
+            publisher
+                .publish_event(SESSION_EVENT_STREAM, &sess_json)
+                .await?;
         }
 
         // Paths (b) and (c): Redis (re)connected
@@ -225,7 +229,9 @@ pub async fn publish_snapshot(
                         ts: unix_ms(),
                     };
                     let conn_json = serde_json::to_string(&conn_payload)?;
-                    publisher.publish_event(CONN_EVENT_STREAM, &conn_json).await?;
+                    publisher
+                        .publish_event(CONN_EVENT_STREAM, &conn_json)
+                        .await?;
                 }
 
                 // Path (c): Redis reconnected, iRacing connected — both events
@@ -235,11 +241,15 @@ pub async fn publish_snapshot(
                         ts: unix_ms(),
                     };
                     let conn_json = serde_json::to_string(&conn_payload)?;
-                    publisher.publish_event(CONN_EVENT_STREAM, &conn_json).await?;
+                    publisher
+                        .publish_event(CONN_EVENT_STREAM, &conn_json)
+                        .await?;
 
                     let sess_payload = session_event_payload(current_session);
                     let sess_json = serde_json::to_string(&sess_payload)?;
-                    publisher.publish_event(SESSION_EVENT_STREAM, &sess_json).await?;
+                    publisher
+                        .publish_event(SESSION_EVENT_STREAM, &sess_json)
+                        .await?;
                 }
             }
         }
@@ -283,8 +293,13 @@ pub async fn spawn_publisher_task(handle: AppHandle) {
             let state = handle.state::<AppState>();
             let current_status = state.iracing_status.borrow().clone();
             let current_session = state.current_session.lock().unwrap().clone();
-            if let Err(e) =
-                publish_snapshot(&mut publisher, &current_status, &current_session, SnapshotReason::RedisConnected).await
+            if let Err(e) = publish_snapshot(
+                &mut publisher,
+                &current_status,
+                &current_session,
+                SnapshotReason::RedisConnected,
+            )
+            .await
             {
                 warn!("redis publish_snapshot on connect failed: {}", e);
                 continue;
@@ -415,7 +430,9 @@ mod tests {
     const REDIS_URL: &str = "redis://localhost:6379";
 
     async fn test_publisher() -> (RedisPublisher, redis::aio::MultiplexedConnection) {
-        let pub_ = RedisPublisher::new(REDIS_URL).await.expect("Redis must be running for integration tests");
+        let pub_ = RedisPublisher::new(REDIS_URL)
+            .await
+            .expect("Redis must be running for integration tests");
         let client = redis::Client::open(REDIS_URL).unwrap();
         let conn = client.get_multiplexed_async_connection().await.unwrap();
         (pub_, conn)
@@ -427,7 +444,10 @@ mod tests {
         }
     }
 
-    async fn xrange_payloads(conn: &mut redis::aio::MultiplexedConnection, stream: &str) -> Vec<serde_json::Value> {
+    async fn xrange_payloads(
+        conn: &mut redis::aio::MultiplexedConnection,
+        stream: &str,
+    ) -> Vec<serde_json::Value> {
         let reply: redis::streams::StreamRangeReply = redis::cmd("XRANGE")
             .arg(stream)
             .arg("-")
@@ -453,7 +473,10 @@ mod tests {
         let (mut pub_, mut conn) = test_publisher().await;
         del(&mut conn, &[CONN_EVENT_STREAM]).await;
 
-        let payload = ConnectionEventPayload { status: "Connected", ts: 1719619200000 };
+        let payload = ConnectionEventPayload {
+            status: "Connected",
+            ts: 1719619200000,
+        };
         let json = serde_json::to_string(&payload).unwrap();
         pub_.publish_event(CONN_EVENT_STREAM, &json).await.unwrap();
 
@@ -470,17 +493,30 @@ mod tests {
         let (mut pub_, mut conn) = test_publisher().await;
         del(&mut conn, &[CONN_EVENT_STREAM, SESSION_EVENT_STREAM]).await;
 
-        publish_snapshot(&mut pub_, &ConnectionStatus::Disconnected, &None, SnapshotReason::IracingDisconnected)
-            .await
-            .unwrap();
+        publish_snapshot(
+            &mut pub_,
+            &ConnectionStatus::Disconnected,
+            &None,
+            SnapshotReason::IracingDisconnected,
+        )
+        .await
+        .unwrap();
 
         let conn_entries = xrange_payloads(&mut conn, CONN_EVENT_STREAM).await;
         let sess_entries = xrange_payloads(&mut conn, SESSION_EVENT_STREAM).await;
 
-        assert_eq!(conn_entries.len(), 1, "path (a) must emit exactly one ConnectionEvent");
+        assert_eq!(
+            conn_entries.len(),
+            1,
+            "path (a) must emit exactly one ConnectionEvent"
+        );
         assert_eq!(conn_entries[0]["status"], "Disconnected");
 
-        assert_eq!(sess_entries.len(), 1, "path (a) must emit exactly one SessionEvent");
+        assert_eq!(
+            sess_entries.len(),
+            1,
+            "path (a) must emit exactly one SessionEvent"
+        );
         assert_eq!(sess_entries[0]["active"], false);
     }
 
@@ -491,9 +527,14 @@ mod tests {
         let (mut pub_, mut conn) = test_publisher().await;
         del(&mut conn, &[CONN_EVENT_STREAM, SESSION_EVENT_STREAM]).await;
 
-        publish_snapshot(&mut pub_, &ConnectionStatus::Connected, &None, SnapshotReason::RedisConnected)
-            .await
-            .unwrap();
+        publish_snapshot(
+            &mut pub_,
+            &ConnectionStatus::Connected,
+            &None,
+            SnapshotReason::RedisConnected,
+        )
+        .await
+        .unwrap();
 
         let conn_entries = xrange_payloads(&mut conn, CONN_EVENT_STREAM).await;
         let sess_entries = xrange_payloads(&mut conn, SESSION_EVENT_STREAM).await;
@@ -519,9 +560,14 @@ mod tests {
             player_car_idx: 3,
         };
 
-        publish_snapshot(&mut pub_, &ConnectionStatus::Connected, &Some(session), SnapshotReason::RedisConnected)
-            .await
-            .unwrap();
+        publish_snapshot(
+            &mut pub_,
+            &ConnectionStatus::Connected,
+            &Some(session),
+            SnapshotReason::RedisConnected,
+        )
+        .await
+        .unwrap();
 
         let conn_entries = xrange_payloads(&mut conn, CONN_EVENT_STREAM).await;
         let sess_entries = xrange_payloads(&mut conn, SESSION_EVENT_STREAM).await;
@@ -575,15 +621,24 @@ mod tests {
         let mut flag = false;
 
         // First tick with no session → should log (returns true), flag → true
-        assert!(update_suppression(&mut flag, false), "first suppression tick must return true (triggers log)");
+        assert!(
+            update_suppression(&mut flag, false),
+            "first suppression tick must return true (triggers log)"
+        );
         assert!(flag, "flag must be true after first suppression");
 
         // Second tick with no session → should NOT log (returns false), flag stays true
-        assert!(!update_suppression(&mut flag, false), "subsequent suppression tick must return false");
+        assert!(
+            !update_suppression(&mut flag, false),
+            "subsequent suppression tick must return false"
+        );
         assert!(flag, "flag must remain true");
 
         // Session becomes active → flag resets, returns false
-        assert!(!update_suppression(&mut flag, true), "active session tick must return false");
+        assert!(
+            !update_suppression(&mut flag, true),
+            "active session tick must return false"
+        );
         assert!(!flag, "flag must reset to false when session is active");
     }
 
@@ -619,7 +674,8 @@ mod tests {
         assert_eq!(reply.ids.len(), 1);
         let entry = &reply.ids[0];
         let fuel: String = redis::from_redis_value(entry.map.get("FuelLevel").unwrap()).unwrap();
-        let positions: String = redis::from_redis_value(entry.map.get("CarIdxPosition").unwrap()).unwrap();
+        let positions: String =
+            redis::from_redis_value(entry.map.get("CarIdxPosition").unwrap()).unwrap();
         assert_eq!(fuel, "28.5");
         assert_eq!(positions, "[1,3,2,4]");
     }
@@ -632,15 +688,28 @@ mod tests {
         del(&mut conn, &[CONN_EVENT_STREAM, SESSION_EVENT_STREAM]).await;
 
         // Path (b): Redis reconnected while iRacing Disconnected → ConnectionEvent only
-        publish_snapshot(&mut pub_, &ConnectionStatus::Disconnected, &None, SnapshotReason::RedisConnected)
-            .await
-            .unwrap();
+        publish_snapshot(
+            &mut pub_,
+            &ConnectionStatus::Disconnected,
+            &None,
+            SnapshotReason::RedisConnected,
+        )
+        .await
+        .unwrap();
 
         let conn_entries = xrange_payloads(&mut conn, CONN_EVENT_STREAM).await;
         let sess_entries = xrange_payloads(&mut conn, SESSION_EVENT_STREAM).await;
 
-        assert_eq!(conn_entries.len(), 1, "path (b) must emit exactly one ConnectionEvent");
+        assert_eq!(
+            conn_entries.len(),
+            1,
+            "path (b) must emit exactly one ConnectionEvent"
+        );
         assert_eq!(conn_entries[0]["status"], "Disconnected");
-        assert_eq!(sess_entries.len(), 0, "path (b) must NOT emit a SessionEvent");
+        assert_eq!(
+            sess_entries.len(),
+            0,
+            "path (b) must NOT emit a SessionEvent"
+        );
     }
 }

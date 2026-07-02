@@ -45,20 +45,46 @@ const CONFIG = {
   postSectorMinLapGap: 2,
   personality: { openness: 3, warmth: 3, energy: 3, conscientiousness: 3, assertiveness: 3 },
   fuelCriticalLapsRemaining: 1.0,
-  llm: { baseUrl: 'x', model: 'm', provider: 'openai-compatible', timeoutMs: 1000, maxResponseTokens: 300, tokenBudget: 6000 },
+  llm: {
+    baseUrl: 'x',
+    model: 'm',
+    provider: 'openai-compatible',
+    timeoutMs: 1000,
+    maxResponseTokens: 300,
+    tokenBudget: 6000,
+  },
 } as unknown as EngineerConfig;
 
 function raceState(): RaceState {
   return {
     session: { sessionId: 's1', sessionPhase: 'Race', lapsRemaining: 20, flags: 0 },
     field: {},
-    hero: { position: 4, lapDistPct: 0.5, fuelLevel: 18, tireCompound: 'soft', lastLapTime: 92, onPitRoad: false, fuelUsePerHour: 40, lapDeltaToBest: 0.3, gapToLeader: 12, waterTemp: 88, oilTemp: 95 },
+    hero: {
+      position: 4,
+      lapDistPct: 0.5,
+      fuelLevel: 18,
+      tireCompound: 'soft',
+      lastLapTime: 92,
+      onPitRoad: false,
+      fuelUsePerHour: 40,
+      lapDeltaToBest: 0.3,
+      gapToLeader: 12,
+      waterTemp: 88,
+      oilTemp: 95,
+    },
     signals: { pitWindowOpen: true, safeWindowOpen: true },
   } as unknown as RaceState;
 }
 
 function ev(type: string, extra: Record<string, unknown> = {}): string {
-  return JSON.stringify({ type, sessionId: 's1', sessionTime: 0, lapNumber: 5, payload: {}, ...extra } as RaceEvent);
+  return JSON.stringify({
+    type,
+    sessionId: 's1',
+    sessionTime: 0,
+    lapNumber: 5,
+    payload: {},
+    ...extra,
+  } as RaceEvent);
 }
 
 const okRun: SynthDeps['runLlm'] = async (_c, _m, _t, opts) => {
@@ -75,9 +101,24 @@ function makeEngineer(): { engineer: RacingEngineerService; conn: FakeRedis } {
     createTools({ getFuelModel: () => null, getTireModel: () => null }),
     queue,
     CONFIG,
-    { loadPrompt: (n) => `<!-- ${n} -->\n{energy}`, recordEvent: async () => 'evt', finalizeEvent: async () => {}, runLlm: okRun },
+    {
+      loadPrompt: (n) => `<!-- ${n} -->\n{energy}`,
+      recordEvent: async () => 'evt',
+      finalizeEvent: async () => {},
+      runLlm: okRun,
+    },
   );
-  const engineer = new RacingEngineerService(conn as unknown as Redis, new AudioStore(CONFIG.audioIdleCleanupIntervalMs), queue, new DedupTracker(), raceState, [], CONFIG, synth, async () => Buffer.from('mp3'));
+  const engineer = new RacingEngineerService(
+    conn as unknown as Redis,
+    new AudioStore(CONFIG.audioIdleCleanupIntervalMs),
+    queue,
+    new DedupTracker(),
+    raceState,
+    [],
+    CONFIG,
+    synth,
+    async () => Buffer.from('mp3'),
+  );
   return { engineer, conn };
 }
 
@@ -89,7 +130,9 @@ async function waitUntil(pred: () => boolean, timeoutMs = 1500): Promise<void> {
   }
 }
 function refs(conn: FakeRedis): AudioClipRef[] {
-  return conn.published.filter((p) => p.channel === 'voice:audio').map((p) => JSON.parse(p.message) as AudioClipRef);
+  return conn.published
+    .filter((p) => p.channel === 'voice:audio')
+    .map((p) => JSON.parse(p.message) as AudioClipRef);
 }
 
 let active: RacingEngineerService | null = null;
@@ -115,8 +158,14 @@ describe('proactive Tier 3 briefings (US2)', () => {
     conn.deliver('hub:events', ev('session:safety_car_deployed'));
     await waitUntil(() => refs(conn).some((r) => r.tier === 3 && r.tier3Type === 'safety-car'));
     const all = refs(conn);
-    expect(all.some((r) => r.tier === 1 && r.eventType === 'session:safety_car_deployed'), 'Tier 1 alert').to.be.true;
-    expect(all.some((r) => r.tier === 3 && r.tier3Type === 'safety-car'), 'Tier 3 briefing').to.be.true;
+    expect(
+      all.some((r) => r.tier === 1 && r.eventType === 'session:safety_car_deployed'),
+      'Tier 1 alert',
+    ).to.be.true;
+    expect(
+      all.some((r) => r.tier === 3 && r.tier3Type === 'safety-car'),
+      'Tier 3 briefing',
+    ).to.be.true;
   });
 
   it('post-sector commentary fires only every postSectorMinLapGap laps', async () => {
@@ -131,7 +180,13 @@ describe('proactive Tier 3 briefings (US2)', () => {
 
   it('Energy=1 suppresses post-sector commentary', async () => {
     const { engineer, conn } = makeEngineer();
-    conn.personalityRaw = JSON.stringify({ openness: 3, warmth: 3, energy: 1, conscientiousness: 3, assertiveness: 3 });
+    conn.personalityRaw = JSON.stringify({
+      openness: 3,
+      warmth: 3,
+      energy: 1,
+      conscientiousness: 3,
+      assertiveness: 3,
+    });
     active = engineer;
     await engineer.start();
     conn.deliver('hub:events', ev('hero:lap_complete'));

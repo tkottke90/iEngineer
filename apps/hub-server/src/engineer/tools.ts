@@ -26,7 +26,10 @@ export interface OpenAiToolSchema {
 }
 
 function schema(name: string, description: string): OpenAiToolSchema {
-  return { type: 'function', function: { name, description, parameters: { type: 'object', properties: {}, required: [] } } };
+  return {
+    type: 'function',
+    function: { name, description, parameters: { type: 'object', properties: {}, required: [] } },
+  };
 }
 
 export function getFuelStatus(ctx: ToolContext): LlmToolResult {

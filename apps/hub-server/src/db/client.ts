@@ -39,7 +39,10 @@ export async function closePool(): Promise<void> {
  * as a belt-and-suspenders guard. Returns the filenames applied this call.
  * `pool` and `dir` are overridable for tests.
  */
-export async function runMigrations(pool: Pool = getPool(), dir: string = MIGRATIONS_DIR): Promise<string[]> {
+export async function runMigrations(
+  pool: Pool = getPool(),
+  dir: string = MIGRATIONS_DIR,
+): Promise<string[]> {
   await pool.query(
     'CREATE TABLE IF NOT EXISTS _migrations (filename TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())',
   );

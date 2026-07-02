@@ -13,7 +13,9 @@ impl WhisperStt {
     /// Load the ggml base.en model. Errors if the model file is missing so the
     /// caller can disable STT gracefully rather than crashing.
     pub fn load(model_path: &Path) -> Result<Self> {
-        let path = model_path.to_str().context("model path is not valid UTF-8")?;
+        let path = model_path
+            .to_str()
+            .context("model path is not valid UTF-8")?;
         let ctx = WhisperContext::new_with_params(path, WhisperContextParameters::default())
             .context("failed to load whisper model")?;
         Ok(Self { ctx })
@@ -24,7 +26,10 @@ impl WhisperStt {
     pub fn transcribe(&self, samples: &[f32], sample_rate: u32) -> Result<String> {
         let audio = resample_linear(samples, sample_rate, WHISPER_SAMPLE_RATE);
 
-        let mut state = self.ctx.create_state().context("failed to create whisper state")?;
+        let mut state = self
+            .ctx
+            .create_state()
+            .context("failed to create whisper state")?;
         let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
         params.set_language(Some("en"));
         params.set_print_special(false);
@@ -32,12 +37,20 @@ impl WhisperStt {
         params.set_print_realtime(false);
         params.set_print_timestamps(false);
 
-        state.full(params, &audio).context("whisper inference failed")?;
+        state
+            .full(params, &audio)
+            .context("whisper inference failed")?;
 
-        let n = state.full_n_segments().context("failed to get segment count")?;
+        let n = state
+            .full_n_segments()
+            .context("failed to get segment count")?;
         let mut text = String::new();
         for i in 0..n {
-            text.push_str(&state.full_get_segment_text(i).context("failed to get segment text")?);
+            text.push_str(
+                &state
+                    .full_get_segment_text(i)
+                    .context("failed to get segment text")?,
+            );
         }
         Ok(text.trim().to_string())
     }

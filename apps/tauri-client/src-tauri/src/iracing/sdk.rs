@@ -2,10 +2,9 @@ use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 
 use crate::iracing::defines::{
-    IRSDK_MAX_BUFS, IRSDK_MEMMAPFILE, IRSDK_STATUS_CONNECTED, NUM_BUF_OFFSET,
-    NUM_VARS_OFFSET, SESSION_INFO_LEN_OFFSET, SESSION_INFO_OFFSET_OFFSET,
-    SESSION_INFO_UPDATE_OFFSET, STATUS_OFFSET, VAR_BUF_OFFSET, VAR_BUF_STRIDE,
-    VAR_HEADER_OFFSET_OFFSET, VAR_HEADER_SIZE,
+    IRSDK_MAX_BUFS, IRSDK_MEMMAPFILE, IRSDK_STATUS_CONNECTED, NUM_BUF_OFFSET, NUM_VARS_OFFSET,
+    SESSION_INFO_LEN_OFFSET, SESSION_INFO_OFFSET_OFFSET, SESSION_INFO_UPDATE_OFFSET, STATUS_OFFSET,
+    VAR_BUF_OFFSET, VAR_BUF_STRIDE, VAR_HEADER_OFFSET_OFFSET, VAR_HEADER_SIZE,
 };
 use crate::iracing::types::{TelemetryField, TelemetryValue, VarType};
 
@@ -55,8 +54,7 @@ impl IracingSDK {
     pub fn open() -> Result<Self> {
         use windows::core::PCSTR;
         use windows::Win32::System::Memory::{
-            MapViewOfFile, OpenFileMappingA, VirtualQuery,
-            MEMORY_BASIC_INFORMATION, FILE_MAP_READ,
+            MapViewOfFile, OpenFileMappingA, VirtualQuery, FILE_MAP_READ, MEMORY_BASIC_INFORMATION,
         };
 
         let name = format!("{}\0", IRSDK_MEMMAPFILE);
@@ -75,13 +73,15 @@ impl IracingSDK {
 
         // VirtualQuery tells us the actual size of the mapped region.
         let mut mbi: MEMORY_BASIC_INFORMATION = unsafe { std::mem::zeroed() };
-        let queried = unsafe {
-            VirtualQuery(Some(ptr.Value), &mut mbi, std::mem::size_of_val(&mbi))
+        let queried =
+            unsafe { VirtualQuery(Some(ptr.Value), &mut mbi, std::mem::size_of_val(&mbi)) };
+        let map_size = if queried > 0 {
+            mbi.RegionSize
+        } else {
+            2 * 1024 * 1024
         };
-        let map_size = if queried > 0 { mbi.RegionSize } else { 2 * 1024 * 1024 };
 
-        let data =
-            unsafe { std::slice::from_raw_parts(ptr.Value as *const u8, map_size).to_vec() };
+        let data = unsafe { std::slice::from_raw_parts(ptr.Value as *const u8, map_size).to_vec() };
 
         unsafe { windows::Win32::System::Memory::UnmapViewOfFile(ptr).ok() };
         unsafe { windows::Win32::Foundation::CloseHandle(handle).ok() };
@@ -374,17 +374,32 @@ impl IracingSDK {
     pub fn debug_info(&mut self) -> HashMap<String, String> {
         let mut m = HashMap::new();
 
-        m.insert("status".into(), format!("{}", read_i32(&self.data, STATUS_OFFSET).unwrap_or(-1)));
-        m.insert("num_buf".into(), format!("{}", read_i32(&self.data, NUM_BUF_OFFSET).unwrap_or(-1)));
-        m.insert("num_vars".into(), format!("{}", read_i32(&self.data, NUM_VARS_OFFSET).unwrap_or(-1)));
-        m.insert("var_hdr_off".into(), format!("{}", read_i32(&self.data, VAR_HEADER_OFFSET_OFFSET).unwrap_or(-1)));
+        m.insert(
+            "status".into(),
+            format!("{}", read_i32(&self.data, STATUS_OFFSET).unwrap_or(-1)),
+        );
+        m.insert(
+            "num_buf".into(),
+            format!("{}", read_i32(&self.data, NUM_BUF_OFFSET).unwrap_or(-1)),
+        );
+        m.insert(
+            "num_vars".into(),
+            format!("{}", read_i32(&self.data, NUM_VARS_OFFSET).unwrap_or(-1)),
+        );
+        m.insert(
+            "var_hdr_off".into(),
+            format!(
+                "{}",
+                read_i32(&self.data, VAR_HEADER_OFFSET_OFFSET).unwrap_or(-1)
+            ),
+        );
         m.insert("buf_offset".into(), format!("{}", self.buf_offset));
 
         for i in 0..IRSDK_MAX_BUFS {
             let tick = read_i32(&self.data, VAR_BUF_OFFSET + i * VAR_BUF_STRIDE).unwrap_or(-1);
-            let off  = read_i32(&self.data, VAR_BUF_OFFSET + i * VAR_BUF_STRIDE + 4).unwrap_or(-1);
+            let off = read_i32(&self.data, VAR_BUF_OFFSET + i * VAR_BUF_STRIDE + 4).unwrap_or(-1);
             m.insert(format!("vb{i}_tick"), format!("{tick}"));
-            m.insert(format!("vb{i}_off"),  format!("{off}"));
+            m.insert(format!("vb{i}_off"), format!("{off}"));
         }
 
         // Raw hex of bytes 40–112: covers pad1[2] and all 4 irsdk_varBuf entries.
@@ -399,8 +414,18 @@ impl IracingSDK {
         self.populate_var_offsets();
         m.insert("n_vars_found".into(), format!("{}", self.var_offsets.len()));
 
-        for key in &["SessionTime", "SessionTick", "Throttle", "Brake", "Gear", "Speed", "RPM"] {
-            let entry = self.var_offsets.get(*key)
+        for key in &[
+            "SessionTime",
+            "SessionTick",
+            "Throttle",
+            "Brake",
+            "Gear",
+            "Speed",
+            "RPM",
+        ] {
+            let entry = self
+                .var_offsets
+                .get(*key)
                 .map(|&(t, o, c)| format!("type={t} off={o} cnt={c}"))
                 .unwrap_or_else(|| "not_found".into());
             m.insert(format!("var_{key}"), entry);
@@ -490,9 +515,9 @@ mod tests {
         write_i32(&mut data, VAR_HEADER_OFFSET_OFFSET, hdr_base as i32);
 
         // Write one IrsdkVarHeader at hdr_base (144 bytes)
-        write_i32(&mut data, hdr_base, 4);       // var_type = Float
+        write_i32(&mut data, hdr_base, 4); // var_type = Float
         write_i32(&mut data, hdr_base + 4, 1024); // offset = 1024 (relative to buf)
-        write_i32(&mut data, hdr_base + 8, 1);   // count = 1
+        write_i32(&mut data, hdr_base + 8, 1); // count = 1
 
         let name = b"Speed\0";
         data[hdr_base + 16..hdr_base + 16 + name.len()].copy_from_slice(name);

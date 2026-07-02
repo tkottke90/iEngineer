@@ -76,7 +76,8 @@ export class Tier3Synthesizer {
     // 2. Deference (FR-021) — after repeated overrides of a recommendation type,
     //    unsolicited output shifts to information mode; a direct driver-query still
     //    gets a directive answer.
-    const informationMode = type !== 'driver-query' && this.memory.get().deference.deferredTypes.length > 0;
+    const informationMode =
+      type !== 'driver-query' && this.memory.get().deference.deferredTypes.length > 0;
 
     const race = this.getRaceState();
     const sessionId = race.session?.sessionId ?? '';
@@ -104,7 +105,11 @@ export class Tier3Synthesizer {
     // 5. Audit pre-write (fail-closed — skip synthesis if the row cannot be written).
     let eventId: string;
     try {
-      eventId = await this.deps.recordEvent({ sessionId, tier3Type: type, prompt: `${system}\n\n${contextMsg}` });
+      eventId = await this.deps.recordEvent({
+        sessionId,
+        tier3Type: type,
+        prompt: `${system}\n\n${contextMsg}`,
+      });
     } catch {
       logger.warn('[engineer] Tier 3 skipped — audit pre-write failed', { type });
       return;
@@ -116,7 +121,12 @@ export class Tier3Synthesizer {
     const enqueueSentence = (text: string): void => {
       const clean = text.trim();
       if (!clean) return;
-      this.queue.enqueue({ tier: 3, tier3Type: type, messageText: clean, sentenceIndex: sentenceIndex++ });
+      this.queue.enqueue({
+        tier: 3,
+        tier3Type: type,
+        messageText: clean,
+        sentenceIndex: sentenceIndex++,
+      });
     };
 
     const result = await this.deps.runLlm(this.config.llm, messages, this.tools, {
@@ -147,11 +157,20 @@ export class Tier3Synthesizer {
       outcome: 'skipped-llm-unreachable',
     });
     if (type === 'driver-query') {
-      this.queue.enqueue({ tier: 3, tier3Type: type, messageText: 'Reasoning engine unavailable.', sentenceIndex: 0 });
+      this.queue.enqueue({
+        tier: 3,
+        tier3Type: type,
+        messageText: 'Reasoning engine unavailable.',
+        sentenceIndex: 0,
+      });
     }
   }
 
-  private buildSystemPrompt(p: PersonalityConfig, type: Tier3Type, informationMode = false): string {
+  private buildSystemPrompt(
+    p: PersonalityConfig,
+    type: Tier3Type,
+    informationMode = false,
+  ): string {
     const strip = (s: string): string => s.replace(/<!--[\s\S]*?-->/g, '').trim();
     const base = strip(this.deps.loadPrompt('system-base'));
     const persona = strip(this.deps.loadPrompt('personality'))

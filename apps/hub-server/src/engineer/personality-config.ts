@@ -18,7 +18,9 @@ const CONFIG_DIR = join(__dirname, '..', '..', 'config');
  * Load the engineer configuration (thresholds, Chatterbox URL, voice file, LLM
  * settings, personality defaults).
  */
-export function loadEngineerConfig(path = join(CONFIG_DIR, 'engineer-config.json')): EngineerConfig {
+export function loadEngineerConfig(
+  path = join(CONFIG_DIR, 'engineer-config.json'),
+): EngineerConfig {
   const raw = readFileSync(path, 'utf-8');
   return JSON.parse(raw) as EngineerConfig;
 }
@@ -37,7 +39,9 @@ export function loadBlackoutZones(
     if (!Array.isArray(parsed.zones)) throw new Error('missing zones array');
     return parsed.zones;
   } catch {
-    logger.warn('[engineer] radio-blackout-zones.json missing or invalid — treating entire lap as safe window');
+    logger.warn(
+      '[engineer] radio-blackout-zones.json missing or invalid — treating entire lap as safe window',
+    );
     return [];
   }
 }

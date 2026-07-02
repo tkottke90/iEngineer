@@ -41,7 +41,14 @@ const CONFIG = {
   postSectorMinLapGap: 2,
   deferenceThreshold: 2,
   personality: { openness: 3, warmth: 3, energy: 3, conscientiousness: 3, assertiveness: 3 },
-  llm: { baseUrl: 'x', model: 'm', provider: 'openai-compatible', timeoutMs: 1000, maxResponseTokens: 300, tokenBudget: 6000 },
+  llm: {
+    baseUrl: 'x',
+    model: 'm',
+    provider: 'openai-compatible',
+    timeoutMs: 1000,
+    maxResponseTokens: 300,
+    tokenBudget: 6000,
+  },
 } as unknown as EngineerConfig;
 
 function raceState(): RaceState {
@@ -54,10 +61,20 @@ function raceState(): RaceState {
 }
 
 function ev(type: string, lapNumber: number): string {
-  return JSON.stringify({ type, sessionId: 's1', sessionTime: 0, lapNumber, payload: {} } as RaceEvent);
+  return JSON.stringify({
+    type,
+    sessionId: 's1',
+    sessionTime: 0,
+    lapNumber,
+    payload: {},
+  } as RaceEvent);
 }
 
-function makeEngineer(): { engineer: RacingEngineerService; conn: FakeRedis; mem: SessionMemoryStore } {
+function makeEngineer(): {
+  engineer: RacingEngineerService;
+  conn: FakeRedis;
+  mem: SessionMemoryStore;
+} {
   const conn = new FakeRedis();
   const mem = new SessionMemoryStore('s1');
   const tracker = new OverrideTracker(mem, CONFIG.deferenceThreshold);

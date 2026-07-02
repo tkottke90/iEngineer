@@ -26,7 +26,10 @@ export interface FinalizeEventInput {
  * rethrows so the caller (tier3-synthesizer) skips synthesis rather than acting
  * on an unaudited interaction.
  */
-export async function recordEvent(input: RecordEventInput, pool: Pool = getPool()): Promise<string> {
+export async function recordEvent(
+  input: RecordEventInput,
+  pool: Pool = getPool(),
+): Promise<string> {
   const id = randomUUID();
   try {
     await pool.query(
@@ -50,7 +53,11 @@ export async function recordEvent(input: RecordEventInput, pool: Pool = getPool(
  * synthesis. A finalize failure is logged but NOT thrown — the clip has already
  * been produced, so crashing here would be worse than a missing outcome update.
  */
-export async function finalizeEvent(id: string, input: FinalizeEventInput, pool: Pool = getPool()): Promise<void> {
+export async function finalizeEvent(
+  id: string,
+  input: FinalizeEventInput,
+  pool: Pool = getPool(),
+): Promise<void> {
   try {
     await pool.query(
       `UPDATE engineer_events
@@ -59,6 +66,10 @@ export async function finalizeEvent(id: string, input: FinalizeEventInput, pool:
       [id, input.response, input.latencyMs, input.toolsCalled, input.outcome],
     );
   } catch (err) {
-    logger.error('[engineer] audit finalize failed', { id, outcome: input.outcome, error: String(err) });
+    logger.error('[engineer] audit finalize failed', {
+      id,
+      outcome: input.outcome,
+      error: String(err),
+    });
   }
 }

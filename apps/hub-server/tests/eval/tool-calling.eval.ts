@@ -6,12 +6,27 @@ import { createTools } from '../../src/engineer/tools.js';
 import { EVAL_LLM, llmReachable } from './eval-config.js';
 
 // Fixed model snapshots so the eval is deterministic modulo the LLM.
-const fuel = { lapsRemaining: 3, burnRatePerLap: 2.6, fuelRemaining: 8, fuelDeficit: 1.2, confidenceLevel: 'high', dataSource: 'measured' } as unknown as FuelModel;
-const tire = { compound: 'soft', lapAge: 12, setsRemaining: 2, paceDegradationTrend: 0.05, degradationSignal: 'degrading', degradationConfidence: 'high' } as unknown as TireModel;
+const fuel = {
+  lapsRemaining: 3,
+  burnRatePerLap: 2.6,
+  fuelRemaining: 8,
+  fuelDeficit: 1.2,
+  confidenceLevel: 'high',
+  dataSource: 'measured',
+} as unknown as FuelModel;
+const tire = {
+  compound: 'soft',
+  lapAge: 12,
+  setsRemaining: 2,
+  paceDegradationTrend: 0.05,
+  degradationSignal: 'degrading',
+  degradationConfidence: 'high',
+} as unknown as TireModel;
 const tools = createTools({ getFuelModel: () => fuel, getTireModel: () => tire });
 const system: ChatMessage = {
   role: 'system',
-  content: 'You are a race engineer. Use the provided tools for any fuel or tire figures; never invent numbers.',
+  content:
+    'You are a race engineer. Use the provided tools for any fuel or tire figures; never invent numbers.',
 };
 
 // Runs against the live LLM via `npm run eval` (NOT part of npm test / CI). Skips

@@ -48,13 +48,19 @@ describe('tools — get_fuel_status (FR-007/008)', () => {
 
 describe('tools — get_tire_status (FR-007/008)', () => {
   it('returns available data once there is a flying lap', () => {
-    const r = getTireStatus({ getFuelModel: () => null, getTireModel: () => tireModel({ lapAge: 5 }) });
+    const r = getTireStatus({
+      getFuelModel: () => null,
+      getTireModel: () => tireModel({ lapAge: 5 }),
+    });
     expect(r.available).to.be.true;
     expect(r.data?.compound).to.equal('soft');
     expect(r.data?.lapAge).to.equal(5);
   });
   it('reports unavailable before the first flying lap (lapAge 0)', () => {
-    const r = getTireStatus({ getFuelModel: () => null, getTireModel: () => tireModel({ lapAge: 0 }) });
+    const r = getTireStatus({
+      getFuelModel: () => null,
+      getTireModel: () => tireModel({ lapAge: 0 }),
+    });
     expect(r.available).to.be.false;
     expect(r.reason).to.match(/no flying lap/);
   });
@@ -67,7 +73,10 @@ describe('tools — get_tire_status (FR-007/008)', () => {
 describe('tools — createTools dispatch', () => {
   const tools = createTools({ getFuelModel: () => fuelModel(), getTireModel: () => tireModel() });
   it('exposes both tool schemas', () => {
-    expect(tools.schemas.map((s) => s.function.name)).to.have.members(['get_fuel_status', 'get_tire_status']);
+    expect(tools.schemas.map((s) => s.function.name)).to.have.members([
+      'get_fuel_status',
+      'get_tire_status',
+    ]);
   });
   it('runs a tool by name', () => {
     expect(tools.run('get_fuel_status').available).to.be.true;

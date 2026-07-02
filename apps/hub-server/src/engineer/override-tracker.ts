@@ -63,7 +63,9 @@ export class OverrideTracker {
   }
 
   private pendingPitRecs(): RecommendationLogEntry[] {
-    return this.memory.get().recommendations.filter((r) => r.type === 'pit' && r.outcome === 'pending');
+    return this.memory
+      .get()
+      .recommendations.filter((r) => r.type === 'pit' && r.outcome === 'pending');
   }
 
   private recordOverride(type: string): void {

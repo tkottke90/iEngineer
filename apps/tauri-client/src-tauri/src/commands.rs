@@ -243,8 +243,8 @@ pub async fn set_watchlist(fields: Vec<String>, state: State<'_, AppState>) -> R
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FocusedCarData {
     pub cam_car_idx: i32,
-    pub cam_group:   i32,
-    pub cam_num:     i32,
+    pub cam_group: i32,
+    pub cam_num: i32,
     pub fields: std::collections::HashMap<String, TelemetryValue>,
 }
 
@@ -279,7 +279,7 @@ pub async fn get_focused_car_data() -> Result<Option<FocusedCarData>, String> {
             _ => return Ok(None),
         };
         let cam_group = sdk.read_var_int("CamGroupNumber").unwrap_or(-1);
-        let cam_num   = sdk.read_var_int("CamCameraNumber").unwrap_or(-1);
+        let cam_num = sdk.read_var_int("CamCameraNumber").unwrap_or(-1);
 
         let mut fields = std::collections::HashMap::new();
         for &name in FOCUSED_FIELDS {
@@ -288,7 +288,12 @@ pub async fn get_focused_car_data() -> Result<Option<FocusedCarData>, String> {
             }
         }
 
-        return Ok(Some(FocusedCarData { cam_car_idx, cam_group, cam_num, fields }));
+        return Ok(Some(FocusedCarData {
+            cam_car_idx,
+            cam_group,
+            cam_num,
+            fields,
+        }));
     }
     #[cfg(not(target_os = "windows"))]
     Ok(None)

@@ -1,7 +1,12 @@
 import { describe, it } from 'mocha';
 import { expect } from 'chai';
 import type { LlmConfig, FuelModel } from '@iracing-engineer/types';
-import { runLlm, type StreamChunk, type LlmDeps, type ChatMessage } from '../../../src/engineer/llm-client.js';
+import {
+  runLlm,
+  type StreamChunk,
+  type LlmDeps,
+  type ChatMessage,
+} from '../../../src/engineer/llm-client.js';
 import { createTools } from '../../../src/engineer/tools.js';
 
 const CONFIG: LlmConfig = {
@@ -25,13 +30,22 @@ function contentChunk(text: string, finish: string | null = null): StreamChunk {
   return { choices: [{ delta: { content: text }, finish_reason: finish }] };
 }
 
-const fuelModel = { lapsRemaining: 7, burnRatePerLap: 2.6, fuelRemaining: 18, fuelDeficit: 0, confidenceLevel: 'high', dataSource: 'measured' } as unknown as FuelModel;
+const fuelModel = {
+  lapsRemaining: 7,
+  burnRatePerLap: 2.6,
+  fuelRemaining: 18,
+  fuelDeficit: 0,
+  confidenceLevel: 'high',
+  dataSource: 'measured',
+} as unknown as FuelModel;
 const tools = createTools({ getFuelModel: () => fuelModel, getTireModel: () => null });
 const msgs: ChatMessage[] = [{ role: 'user', content: 'do we pit?' }];
 
 describe('llm-client — runLlm', () => {
   it('streams content deltas and returns the assembled text (onDelta fires)', async () => {
-    const deps: LlmDeps = { createStream: async () => streamOf([contentChunk('Box '), contentChunk('this lap.', 'stop')]) };
+    const deps: LlmDeps = {
+      createStream: async () => streamOf([contentChunk('Box '), contentChunk('this lap.', 'stop')]),
+    };
     const deltas: string[] = [];
     const r = await runLlm(CONFIG, msgs, tools, { deps, onDelta: (t) => deltas.push(t) });
     expect(r.status).to.equal('ok');
@@ -53,7 +67,15 @@ describe('llm-client — runLlm', () => {
             {
               choices: [
                 {
-                  delta: { tool_calls: [{ index: 0, id: 'c1', function: { name: 'get_fuel_status', arguments: '{}' } }] },
+                  delta: {
+                    tool_calls: [
+                      {
+                        index: 0,
+                        id: 'c1',
+                        function: { name: 'get_fuel_status', arguments: '{}' },
+                      },
+                    ],
+                  },
                   finish_reason: 'tool_calls',
                 },
               ],

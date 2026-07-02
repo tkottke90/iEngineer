@@ -15,7 +15,13 @@ const PROMPTS = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'promp
 const strip = (s: string): string => s.replace(/<!--[\s\S]*?-->/g, '').trim();
 const tools = createTools({ getFuelModel: () => null, getTireModel: () => null });
 
-type Traits = { openness: number; warmth: number; energy: number; conscientiousness: number; assertiveness: number };
+type Traits = {
+  openness: number;
+  warmth: number;
+  energy: number;
+  conscientiousness: number;
+  assertiveness: number;
+};
 const BASE: Traits = { openness: 3, warmth: 3, energy: 3, conscientiousness: 3, assertiveness: 3 };
 
 function buildSystem(t: Traits): string {
@@ -53,7 +59,10 @@ const imperativeScore = (s: string): number =>
 // Pairwise LLM judge: which reply is more <trait word>?
 async function judgeMoreThan(word: string, a: string, b: string): Promise<'A' | 'B' | 'tie'> {
   const msgs: ChatMessage[] = [
-    { role: 'system', content: `You compare two race-engineer radio messages. Answer with exactly one letter: A or B — whichever is more ${word}. If truly equal, answer A.` },
+    {
+      role: 'system',
+      content: `You compare two race-engineer radio messages. Answer with exactly one letter: A or B — whichever is more ${word}. If truly equal, answer A.`,
+    },
     { role: 'user', content: `A: "${a}"\n\nB: "${b}"\n\nWhich is more ${word}? Answer A or B.` },
   ];
   const r = await runLlm({ ...EVAL_LLM, maxResponseTokens: 4 }, msgs, tools);

@@ -9,14 +9,22 @@ export interface ChatMessage {
   role: ChatRole;
   content: string | null;
   tool_call_id?: string;
-  tool_calls?: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }>;
+  tool_calls?: Array<{
+    id: string;
+    type: 'function';
+    function: { name: string; arguments: string };
+  }>;
 }
 
 export interface StreamChunk {
   choices: Array<{
     delta: {
       content?: string | null;
-      tool_calls?: Array<{ index: number; id?: string; function?: { name?: string; arguments?: string } }>;
+      tool_calls?: Array<{
+        index: number;
+        id?: string;
+        function?: { name?: string; arguments?: string };
+      }>;
     };
     finish_reason?: string | null;
   }>;
@@ -43,13 +51,17 @@ export type LlmResult =
 const MAX_TOOL_ROUNDS = 4;
 
 function defaultDeps(config: LlmConfig): LlmDeps {
-  const client = new OpenAI({ baseURL: config.baseUrl, apiKey: process.env.LLM_API_KEY ?? 'not-needed' });
+  const client = new OpenAI({
+    baseURL: config.baseUrl,
+    apiKey: process.env.LLM_API_KEY ?? 'not-needed',
+  });
   return {
     createStream: async (params) =>
       (await client.chat.completions.create(
         {
           model: params.model,
-          messages: params.messages as unknown as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+          messages:
+            params.messages as unknown as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
           tools: params.tools as unknown as OpenAI.Chat.Completions.ChatCompletionTool[],
           max_tokens: params.maxTokens,
           stream: true,
