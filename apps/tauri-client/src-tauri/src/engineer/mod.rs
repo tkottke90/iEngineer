@@ -1,5 +1,9 @@
 pub mod playback_queue;
+pub mod ptt_pipeline;
+pub mod query_publisher;
 pub mod subscriber;
+
+pub use ptt_pipeline::spawn_ptt_pipeline;
 
 use tauri::{AppHandle, Manager};
 
