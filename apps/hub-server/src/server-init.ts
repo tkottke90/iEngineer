@@ -1,3 +1,4 @@
+import './env.js'; // load .env (DATABASE_URL, REDIS_URL, …) before anything reads process.env
 import { createConsumerConnection, createCommandConnection } from './redis/client.js';
 import {
   setupConsumerGroups,

@@ -36,8 +36,15 @@ fuel/tire answers) need live or simulated telemetry. Check each box as you go.
       `curl -s $BASEURL/models | head`
 - [ ] **Chatterbox reachable:** `curl -s http://10.0.0.12:8004/health` (or your URL
       in `chatterboxUrl`)
+- [ ] **Env:** the hub auto-loads the repo-root `.env` at startup (walks up from cwd)
+      → expect `[hub] Loaded environment {file: …/.env}`. Ensure `.env` has
+      `DATABASE_URL` (defaults to `postgresql://iracing:iracing@localhost:5432/iracing_engineer`),
+      or `export DATABASE_URL=…` to override.
 - [ ] **Start the hub:** `cd apps/hub-server && npm start` → expect
       `[hub] engineer_events migrations applied` and `[hub] Racing Engineer started`.
+      If you instead see `engineer_events migrations failed` or `audit pre-write
+      failed … client password must be a string`, Postgres auth/URL is wrong — fix
+      `DATABASE_URL` and **restart the hub**.
 
 ---
 
