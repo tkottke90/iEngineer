@@ -148,3 +148,6 @@ target/
 *.sqlite-journal
 packages/types/src/generated/*.ts
 .DS_Store
+
+# hub-server winston log files
+apps/hub-server/logs/

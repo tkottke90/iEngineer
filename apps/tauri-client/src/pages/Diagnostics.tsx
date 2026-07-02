@@ -210,7 +210,7 @@ const FOCUSED_CAR_ORDER = Object.keys(FOCUSED_CAR_LABELS);
 
 function formatFocusedValue(name: string, value: TelemetryValue): string {
   // Lap distance percentage → human-readable %
-  if (name === 'CarIdxLapDistPct' && 'Float' in value) {
+  if (name === 'CarIdxLapDistPct' && typeof value === 'object' && 'Float' in value) {
     return `${(value.Float * 100).toFixed(1)} %`;
   }
   return formatFieldValue(name, value);
@@ -371,7 +371,9 @@ export function Diagnostics() {
 
   // ── SDK debug dump ────────────────────────────────────────────────────────
   async function dumpSdkDebug() {
-    const info = await invoke<Record<string, string>>('get_sdk_debug').catch(() => ({}));
+    const info = await invoke<Record<string, string>>('get_sdk_debug').catch(
+      (): Record<string, string> => ({}),
+    );
     const keys = Object.keys(info).sort();
     if (keys.length === 0) {
       addLog('[SDK] no data (not connected?)');

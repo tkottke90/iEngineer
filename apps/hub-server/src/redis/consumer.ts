@@ -1,4 +1,5 @@
 import type Redis from 'ioredis';
+import { logger } from '../logger.js';
 
 const CONSUMER_NAME = 'hub-server-1';
 
@@ -34,7 +35,7 @@ export async function setupConsumerGroups(redis: Redis): Promise<void> {
   await xgroupCreate(redis, STREAMS.session, GROUPS.racingEngineer);
   await xgroupCreate(redis, STREAMS.live, GROUPS.racingEngineer);
   await xgroupCreate(redis, STREAMS.live, GROUPS.streamEngineer);
-  console.log(JSON.stringify({ msg: '[hub] Consumer groups created', groups: Object.values(GROUPS) }));
+  logger.info('[hub] Consumer groups created', { groups: Object.values(GROUPS) });
 }
 
 export async function reclaimPendingMessages(redis: Redis, idleMs = 30_000): Promise<number> {
@@ -57,7 +58,7 @@ export async function reclaimPendingMessages(redis: Redis, idleMs = 30_000): Pro
       throw err;
     }
   }
-  console.log(JSON.stringify({ msg: '[hub] Reclaimed pending messages', reclaimedCount: totalReclaimed }));
+  logger.info('[hub] Reclaimed pending messages', { reclaimedCount: totalReclaimed });
   return totalReclaimed;
 }
 
@@ -129,14 +130,14 @@ async function singleStreamLoop(
             await callback(payload, id);
             await commandConn.xack(stream, group, id);
           } catch (err) {
-            console.error(JSON.stringify({ msg: '[hub] Entry processing error', stream, id, error: String(err) }));
+            logger.error('[hub] Entry processing error', { stream, id, error: String(err) });
           }
         }
       }
     } catch (err: unknown) {
       if (signal?.aborted) break;
       const errMsg = err instanceof Error ? err.message : String(err);
-      console.error(JSON.stringify({ msg: '[hub] XREADGROUP error', stream, group, error: errMsg, retryIn: 1000 }));
+      logger.error('[hub] XREADGROUP error', { stream, group, error: errMsg, retryIn: 1000 });
       await new Promise(r => setTimeout(r, 1000));
     }
   }

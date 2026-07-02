@@ -1,0 +1,7 @@
+{
+  "chatterboxUrl": "http://10.0.0.12:8004",
+  "chatterboxVoiceFile": "voice2.wav",
+  "fuelCriticalLapsRemaining": 1.0,
+  "gapThresholdSeconds": 2.0,
+  "audioIdleCleanupIntervalMs": 30000
+}
