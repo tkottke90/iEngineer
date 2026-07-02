@@ -4,7 +4,7 @@ All Technical Context unknowns are resolved below. Each item: **Decision / Ratio
 
 ## R1. LLM client (hub, Node)
 
-- **Decision**: Use the official `openai` npm SDK configured with a runtime `baseURL` (homelab Lemonade OpenAI-compatible endpoint) and model name from `engineer-config.json`; provider is switchable (Claude API remains an option via config). Use its streaming (`stream: true`) + tool-calling APIs.
+- **Decision**: Use the official `openai` npm SDK configured with a runtime `baseURL` and model name from `engineer-config.json`; provider is switchable (Claude API remains an option via config). Use its streaming (`stream: true`) + tool-calling APIs. Concrete M5 target: Lemonade `https://lemonade.tdkottke.com/v1`, model `user.Ornith-1.0-35B-GGUF` (also the eval target/judge, temp 0). **Latency watch**: 35B > POC-0003's 9B — validate the ≤5s Tier 3 budget at first live synthesis; smaller model is the config-only fallback.
 - **Rationale**: POC-0003 validated OpenAI-compatible streaming against Lemonade. The `openai` SDK is the de-facto OpenAI-compatible client, supports streaming deltas and the tool-call loop, and honors a custom `baseURL` — satisfying constitution IV ("no hard-coded provider, runtime-switchable"). Keeps the streaming-per-sentence architecture POC-0003 proved.
 - **Alternatives**: LangChain `ChatOpenAI` (POC-0003 used it, but adds a heavy dependency for one call site — YAGNI); raw `fetch` against `/v1/chat/completions` (reimplements SSE parsing + tool-call accumulation, more error-prone); Anthropic SDK directly (breaks the "OpenAI-compatible" brief and runtime-switchability).
 

@@ -24,8 +24,23 @@ Each trait level (1–5) maps to a word-anchored instruction fragment. All five 
 - **Warmth** → register / form of address. **Assertiveness** → how directive/risk-tolerant recommendations are. **Openness** → conventional↔visionary framing. **Conscientiousness** → spontaneous↔meticulous detail.
 - Non-Energy effects are prompt-shaping only (no hard behavioral gates).
 
-## Evaluation requirement (Constitution VI)
-Prompt/personality changes require **evaluations**, not unit tests alone: hold four traits + race state constant, vary the fifth 1→5, assert output moves in the trait's intended direction across a representative prompt set (SC-005).
+## Evaluation harness (Constitution VI)
+Prompt/personality changes require **evaluations**, not unit tests alone. Evals run as a **separate `npm run eval`** command — **excluded** from `npm test` / the CI gate (the local LLM is not available in CI).
+
+**Target + judge model**: Lemonade Server `https://lemonade.tdkottke.com/v1`, model `user.Ornith-1.0-35B-GGUF`, **temperature 0**. The same endpoint/model serves both the engineer-under-test and the LLM judge. Eval config is separate from runtime `engineer-config.json` so the two can diverge.
+
+**Method — hybrid**:
+- **Deterministic proxy metrics** (in-process, no model call) where a trait has one: `energy` → response length / word count; `assertiveness` → count of imperatives / directive modal verbs.
+- **LLM-as-judge, pairwise** for the semantic traits (`warmth`, `openness`, `conscientiousness`; also a cross-check on energy/assertiveness): show the judge replies A and B (from level 1 and level 5, same scenario) and ask "Which is more {trait word — e.g. *nurturing*}?" — a relative choice, not absolute scoring, at temp 0.
+
+**Scenarios**: a fixed set of **5** race situations authored in the harness — pit decision, safety-car briefing, fuel query, tire query, post-lap commentary — with race state held constant across each trait sweep.
+
+**Pass bar (per trait)**:
+- Compare **level 1 vs level 5** across the 5 scenarios; the direction (proxy metric and/or judge choice) MUST hold in **≥ 4 of 5** scenarios.
+- Each comparison runs a few samples; take the **majority**.
+- Full 1<2<3<4<5 monotonicity is NOT required (too strict for an LLM) — pairwise 1-vs-5 with the 4/5 margin is the bar.
+
+**Hard deterministic assertion** (gate, not direction): `energy === 1` (Tranquil) MUST produce **no** Tier 3 commentary — asserted without the judge.
 
 ## Source of values
 - Runtime: Redis KV `hub:config:personality` (written by Tauri `PersonalityPanel`).

@@ -29,13 +29,13 @@ New engine capabilities: five-trait OCEAN personality shaping the system prompt,
 - Redis KV `hub:config:personality` (JSON, five traits) written by Tauri on config save, read by the engineer — analogous to the M4 `hub:config:chattiness` key it supersedes.
 - Whisper model file `ggml-base.en.bin` (~142 MB) bundled with / downloaded by the Tauri client.
 
-**Testing**: mocha + chai (hub TypeScript units + integration); cargo test (Tauri Rust); **agent evaluations** (constitution VI) for personality-direction, tool-calling correctness, and override/deference behavior — prompt changes require evals, not unit tests alone.
+**Testing**: mocha + chai (hub TypeScript units + integration); cargo test (Tauri Rust); **agent evaluations** (constitution VI) for personality-direction, tool-calling correctness, and override/deference behavior — prompt changes require evals, not unit tests alone. Evals run via a **separate `npm run eval`** command (excluded from `npm test`/CI) against Lemonade `https://lemonade.tdkottke.com/v1` model `user.Ornith-1.0-35B-GGUF` (temp 0); hybrid grading = deterministic proxies + pairwise LLM-judge, pass bar level-1-vs-5 ≥4/5 (see `contracts/personality-prompt.md`).
 
 **Target Platform**: macOS / Windows desktop (Tauri, STT in-client); local hub server (Node.js); homelab LLM (OpenAI-compatible) + Chatterbox TTS + Redis + Postgres.
 
 **Project Type**: npm-workspaces monorepo (desktop client + hub server + shared packages).
 
-**Performance Goals**: Tier 3 first-audio ≤ 5 s (p95) from PTT release (POC-0003 streaming ≈ 4.3 s combined). Local STT ≈ 60 ms GPU / ≈ 345 ms CPU for a short clip (POC-0002). Tier 1/2 latency unchanged (≤ 3 s).
+**Performance Goals**: Tier 3 first-audio ≤ 5 s (p95) from PTT release (POC-0003 streaming ≈ 4.3 s combined). Local STT ≈ 60 ms GPU / ≈ 345 ms CPU for a short clip (POC-0002). Tier 1/2 latency unchanged (≤ 3 s). **Risk**: the chosen model `user.Ornith-1.0-35B-GGUF` is larger than POC-0003's 9B (~2.7 s TTFT) — verify the 5 s budget holds at first live synthesis (Phase C); if not, swap to a smaller model on the same endpoint (config-only).
 
 **Constraints**: LLM reasoning MUST NOT block the Tier 1/2 rule path or telemetry ingestion (async, isolated). LLM unreachable ⇒ Tier 3 skipped, no hang past a configured timeout. Streaming per-sentence TTS with a hardened splitter (no decimal/abbreviation false splits). Context ≤ token-budget ceiling. Advise-only (no automatic actions).
 
