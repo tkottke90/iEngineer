@@ -1,24 +1,35 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.1.1 → 1.1.2 (PATCH — Clarified Postgres audit gate scope in Principle V)
+Version change: 1.1.2 → 1.2.0 (MINOR — Ratified M5 LLM deviations: Tier 3 latency budget +
+in-client STT)
 
 Modified principles:
-- V. Observability-Driven — The Postgres audit log gate now explicitly applies to LLM-backed
-  agent capabilities only. Rule-based agent capabilities (no LLM inference in the decision
-  path) are exempt until M5, provided structured console logs are emitted for all decisions
-  and failures. Rationale: Postgres audit tables exist to make LLM decisions forensically
-  reproducible. A deterministic rule engine has no hidden state to audit beyond its inputs
-  and the structured logs that already capture them.
+- I. Real-Time Reliability — Split the voice-latency rule into two budget classes. Rule-based
+  Tier 1/2 alerts retain the ≤3s budget; LLM-synthesized Tier 3 messages (on-demand driver
+  queries and reasoned briefings) get a ≤5s time-to-first-audio budget. Rationale: LLM
+  reasoning has an irreducible ~2.7s time-to-first-token in this stack (POC-0003); a reasoned
+  answer cannot meet 3s. The relaxed budget is scoped strictly to messages with LLM reasoning
+  in the delivery path and MUST NOT excuse rule-path latency.
+- IV. Local-First Infrastructure — STT changed from "Whisper via Speaches" to Whisper base.en
+  running in-process in the Tauri client via whisper-rs (Metal on macOS, Vulkan on Windows/
+  AMD). Rationale: POC-0001 measured remote Speaches STT at ~12s (network upload dominates);
+  POC-0002 measured in-client whisper-rs at ~60ms. Still offline Whisper base.en, no cloud.
+
+Modified sections:
+- Technology Constraints — STT row updated to whisper-rs (in-client) with POC rationale.
 
 Added sections: N/A
 Removed sections: N/A
 
-Templates requiring updates: none (no principle-level semantics changed)
+Templates requiring updates:
+- .specify/templates/plan-template.md — ✅ reviewed, no change (Constitution Check is generic)
+- .specify/templates/spec-template.md — ✅ reviewed, no change
+- .specify/templates/tasks-template.md — ✅ reviewed, no change
 
 Follow-up TODOs:
-- M5: Add Postgres `engineer_events` table when LLM inference is introduced to the Racing
-  Engineer path. At that point the gate applies without exemption.
+- Postgres `engineer_events` table (prior M5 TODO) is being implemented in feature 005
+  (specs/005-llm-push-to-talk). The Principle V LLM audit gate now applies without exemption.
 -->
 
 # iRacing Engineer Constitution
@@ -31,15 +42,25 @@ The Racing Engineer path (telemetry → LLM → TTS → driver) is time-critical
 that path MUST prioritize low latency over completeness. Specifically:
 
 - Telemetry ingestion MUST NOT block on LLM calls; use async queuing via Redis Streams
-- Voice feedback MUST be delivered within 3 seconds of the triggering telemetry event
+- Rule-based voice feedback (Tier 1/2 alerts) MUST be delivered within 3 seconds of the
+  triggering telemetry event
+- LLM-synthesized voice feedback (Tier 3: on-demand driver queries and reasoned briefings)
+  MUST begin audio within 5 seconds of the triggering event or push-to-talk release. This
+  relaxed budget applies ONLY to messages with LLM reasoning in the delivery path, is bounded
+  by measured LLM time-to-first-token (~2.7s, POC-0003), and MUST NOT be used to excuse
+  latency in the rule-based path
 - A failure in the Racing Engineer path MUST NOT affect the Stream Engineer path, and vice versa
 - Degraded-mode operation (e.g., LLM timeout) MUST fall back gracefully — silence is
   preferable to a crash or a stale/incorrect output delivered late
 - **Gate**: Verify that the telemetry pipeline uses separate Redis consumer groups for the
   Racing Engineer and Stream Engineer so one backlog cannot starve the other
 
-**Rationale:** iRacing races run in real time; a 5-second-late pit call is worse than no call
-at all. Silence beats wrong-and-late. Path isolation ensures one agent's failure cannot cascade.
+**Rationale:** iRacing races run in real time; a late *reactive* alert (Tier 1/2) is worse than
+no alert at all, hence the strict 3s budget. Tier 3 messages are *reasoned* — a driver asking
+"do we pit this lap?" accepts a few seconds for a considered answer — so a 5s budget is
+appropriate there and nowhere else; the LLM's ~2.7s time-to-first-token (POC-0003) makes 3s
+physically unreachable for reasoned output. Silence beats wrong-and-late. Path isolation
+ensures one agent's failure cannot cascade.
 
 ### II. Workspace Isolation
 
@@ -81,7 +102,9 @@ make behavioral rollback and debugging possible; unversioned prompts make it imp
 
 All real-time AI inference and data persistence MUST run on self-hosted infrastructure:
 
-- STT: Whisper via Speaches (base.en model); no cloud STT dependency
+- STT: Whisper base.en running in-process in the Tauri client via `whisper-rs` (Metal on
+  macOS, Vulkan on Windows/AMD); no cloud STT dependency and no network hop for transcription
+  (POC-0001 measured remote Speaches STT at ~12s; POC-0002 measured in-client whisper-rs at ~60ms)
 - TTS: Chatterbox; no cloud TTS dependency
 - Data: Redis Streams (telemetry bus) + Postgres (session history, audit log)
 - LLM: Claude API is the default; an OpenAI-compatible local endpoint MUST remain a
@@ -157,7 +180,7 @@ constitution amendment:
 | Telemetry bus | Redis Streams | Two-speed fan-out without polling |
 | iRacing SDK | Custom Rust integration | No suitable community crate |
 | TTS | Chatterbox (self-hosted) | Voice-cloning capability, no cloud cost |
-| STT | Whisper via Speaches (base.en) | Offline capable, low latency |
+| STT | Whisper base.en via `whisper-rs` (in Tauri client; Metal/Vulkan) | In-process, no network hop; ~60ms vs ~12s remote (POC-0001/0002) |
 | OBS control | WebSocket v5 | Official OBS protocol |
 | LLM default | Anthropic Claude API | Frontier reasoning; switchable at runtime |
 
@@ -191,4 +214,4 @@ Amendments require:
 
 All feature plans MUST include a Constitution Check gate before Phase 0 research.
 
-**Version**: 1.1.2 | **Ratified**: 2026-06-26 | **Last Amended**: 2026-06-30
+**Version**: 1.2.0 | **Ratified**: 2026-06-26 | **Last Amended**: 2026-07-02
