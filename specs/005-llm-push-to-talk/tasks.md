@@ -106,10 +106,10 @@
 
 **Depends on**: Foundational + US1 (driver-query path for the canned-line case).
 
-- [ ] T042 [US7] Verify/harden the `llm-client.ts` reachability/timeout contract already implemented in T025 (do not re-implement): add explicit tests/guards that failures return `unreachable`/`timedOut` and never throw into the rule path, and that the rule engine and `hub:events` handler never `await` the LLM (Constitution I). Extends T044's isolation check.
-- [ ] T043 [US7] Extend `tier3-synthesizer.ts` degradation branch: on `unreachable`/`timedOut` write `EngineerEvent.outcome = skipped-llm-unreachable` + `llm-unreachable` log; **driver-query** ⇒ synthesize a canned "Reasoning engine unavailable" clip via `TtsClient` (no LLM); **proactive** types ⇒ silent skip (log only); recovery is automatic on the next attempt (FR-023/024, Q5).
-- [ ] T044 [US7] Add/verify an isolation guard: a code path/test asserting Tier 1/2 dispatch is on a separate async path from Tier 3 synthesis (no shared awaited promise).
-- [ ] T045 [P] [US7] Integration test in `apps/hub-server/tests/integration/degradation.test.ts` — with the LLM boundary forced unreachable: Tier 1/2 alerts still delivered (SC-003), every Tier 3 trigger skipped with a log, a driver-query yields the canned line without hanging past `timeoutMs`, `engineer_events` row `outcome=skipped-llm-unreachable`; restoring the LLM resumes synthesis with no restart.
+- [X] T042 [US7] Verify/harden the `llm-client.ts` reachability/timeout contract already implemented in T025 (do not re-implement): add explicit tests/guards that failures return `unreachable`/`timedOut` and never throw into the rule path, and that the rule engine and `hub:events` handler never `await` the LLM (Constitution I). Extends T044's isolation check.
+- [X] T043 [US7] Extend `tier3-synthesizer.ts` degradation branch: on `unreachable`/`timedOut` write `EngineerEvent.outcome = skipped-llm-unreachable` + `llm-unreachable` log; **driver-query** ⇒ synthesize a canned "Reasoning engine unavailable" clip via `TtsClient` (no LLM); **proactive** types ⇒ silent skip (log only); recovery is automatic on the next attempt (FR-023/024, Q5).
+- [X] T044 [US7] Add/verify an isolation guard: a code path/test asserting Tier 1/2 dispatch is on a separate async path from Tier 3 synthesis (no shared awaited promise).
+- [X] T045 [P] [US7] Integration test in `apps/hub-server/tests/integration/degradation.test.ts` — with the LLM boundary forced unreachable: Tier 1/2 alerts still delivered (SC-003), every Tier 3 trigger skipped with a log, a driver-query yields the canned line without hanging past `timeoutMs`, `engineer_events` row `outcome=skipped-llm-unreachable`; restoring the LLM resumes synthesis with no restart.
 
 **Checkpoint**: Reliability guarantee verified (Scenario 8).
 
