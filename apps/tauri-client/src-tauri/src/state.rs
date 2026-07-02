@@ -21,11 +21,21 @@ pub struct AppConfig {
     pub aggression: String,
     /// M5 personality — five OCEAN traits, each 1–5 (default 3). Written to the
     /// hub via Redis `hub:config:personality`. Wired to the UI in T053.
+    /// `serde(default)` so pre-M5 saved configs (without these fields) still load.
+    #[serde(default = "default_trait_level")]
     pub openness: u8,
+    #[serde(default = "default_trait_level")]
     pub warmth: u8,
+    #[serde(default = "default_trait_level")]
     pub energy: u8,
+    #[serde(default = "default_trait_level")]
     pub conscientiousness: u8,
+    #[serde(default = "default_trait_level")]
     pub assertiveness: u8,
+}
+
+fn default_trait_level() -> u8 {
+    3
 }
 
 impl Default for AppConfig {
