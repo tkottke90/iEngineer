@@ -8,6 +8,7 @@ import type {
   QueuedMessage,
   PersonalityConfig,
   EngineerQuery,
+  Tier3Type,
 } from '@iracing-engineer/types';
 import { AudioStore } from './audio-store.js';
 import { PriorityMessageQueue } from './message-queue.js';
@@ -23,15 +24,23 @@ const DISPATCH_INTERVAL_MS = 100;
 // Injectable so tests can supply a fake TTS without hitting Chatterbox.
 type ClipGenerator = (text: string, config: EngineerConfig) => Promise<Buffer>;
 
+interface SynthRequest {
+  type: Tier3Type;
+  triggerSource: string;
+  userText: string;
+  isDriverQuery: boolean;
+}
+
 export class RacingEngineerService {
   private sub: Redis | null = null;
   private dispatchTimer: ReturnType<typeof setInterval> | null = null;
   private _generating = false;
   private _personalityWarnEmitted = false;
-  // PTT query concurrency: one synthesis in flight; extra queries queue FIFO up to
-  // queueDepthCap, overflow dropped with a log (Q4).
-  private _queryQueue: EngineerQuery[] = [];
-  private _queryInFlight = false;
+  // Unified serialized synthesis: driver-query + proactive briefings run one at a
+  // time (single LLM call in flight). queueDepthCap bounds pending PTT queries (Q4).
+  private _synthQueue: SynthRequest[] = [];
+  private _synthInFlight = false;
+  private _lapCompleteCount = 0;
 
   constructor(
     private commandConn: Redis,
@@ -79,35 +88,81 @@ export class RacingEngineerService {
       logger.info('[engineer] PTT query ignored — empty transcript', { queryId: q.queryId });
       return;
     }
-    if (this._queryQueue.length >= this.config.queueDepthCap) {
-      logger.warn('[engineer] PTT query dropped — queue depth cap reached', {
-        reason: 'queue-cap-drop',
-        queryId: q.queryId,
-      });
-      return;
-    }
-    this._queryQueue.push(q);
-    void this.drainQueries();
+    this.enqueueSynth({ type: 'driver-query', triggerSource: q.queryId, userText: q.transcript, isDriverQuery: true });
   }
 
-  // One driver-query synthesized at a time; the rest wait FIFO.
-  private async drainQueries(): Promise<void> {
-    if (this._queryInFlight) return;
+  // Enqueue a Tier 3 synthesis request. PTT queries are bounded by queueDepthCap
+  // (Q4); proactive briefings are infrequent and always enqueue.
+  private enqueueSynth(req: SynthRequest): void {
+    if (req.isDriverQuery) {
+      const pending = this._synthQueue.filter((r) => r.isDriverQuery).length;
+      if (pending >= this.config.queueDepthCap) {
+        logger.warn('[engineer] PTT query dropped — queue depth cap reached', {
+          reason: 'queue-cap-drop',
+          queryId: req.triggerSource,
+        });
+        return;
+      }
+    }
+    this._synthQueue.push(req);
+    void this.drainSynth();
+  }
+
+  // One synthesis at a time (single LLM call in flight); the rest wait FIFO.
+  private async drainSynth(): Promise<void> {
+    if (this._synthInFlight) return;
     if (!this.synthesizer) return;
-    this._queryInFlight = true;
+    this._synthInFlight = true;
     try {
-      while (this._queryQueue.length > 0) {
-        const q = this._queryQueue.shift()!;
+      while (this._synthQueue.length > 0) {
+        const req = this._synthQueue.shift()!;
         const personality = await this.readPersonality();
         await this.synthesizer.synthesize({
-          type: 'driver-query',
-          triggerSource: q.queryId,
-          userText: q.transcript,
+          type: req.type,
+          triggerSource: req.triggerSource,
+          userText: req.userText,
           personality,
         });
       }
     } finally {
-      this._queryInFlight = false;
+      this._synthInFlight = false;
+    }
+  }
+
+  // Proactive Tier 3 triggers on hub:events (US2). Safety-car ALSO fires its
+  // immediate Tier 1 alert via the rule path (FR-016) — this is additive.
+  private maybeProactive(event: RaceEvent): void {
+    if (!this.synthesizer) return;
+    switch (event.type) {
+      case 'hero:pit_entry':
+        this.enqueueSynth({
+          type: 'pit-entry',
+          triggerSource: 'hero:pit_entry',
+          userText: 'Give a brief pit-lane entry briefing — what to expect this stop given the current strategy.',
+          isDriverQuery: false,
+        });
+        break;
+      case 'session:safety_car_deployed':
+        this.enqueueSynth({
+          type: 'safety-car',
+          triggerSource: 'session:safety_car_deployed',
+          userText: 'A safety car has been deployed. Brief the driver on what it means for their position and strategy.',
+          isDriverQuery: false,
+        });
+        break;
+      case 'hero:lap_complete':
+        // Cadence gate: at most once per postSectorMinLapGap laps. Energy=1
+        // suppression is enforced in the synthesizer.
+        this._lapCompleteCount += 1;
+        if (this._lapCompleteCount % Math.max(1, this.config.postSectorMinLapGap) === 0) {
+          this.enqueueSynth({
+            type: 'post-sector',
+            triggerSource: 'hero:lap_complete',
+            userText: 'Give a short comment on the lap just completed.',
+            isDriverQuery: false,
+          });
+        }
+        break;
     }
   }
 
@@ -138,6 +193,9 @@ export class RacingEngineerService {
         }
         break;
     }
+
+    // Proactive Tier 3 briefings (additive to the rule path).
+    this.maybeProactive(event);
 
     const signals = this.getRaceState().signals;
     const alert = evaluateTier1(event, this.config) ?? evaluateTier2(event, signals, this.config);

@@ -121,11 +121,11 @@
 
 **Independent Test**: quickstart.md Scenario 3.
 
-- [ ] T046 [P] [US2] Create `apps/hub-server/prompts/tier3-pit-entry.md` (header + framing: what to expect this stop, given strategy).
-- [ ] T047 [P] [US2] Create `apps/hub-server/prompts/tier3-safety-car.md` (header + framing: implications for position/strategy).
-- [ ] T048 [P] [US2] Create `apps/hub-server/prompts/tier3-post-sector.md` (header + framing: short commentary).
-- [ ] T049 [US2] Extend `racing-engineer.ts` triggers on `hub:events`: `hero:pit_entry` → synthesize `pit-entry`; `session:safety_car_deployed` → keep the immediate M4 Tier 1 alert AND additively synthesize `safety-car` (FR-016); `hero:lap_complete` (from T002) → synthesize `post-sector` gated by `postSectorMinLapGap` (laps) and suppressed at Energy=1.
-- [ ] T050 [P] [US2] Integration tests in `apps/hub-server/tests/integration/proactive-briefings.test.ts` — pit-entry event → `voice:audio`; safety-car → Tier 1 alert dispatched before the Tier 3 briefing; Energy=1 suppresses post-sector; no in-progress clip interrupted.
+- [X] T046 [P] [US2] Create `apps/hub-server/prompts/tier3-pit-entry.md` (header + framing: what to expect this stop, given strategy).
+- [X] T047 [P] [US2] Create `apps/hub-server/prompts/tier3-safety-car.md` (header + framing: implications for position/strategy).
+- [X] T048 [P] [US2] Create `apps/hub-server/prompts/tier3-post-sector.md` (header + framing: short commentary).
+- [X] T049 [US2] Extend `racing-engineer.ts` triggers on `hub:events`: `hero:pit_entry` → synthesize `pit-entry`; `session:safety_car_deployed` → keep the immediate M4 Tier 1 alert AND additively synthesize `safety-car` (FR-016); `hero:lap_complete` (from T002) → synthesize `post-sector` gated by `postSectorMinLapGap` (laps) and suppressed at Energy=1.
+- [X] T050 [P] [US2] Integration tests in `apps/hub-server/tests/integration/proactive-briefings.test.ts` — pit-entry event → `voice:audio`; safety-car → Tier 1 alert dispatched before the Tier 3 briefing; Energy=1 suppresses post-sector; no in-progress clip interrupted.
 
 **Checkpoint**: Proactive briefings work (Scenario 3).
 
