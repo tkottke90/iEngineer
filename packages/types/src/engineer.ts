@@ -62,10 +62,6 @@ export interface RadioBlackoutZone {
 }
 
 // Personality configuration (driver preference)
-// NOTE (M5): `Chattiness` is retained transitionally for the M4 dispatcher/tests
-// until T016 migrates them to the Energy trait, after which it is removed.
-export type Chattiness = 'Low' | 'Default';
-
 // Five OCEAN-based traits, each an integer 1–5 with word-anchored levels
 // (see specs/005-llm-push-to-talk/data-model.md). Supersedes the M4 chattiness field.
 export type TraitLevel = 1 | 2 | 3 | 4 | 5;

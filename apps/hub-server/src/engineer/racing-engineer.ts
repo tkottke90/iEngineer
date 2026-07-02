@@ -6,13 +6,14 @@ import type {
   RadioBlackoutZone,
   AudioClipRef,
   QueuedAlert,
+  PersonalityConfig,
 } from '@iracing-engineer/types';
 import { AudioStore } from './audio-store.js';
 import { PriorityMessageQueue } from './message-queue.js';
 import { DedupTracker } from './dedup-tracker.js';
 import { evaluateTier1, evaluateTier2 } from './alert-rules.js';
 import { generateClip } from './tts-client.js';
-import { shouldSuppressAlert, normalizeChattiness } from './personality-config.js';
+import { shouldSuppressAlert, parsePersonality } from './personality-config.js';
 import { logger } from '../logger.js';
 
 const DISPATCH_INTERVAL_MS = 100;
@@ -21,7 +22,7 @@ export class RacingEngineerService {
   private sub: Redis | null = null;
   private dispatchTimer: ReturnType<typeof setInterval> | null = null;
   private _generating = false;
-  private _chattinessWarnEmitted = false;
+  private _personalityWarnEmitted = false;
 
   constructor(
     private commandConn: Redis,
@@ -94,29 +95,21 @@ export class RacingEngineerService {
     logger.info('[engineer] Alert enqueued', { alertType: alert.eventType, tier: alert.tier, lapNumber: alert.lapNumber });
   }
 
-  private async readChattiness(): Promise<'Low' | 'Default'> {
+  private async readPersonality(): Promise<PersonalityConfig> {
+    let raw: string | null = null;
     try {
-      const raw = await this.commandConn.get('hub:config:chattiness');
-      if (raw !== 'Low' && raw !== 'Default') {
-        if (!this._chattinessWarnEmitted) {
-          this._chattinessWarnEmitted = true;
-          logger.warn('[engineer] Chattiness key absent, unrecognized, or unreadable', {
-            reason: 'chattiness-key-fallback',
-            fallback: 'Default',
-          });
-        }
-      }
-      return normalizeChattiness(raw);
+      raw = await this.commandConn.get('hub:config:personality');
     } catch {
-      if (!this._chattinessWarnEmitted) {
-        this._chattinessWarnEmitted = true;
-        logger.warn('[engineer] Chattiness key absent, unrecognized, or unreadable', {
-          reason: 'chattiness-key-fallback',
-          fallback: 'Default',
-        });
-      }
-      return 'Default';
+      raw = null;
     }
+    const { personality, usedFallback } = parsePersonality(raw, this.config.personality);
+    if (usedFallback && !this._personalityWarnEmitted) {
+      this._personalityWarnEmitted = true;
+      logger.warn('[engineer] Personality key absent, malformed, or out of range — using config defaults', {
+        reason: 'personality-key-fallback',
+      });
+    }
+    return personality;
   }
 
   private dispatchTick(): void {
@@ -124,14 +117,14 @@ export class RacingEngineerService {
 
     const lapDistPct = this.getRaceState().hero?.lapDistPct ?? 0;
 
-    void this.readChattiness().then((chattiness) => {
+    void this.readPersonality().then((personality) => {
       if (this._generating) return;
       const alert = this.queue.dequeueNext(lapDistPct, this.zones);
       if (!alert) return;
 
-      // Chattiness suppression applied at dequeue time (FR-011 / T037).
-      if (shouldSuppressAlert(alert, chattiness)) {
-        logger.info('[engineer] Alert suppressed', { alertType: alert.eventType, reason: 'Chattiness:Low' });
+      // Energy=1 (Tranquil) suppresses Tier 2 alerts at dequeue time (FR-017).
+      if (shouldSuppressAlert(alert, personality)) {
+        logger.info('[engineer] Alert suppressed', { alertType: alert.eventType, reason: 'Energy:1' });
         return;
       }
 

@@ -3,15 +3,20 @@ import { expect } from 'chai';
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { QueuedAlert, AlertTier, AlertEventType } from '@iracing-engineer/types';
+import type {
+  QueuedAlert,
+  AlertTier,
+  AlertEventType,
+  PersonalityConfig,
+  TraitLevel,
+} from '@iracing-engineer/types';
 import {
   shouldSuppressAlert,
+  parsePersonality,
   loadBlackoutZones,
-  normalizeChattiness,
 } from '../../../src/engineer/personality-config.js';
 import { logger } from '../../../src/logger.js';
 
-// Capture logger.warn output for the duration of `fn`.
 function captureWarn(fn: () => void): string[] {
   const logs: string[] = [];
   const orig = logger.warn;
@@ -28,36 +33,62 @@ function alert(tier: AlertTier, eventType: AlertEventType): QueuedAlert {
   return { tier, eventType, messageText: 'x', lapNumber: 1, sessionTime: 0, dedupKey: eventType };
 }
 
-describe('personality-config — shouldSuppressAlert', () => {
-  it('Chattiness Low suppresses Tier 2', () => {
-    expect(shouldSuppressAlert(alert(2, 'hero:pit_window_open'), 'Low')).to.be.true;
+function personality(energy: TraitLevel, over: Partial<PersonalityConfig> = {}): PersonalityConfig {
+  return { openness: 3, warmth: 3, energy, conscientiousness: 3, assertiveness: 3, ...over };
+}
+
+const DEFAULTS: PersonalityConfig = personality(3);
+
+describe('personality-config — shouldSuppressAlert (FR-017 Energy=1)', () => {
+  it('Energy=1 suppresses Tier 2', () => {
+    expect(shouldSuppressAlert(alert(2, 'hero:pit_window_open'), personality(1))).to.be.true;
   });
-  it('Chattiness Low never suppresses Tier 1', () => {
-    expect(shouldSuppressAlert(alert(1, 'hero:fuel_critical'), 'Low')).to.be.false;
-    expect(shouldSuppressAlert(alert(1, 'hero:blue_flag'), 'Low')).to.be.false;
+  it('Energy>=2 passes Tier 2', () => {
+    expect(shouldSuppressAlert(alert(2, 'hero:pit_window_open'), personality(2))).to.be.false;
+    expect(shouldSuppressAlert(alert(2, 'hero:pit_window_open'), personality(3))).to.be.false;
   });
-  it('Chattiness Default passes both tiers', () => {
-    expect(shouldSuppressAlert(alert(2, 'hero:pit_window_open'), 'Default')).to.be.false;
-    expect(shouldSuppressAlert(alert(1, 'hero:fuel_critical'), 'Default')).to.be.false;
+  it('Tier 1 is never suppressed regardless of Energy', () => {
+    expect(shouldSuppressAlert(alert(1, 'hero:fuel_critical'), personality(1))).to.be.false;
+    expect(shouldSuppressAlert(alert(1, 'hero:blue_flag'), personality(1))).to.be.false;
   });
-  it('FR-012: suppression depends only on chattiness (familiarity/aggression cannot leak in)', () => {
-    // The signature excludes personality stubs by construction; behavior is
-    // identical for the same chattiness regardless of any other setting.
+  it('suppression depends only on Energy (other traits cannot leak in)', () => {
     const a = alert(2, 'hero:pit_window_open');
-    expect(shouldSuppressAlert(a, 'Low')).to.equal(shouldSuppressAlert(a, 'Low'));
-    expect(shouldSuppressAlert(a, 'Default')).to.equal(shouldSuppressAlert(a, 'Default'));
+    const withWarm = personality(3, { warmth: 5, assertiveness: 5 });
+    expect(shouldSuppressAlert(a, withWarm)).to.be.false; // still passes — energy!=1
+    const tranquil = personality(1, { warmth: 5, assertiveness: 5 });
+    expect(shouldSuppressAlert(a, tranquil)).to.be.true; // suppressed — energy===1
   });
 });
 
-describe('personality-config — normalizeChattiness (FR-011 fallback)', () => {
-  it('recognizes Low', () => expect(normalizeChattiness('Low')).to.equal('Low'));
-  it('recognizes Default', () => expect(normalizeChattiness('Default')).to.equal('Default'));
-  it('defaults to Default for absent key', () => {
-    expect(normalizeChattiness(null)).to.equal('Default');
-    expect(normalizeChattiness(undefined)).to.equal('Default');
+describe('personality-config — parsePersonality (M5 fallback)', () => {
+  it('parses a valid five-trait JSON with no fallback', () => {
+    const raw = JSON.stringify(personality(5, { warmth: 4 }));
+    const { personality: p, usedFallback } = parsePersonality(raw, DEFAULTS);
+    expect(usedFallback).to.be.false;
+    expect(p.energy).to.equal(5);
+    expect(p.warmth).to.equal(4);
   });
-  it('defaults to Default for unrecognized value', () => {
-    expect(normalizeChattiness('Chatty')).to.equal('Default');
+  it('falls back (with flag) when the key is absent', () => {
+    const r1 = parsePersonality(null, DEFAULTS);
+    const r2 = parsePersonality(undefined, DEFAULTS);
+    expect(r1.usedFallback).to.be.true;
+    expect(r1.personality).to.deep.equal(DEFAULTS);
+    expect(r2.usedFallback).to.be.true;
+  });
+  it('falls back when JSON is malformed', () => {
+    const { personality: p, usedFallback } = parsePersonality('{ not json', DEFAULTS);
+    expect(usedFallback).to.be.true;
+    expect(p).to.deep.equal(DEFAULTS);
+  });
+  it('falls back per-trait when a value is out of range or non-integer', () => {
+    const raw = JSON.stringify({ openness: 9, warmth: 2, energy: 0, conscientiousness: 2.5, assertiveness: 4 });
+    const { personality: p, usedFallback } = parsePersonality(raw, DEFAULTS);
+    expect(usedFallback).to.be.true;
+    expect(p.openness).to.equal(3); // 9 out of range → default
+    expect(p.warmth).to.equal(2); // valid
+    expect(p.energy).to.equal(3); // 0 out of range → default
+    expect(p.conscientiousness).to.equal(3); // 2.5 non-integer → default
+    expect(p.assertiveness).to.equal(4); // valid
   });
 });
 
