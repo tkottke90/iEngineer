@@ -169,9 +169,9 @@
 
 **Depends on**: US4 (override outcomes feed deference counts).
 
-- [ ] T059 [US5] Extend `session-memory.ts` `DeferenceState` — per-type `overrideCountByType`; when a type reaches `deferenceThreshold`, add it to `deferredTypes`; `reset()` clears deference on new session (FR-021, Q3).
-- [ ] T060 [US5] Extend `tier3-synthesizer.ts` deference check (stubbed in T029) — for a `deferredType`, synthesize in **information mode** (no directive; use a prompt variant) UNLESS the request is a `driver-query` (direct ask still gets a recommendation).
-- [ ] T061 [P] [US5] Tests in `apps/hub-server/tests/integration/deference.test.ts` — reaching the threshold shifts unsolicited output to information mode; a direct PTT "should I pit?" still returns a recommendation; a new session resets to recommendation mode (SC-007).
+- [X] T059 [US5] Extend `session-memory.ts` `DeferenceState` — per-type `overrideCountByType`; when a type reaches `deferenceThreshold`, add it to `deferredTypes`; `reset()` clears deference on new session (FR-021, Q3).
+- [X] T060 [US5] Extend `tier3-synthesizer.ts` deference check (stubbed in T029) — for a `deferredType`, synthesize in **information mode** (no directive; use a prompt variant) UNLESS the request is a `driver-query` (direct ask still gets a recommendation).
+- [X] T061 [P] [US5] Tests in `apps/hub-server/tests/integration/deference.test.ts` — reaching the threshold shifts unsolicited output to information mode; a direct PTT "should I pit?" still returns a recommendation; a new session resets to recommendation mode (SC-007).
 
 **Checkpoint**: Adaptive deference works per type (Scenario 6).
 

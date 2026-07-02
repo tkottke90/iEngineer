@@ -73,7 +73,10 @@ export class Tier3Synthesizer {
       return;
     }
 
-    // 2. Deference check — stub until T060 (US5).
+    // 2. Deference (FR-021) — after repeated overrides of a recommendation type,
+    //    unsolicited output shifts to information mode; a direct driver-query still
+    //    gets a directive answer.
+    const informationMode = type !== 'driver-query' && this.memory.get().deference.deferredTypes.length > 0;
 
     const race = this.getRaceState();
     const sessionId = race.session?.sessionId ?? '';
@@ -82,7 +85,7 @@ export class Tier3Synthesizer {
     const context = assembleContext(race, this.memory.get(), this.config.llm.tokenBudget);
 
     // 4. Prompt build (versioned files + personality substitution).
-    const system = this.buildSystemPrompt(personality, type);
+    const system = this.buildSystemPrompt(personality, type, informationMode);
     const contextMsg = `${input.userText}\n\nRace context:\n${JSON.stringify({
       raceState: context.raceState,
       memory: context.memoryExcerpt,
@@ -142,7 +145,7 @@ export class Tier3Synthesizer {
     }
   }
 
-  private buildSystemPrompt(p: PersonalityConfig, type: Tier3Type): string {
+  private buildSystemPrompt(p: PersonalityConfig, type: Tier3Type, informationMode = false): string {
     const strip = (s: string): string => s.replace(/<!--[\s\S]*?-->/g, '').trim();
     const base = strip(this.deps.loadPrompt('system-base'));
     const persona = strip(this.deps.loadPrompt('personality'))
@@ -159,6 +162,9 @@ export class Tier3Synthesizer {
     } catch {
       task = '';
     }
-    return [base, persona, task].filter(Boolean).join('\n\n');
+    const deference = informationMode
+      ? 'The driver has repeatedly declined your recommendations this session. Present the relevant information and let them decide — do NOT give a directive recommendation.'
+      : '';
+    return [base, persona, task, deference].filter(Boolean).join('\n\n');
   }
 }
