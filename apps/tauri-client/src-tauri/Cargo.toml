@@ -8,6 +8,13 @@ edition = "2021"
 # tauri dev strips this; tauri build (or manual --features custom-protocol) adds it.
 custom-protocol = ["tauri/custom-protocol"]
 
+# Local push-to-talk STT (whisper.cpp via whisper-rs). OFF by default so the
+# macOS→Windows MinGW cross-compile still builds — whisper.cpp can't cross-compile
+# there (missing target C sysroot headers + Vulkan SDK). Enable on a NATIVE build:
+#   macOS:   cargo build --features stt            (Metal)
+#   Windows: cargo build --features stt            (Vulkan; needs the Vulkan SDK)
+stt = ["dep:whisper-rs"]
+
 [lib]
 name = "iracing_engineer_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
@@ -34,11 +41,12 @@ thiserror = "1"
 # Requires OS accessibility permission for global key capture.
 tauri-plugin-global-shortcut = "2"
 
-# M5 STT: local Whisper base.en via whisper-rs (POC-0002). Requires the model
-# file `ggml-base.en.bin` present at runtime. GPU backend is platform-specific:
-# Metal on macOS, Vulkan on Windows/AMD.
+# M5 STT: local Whisper base.en via whisper-rs (POC-0002), gated by the `stt`
+# feature. Requires `ggml-base.en.bin` at runtime. GPU backend is platform-specific:
+# Metal on macOS, Vulkan on Windows/AMD. Optional so the default build omits
+# whisper.cpp entirely (see the `stt` feature note above).
 [target.'cfg(target_os = "macos")'.dependencies]
-whisper-rs = { version = "0.14", features = ["metal"] }
+whisper-rs = { version = "0.14", features = ["metal"], optional = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.58", features = [
@@ -47,7 +55,7 @@ windows = { version = "0.58", features = [
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_WindowsAndMessaging",
 ] }
-whisper-rs = { version = "0.14", features = ["vulkan"] }
+whisper-rs = { version = "0.14", features = ["vulkan"], optional = true }
 
 [build-dependencies]
 tauri-build = { version = "2.0", features = [] }

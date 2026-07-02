@@ -1,8 +1,12 @@
 pub mod playback_queue;
-pub mod ptt_pipeline;
-pub mod query_publisher;
 pub mod subscriber;
+// STT-only modules (whisper.cpp) — see the `stt` feature in Cargo.toml.
+#[cfg(feature = "stt")]
+pub mod ptt_pipeline;
+#[cfg(feature = "stt")]
+pub mod query_publisher;
 
+#[cfg(feature = "stt")]
 pub use ptt_pipeline::spawn_ptt_pipeline;
 
 use tauri::{AppHandle, Manager};
