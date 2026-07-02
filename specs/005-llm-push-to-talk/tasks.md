@@ -137,10 +137,10 @@
 
 **Independent Test**: quickstart.md Scenario 4.
 
-- [ ] T051 [US3] Complete `apps/hub-server/prompts/personality.md` — full 1–5 word-anchored instruction fragments for all five traits per `contracts/personality-prompt.md`; ensure `tier3-synthesizer` composes all five into every system prompt (FR-017).
-- [ ] T052 [P] [US3] Implement `packages/ui/src/components/PersonalityPanel/index.tsx` — five 1–5 sliders with word labels per level; presentation-only (no business logic, Constitution II).
-- [ ] T053 [US3] Add `PersonalityPanel` to `apps/tauri-client/src/pages/Setup.tsx`; wire save to write `PersonalityConfig` to Redis `hub:config:personality` via the existing config-save path (and `AppConfig` from T008).
-- [ ] T054 [P] [US3] Eval in `apps/hub-server/tests/eval/personality.eval.ts` (reuses the T040 harness + `npm run eval`) implementing the rubric in `contracts/personality-prompt.md`: **hybrid** grading — deterministic proxies (energy→length, assertiveness→imperatives/modals) + **pairwise LLM-judge** (temp 0, "which is more {trait word}?") for warmth/openness/conscientiousness. Fixed **5 scenarios** (pit decision, safety-car, fuel query, tire query, post-lap). Pass bar: level 1 vs 5, direction holds in **≥4/5**, majority-of-samples. Plus a hard deterministic assertion that `energy===1` yields no Tier 3 commentary (SC-005, Constitution VI).
+- [X] T051 [US3] Complete `apps/hub-server/prompts/personality.md` — full 1–5 word-anchored instruction fragments for all five traits per `contracts/personality-prompt.md`; ensure `tier3-synthesizer` composes all five into every system prompt (FR-017).
+- [X] T052 [P] [US3] Implement `packages/ui/src/components/PersonalityPanel/index.tsx` — five 1–5 sliders with word labels per level; presentation-only (no business logic, Constitution II).
+- [X] T053 [US3] Add `PersonalityPanel` to `apps/tauri-client/src/pages/Setup.tsx`; wire save to write `PersonalityConfig` to Redis `hub:config:personality` via the existing config-save path (and `AppConfig` from T008).
+- [X] T054 [P] [US3] Eval in `apps/hub-server/tests/eval/personality.eval.ts` (reuses the T040 harness + `npm run eval`) implementing the rubric in `contracts/personality-prompt.md`: **hybrid** grading — deterministic proxies (energy→length, assertiveness→imperatives/modals) + **pairwise LLM-judge** (temp 0, "which is more {trait word}?") for warmth/openness/conscientiousness. Fixed **5 scenarios** (pit decision, safety-car, fuel query, tire query, post-lap). Pass bar: level 1 vs 5, direction holds in **≥4/5**, majority-of-samples. Plus a hard deterministic assertion that `energy===1` yields no Tier 3 commentary (SC-005, Constitution VI).
 
 **Checkpoint**: Personality is configurable and behaviorally active (Scenario 4).
 

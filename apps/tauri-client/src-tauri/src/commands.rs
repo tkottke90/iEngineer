@@ -25,8 +25,15 @@ pub async fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String>
 #[tauri::command]
 pub async fn save_config(config: AppConfig, state: State<'_, AppState>) -> Result<(), String> {
     let new_url = config.redis_url.clone();
-    // Capture values for the hub Chattiness sync before moving `config`.
-    let chattiness = config.chattiness.clone();
+    // Capture the five personality traits for the hub sync before moving `config`.
+    let personality = serde_json::json!({
+        "openness": config.openness,
+        "warmth": config.warmth,
+        "energy": config.energy,
+        "conscientiousness": config.conscientiousness,
+        "assertiveness": config.assertiveness,
+    })
+    .to_string();
     let redis_url = config.redis_url.clone();
     let mut current = state.config.lock().map_err(|e| e.to_string())?;
     let url_changed = current.redis_url != new_url;
@@ -37,23 +44,23 @@ pub async fn save_config(config: AppConfig, state: State<'_, AppState>) -> Resul
         info!("redis url updated — will apply on next reconnect");
     }
 
-    // Tauri→hub Chattiness sync: write the preference to a Redis key the
-    // RacingEngineerService reads at each dispatcher tick (T037). Best-effort —
-    // a Redis failure must not block saving the local config.
+    // Tauri→hub personality sync (M5): write the five-trait config to the Redis key
+    // the RacingEngineerService reads (T016). Best-effort — a Redis failure must not
+    // block saving the local config.
     tokio::spawn(async move {
-        if let Err(e) = write_chattiness(&redis_url, &chattiness).await {
-            tracing::warn!(error = %e, "failed to write hub:config:chattiness");
+        if let Err(e) = write_personality(&redis_url, &personality).await {
+            tracing::warn!(error = %e, "failed to write hub:config:personality");
         }
     });
 
     Ok(())
 }
 
-async fn write_chattiness(redis_url: &str, value: &str) -> anyhow::Result<()> {
+async fn write_personality(redis_url: &str, value: &str) -> anyhow::Result<()> {
     let client = redis::Client::open(redis_url)?;
     let mut conn = client.get_multiplexed_async_connection().await?;
     let _: () = redis::cmd("SET")
-        .arg("hub:config:chattiness")
+        .arg("hub:config:personality")
         .arg(value)
         .query_async(&mut conn)
         .await?;
