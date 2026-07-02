@@ -30,6 +30,15 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 anyhow = "1"
 thiserror = "1"
+# M5: global (unfocused) PTT hotkey + Stream Deck key passthrough (FR-003).
+# Requires OS accessibility permission for global key capture.
+tauri-plugin-global-shortcut = "2"
+
+# M5 STT: local Whisper base.en via whisper-rs (POC-0002). Requires the model
+# file `ggml-base.en.bin` present at runtime. GPU backend is platform-specific:
+# Metal on macOS, Vulkan on Windows/AMD.
+[target.'cfg(target_os = "macos")'.dependencies]
+whisper-rs = { version = "0.14", features = ["metal"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.58", features = [
@@ -38,6 +47,7 @@ windows = { version = "0.58", features = [
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_WindowsAndMessaging",
 ] }
+whisper-rs = { version = "0.14", features = ["vulkan"] }
 
 [build-dependencies]
 tauri-build = { version = "2.0", features = [] }

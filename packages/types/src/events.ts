@@ -15,6 +15,7 @@ export type EventType =
   | 'hero:pit_limiter_active'
   | 'hero:pit_window_open'
   | 'hero:pace_degradation'
+  | 'hero:lap_complete'
   | 'competitor:pit_entry'
   | 'competitor:pit_exit'
   | 'competitor:position_change'
