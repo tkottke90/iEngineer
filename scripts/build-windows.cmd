@@ -65,6 +65,13 @@ cd /d "%REPO_ROOT%" || goto :fail
 call npm install || goto :fail
 
 echo.
+echo === Building workspace packages ^(types, then ui^) ===
+REM The Tauri frontend imports @iracing-engineer/types and @iracing-engineer/ui,
+REM which resolve to their built dist/ output. Build them first (ui depends on types).
+call npm run build -w packages/types || goto :fail
+call npm run build -w packages/ui || goto :fail
+
+echo.
 echo === Building frontend ^(vite^) ===
 cd /d "%REPO_ROOT%\apps\tauri-client" || goto :fail
 call npm run build || goto :fail
