@@ -1,0 +1,105 @@
+name: Build Windows client
+
+# Builds the Tauri client natively on a Windows runner (no cross-compile, no local
+# toolchain/junction headaches) and uploads iracing-engineer.exe as a job artifact.
+# STT is CPU whisper.cpp (statically linked, no Vulkan SDK needed). Trigger manually
+# from the Actions tab, or it runs on pushes that touch the client.
+
+on:
+  workflow_dispatch:
+    inputs:
+      include_stt:
+        description: "Include push-to-talk STT (CPU whisper.cpp)"
+        type: boolean
+        default: true
+  push:
+    branches: [main, 005-llm-push-to-talk]
+    paths:
+      - "apps/tauri-client/**"
+      - "packages/types/**"
+      - "packages/ui/**"
+      - ".github/workflows/build-windows.yml"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Rust (stable, MSVC)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/tauri-client/src-tauri
+
+      - name: Install dependencies
+        run: npm ci
+
+      # GitHub's Windows runner normally links workspaces fine; this is a belt-and-
+      # suspenders fallback that creates the junctions if npm didn't.
+      - name: Ensure @iracing-engineer workspace links
+        shell: pwsh
+        run: |
+          $base = "node_modules/@iracing-engineer"
+          if (-not (Test-Path "$base/types/package.json")) {
+            Write-Host "npm did not link workspaces - creating junctions"
+            New-Item -ItemType Directory -Force -Path $base | Out-Null
+            $map = @{ "types" = "packages/types"; "ui" = "packages/ui"; "tauri-client" = "apps/tauri-client" }
+            foreach ($k in $map.Keys) {
+              $link = Join-Path $base $k
+              if (Test-Path $link) { cmd /c rmdir "$link" 2>$null }
+              New-Item -ItemType Junction -Path $link -Target (Resolve-Path $map[$k]).Path | Out-Null
+            }
+          }
+          Get-ChildItem $base | Select-Object Name, LinkType, Target
+
+      - name: Build workspace packages (types, then ui)
+        run: |
+          npm run build -w packages/types
+          npm run build -w packages/ui
+
+      - name: Build frontend (embedded via custom-protocol)
+        run: npm run build -w apps/tauri-client
+
+      - name: Determine cargo features
+        id: feat
+        shell: bash
+        run: |
+          if [ "${{ github.event.inputs.include_stt }}" = "false" ]; then
+            echo "features=custom-protocol" >> "$GITHUB_OUTPUT"
+          else
+            echo "features=custom-protocol stt" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Building with features: $(tail -n1 "$GITHUB_OUTPUT")"
+
+      - name: Build Windows binary (native MSVC)
+        working-directory: apps/tauri-client/src-tauri
+        run: cargo build --release --features "${{ steps.feat.outputs.features }}"
+
+      - name: Fetch Whisper model (STT builds only)
+        if: steps.feat.outputs.features == 'custom-protocol stt'
+        run: curl -L -o apps/tauri-client/src-tauri/models/ggml-base.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
+
+      - name: Stage ready-to-run bundle
+        shell: bash
+        run: |
+          mkdir -p out/models
+          cp apps/tauri-client/src-tauri/target/release/iracing-engineer.exe out/
+          if [ -f apps/tauri-client/src-tauri/models/ggml-base.en.bin ]; then
+            cp apps/tauri-client/src-tauri/models/ggml-base.en.bin out/models/
+          fi
+          ls -R out
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iracing-engineer-windows
+          path: out/
+          if-no-files-found: error

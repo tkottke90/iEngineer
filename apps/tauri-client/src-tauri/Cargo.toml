@@ -9,11 +9,15 @@ edition = "2021"
 custom-protocol = ["tauri/custom-protocol"]
 
 # Local push-to-talk STT (whisper.cpp via whisper-rs). OFF by default so the
-# macOS→Windows MinGW cross-compile still builds — whisper.cpp can't cross-compile
-# there (missing target C sysroot headers + Vulkan SDK). Enable on a NATIVE build:
-#   macOS:   cargo build --features stt            (Metal)
-#   Windows: cargo build --features stt            (Vulkan; needs the Vulkan SDK)
+# macOS→Windows MinGW cross-compile still builds (whisper.cpp can't cross-compile
+# there). `stt` alone is CPU-only: portable, statically linked into the exe, and
+# needs NO GPU SDK — ideal for CI and a self-contained binary. Opt into a GPU
+# backend for a faster native build:
+#   cargo build --features stt-metal    (macOS)
+#   cargo build --features stt-vulkan   (Windows/AMD; needs the LunarG Vulkan SDK)
 stt = ["dep:whisper-rs"]
+stt-metal = ["stt", "whisper-rs/metal"]
+stt-vulkan = ["stt", "whisper-rs/vulkan"]
 
 [lib]
 name = "iracing_engineer_lib"
@@ -42,11 +46,10 @@ thiserror = "1"
 tauri-plugin-global-shortcut = "2"
 
 # M5 STT: local Whisper base.en via whisper-rs (POC-0002), gated by the `stt`
-# feature. Requires `ggml-base.en.bin` at runtime. GPU backend is platform-specific:
-# Metal on macOS, Vulkan on Windows/AMD. Optional so the default build omits
-# whisper.cpp entirely (see the `stt` feature note above).
+# feature (optional dep). CPU by default; a GPU backend is opt-in via the
+# stt-metal / stt-vulkan features above. Requires `ggml-base.en.bin` at runtime.
 [target.'cfg(target_os = "macos")'.dependencies]
-whisper-rs = { version = "0.14", features = ["metal"], optional = true }
+whisper-rs = { version = "0.14", optional = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.58", features = [
@@ -55,7 +58,7 @@ windows = { version = "0.58", features = [
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_WindowsAndMessaging",
 ] }
-whisper-rs = { version = "0.14", features = ["vulkan"], optional = true }
+whisper-rs = { version = "0.14", optional = true }
 
 [build-dependencies]
 tauri-build = { version = "2.0", features = [] }

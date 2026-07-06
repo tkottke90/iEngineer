@@ -112,10 +112,11 @@ cd /d "%REPO_ROOT%\apps\tauri-client" || goto :fail
 call npm run build || goto :fail
 
 echo.
-echo === Building Windows binary ^(custom-protocol + stt / Vulkan^) ===
+echo === Building Windows binary ^(custom-protocol + stt-vulkan / GPU^) ===
 echo     This compiles whisper.cpp on the first run - it can take several minutes.
+echo     ^(For a CPU-only build with no Vulkan SDK, swap stt-vulkan for stt below.^)
 cd /d "%SRC_TAURI%" || goto :fail
-cargo build %PROFILE_FLAG% --features "custom-protocol stt" || goto :fail
+cargo build %PROFILE_FLAG% --features "custom-protocol stt-vulkan" || goto :fail
 
 echo.
 if not exist "%EXE%" (
