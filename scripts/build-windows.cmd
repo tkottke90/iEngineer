@@ -64,6 +64,22 @@ echo === Installing workspace dependencies ^(npm^) ===
 cd /d "%REPO_ROOT%" || goto :fail
 call npm install || goto :fail
 
+REM Verify the workspace links exist and are valid (checking a real file THROUGH the
+REM junction catches a broken link, e.g. a node_modules copied from macOS). If not,
+REM do a clean reinstall so npm recreates the Windows junctions.
+if not exist "%REPO_ROOT%\node_modules\@iracing-engineer\types\package.json" (
+  echo [!] Workspace link node_modules\@iracing-engineer\types is missing or broken.
+  echo     Doing a clean reinstall ^(removing node_modules^)...
+  if exist "%REPO_ROOT%\node_modules" rmdir /s /q "%REPO_ROOT%\node_modules"
+  call npm install || goto :fail
+)
+if not exist "%REPO_ROOT%\node_modules\@iracing-engineer\types\package.json" (
+  echo ERROR: workspace link still missing after a clean install. Check npm version:
+  echo   npm -v      ^(needs 7+ for workspaces; ships with Node.js 16+^)
+  echo Make sure you are running this from the repo ROOT, not a subfolder.
+  goto :fail
+)
+
 echo.
 echo === Building workspace packages ^(types, then ui^) ===
 REM The Tauri frontend imports @iracing-engineer/types and @iracing-engineer/ui,
