@@ -25,6 +25,9 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      # Consumed by npm when expanding ${NPM_TOKEN} in .npmrc (see the auth step).
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -75,6 +78,13 @@ jobs:
           Write-Host "VULKAN_SDK = $sdk"
           "VULKAN_SDK=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "$sdk\Bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      # Auth for the private registry (@tkottke90 scope in .npmrc). Single quotes keep
+      # ${NPM_TOKEN} literal in the file; npm expands it from the env at install time.
+      # MUST run before any npm install.
+      - name: Configure private npm registry auth
+        shell: bash
+        run: echo '//npm.artifacts.tdkottke.com/:_authToken=${NPM_TOKEN}' >> .npmrc
 
       - name: Install dependencies
         run: npm ci
