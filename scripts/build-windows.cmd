@@ -74,9 +74,16 @@ if not exist "%REPO_ROOT%\node_modules\@iracing-engineer\types\package.json" (
   call npm install || goto :fail
 )
 if not exist "%REPO_ROOT%\node_modules\@iracing-engineer\types\package.json" (
-  echo ERROR: workspace link still missing after a clean install. Check npm version:
-  echo   npm -v      ^(needs 7+ for workspaces; ships with Node.js 16+^)
-  echo Make sure you are running this from the repo ROOT, not a subfolder.
+  echo [!] npm did not create the @iracing-engineer workspace links - creating them
+  echo     manually with mklink /J ^(junctions; no admin needed^)...
+  if not exist "%REPO_ROOT%\node_modules\@iracing-engineer" mkdir "%REPO_ROOT%\node_modules\@iracing-engineer"
+  if not exist "%REPO_ROOT%\node_modules\@iracing-engineer\types"        mklink /J "%REPO_ROOT%\node_modules\@iracing-engineer\types" "%REPO_ROOT%\packages\types" >nul
+  if not exist "%REPO_ROOT%\node_modules\@iracing-engineer\ui"           mklink /J "%REPO_ROOT%\node_modules\@iracing-engineer\ui" "%REPO_ROOT%\packages\ui" >nul
+  if not exist "%REPO_ROOT%\node_modules\@iracing-engineer\tauri-client" mklink /J "%REPO_ROOT%\node_modules\@iracing-engineer\tauri-client" "%REPO_ROOT%\apps\tauri-client" >nul
+)
+if not exist "%REPO_ROOT%\node_modules\@iracing-engineer\types\package.json" (
+  echo ERROR: could not link the @iracing-engineer workspace packages. Run `npm install`
+  echo        by itself from the repo root and check the output for errors, then share them.
   goto :fail
 )
 
