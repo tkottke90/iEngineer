@@ -8,6 +8,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      # Consumed by npm when expanding ${NPM_TOKEN} in .npmrc (private @tkottke90 registry).
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     services:
       redis:
@@ -50,6 +53,11 @@ jobs:
         with:
           node-version: 20
           cache: npm
+
+      # Auth for the private registry (@tkottke90 scope in .npmrc) — before npm install.
+      # Single quotes keep ${NPM_TOKEN} literal; npm expands it from the env.
+      - name: Configure private npm registry auth
+        run: echo '//npm.artifacts.tdkottke.com/:_authToken=${NPM_TOKEN}' >> .npmrc
 
       - name: Install npm dependencies
         run: npm ci
