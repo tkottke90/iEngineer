@@ -77,13 +77,25 @@ if not exist "%REPO_ROOT%\node_modules\@iracing-engineer\types\package.json" (
   echo [!] npm did not create the @iracing-engineer workspace links - creating them
   echo     manually with mklink /J ^(junctions; no admin needed^)...
   if not exist "%REPO_ROOT%\node_modules\@iracing-engineer" mkdir "%REPO_ROOT%\node_modules\@iracing-engineer"
-  if not exist "%REPO_ROOT%\node_modules\@iracing-engineer\types"        mklink /J "%REPO_ROOT%\node_modules\@iracing-engineer\types" "%REPO_ROOT%\packages\types" >nul
-  if not exist "%REPO_ROOT%\node_modules\@iracing-engineer\ui"           mklink /J "%REPO_ROOT%\node_modules\@iracing-engineer\ui" "%REPO_ROOT%\packages\ui" >nul
-  if not exist "%REPO_ROOT%\node_modules\@iracing-engineer\tauri-client" mklink /J "%REPO_ROOT%\node_modules\@iracing-engineer\tauri-client" "%REPO_ROOT%\apps\tauri-client" >nul
+  REM Remove any empty placeholder/broken link npm left (plain rmdir removes only the
+  REM junction/empty dir - it does NOT touch the link target's contents).
+  rmdir "%REPO_ROOT%\node_modules\@iracing-engineer\types" 2>nul
+  rmdir "%REPO_ROOT%\node_modules\@iracing-engineer\ui" 2>nul
+  rmdir "%REPO_ROOT%\node_modules\@iracing-engineer\tauri-client" 2>nul
+  mklink /J "%REPO_ROOT%\node_modules\@iracing-engineer\types" "%REPO_ROOT%\packages\types"
+  mklink /J "%REPO_ROOT%\node_modules\@iracing-engineer\ui" "%REPO_ROOT%\packages\ui"
+  mklink /J "%REPO_ROOT%\node_modules\@iracing-engineer\tauri-client" "%REPO_ROOT%\apps\tauri-client"
 )
 if not exist "%REPO_ROOT%\node_modules\@iracing-engineer\types\package.json" (
-  echo ERROR: could not link the @iracing-engineer workspace packages. Run `npm install`
-  echo        by itself from the repo root and check the output for errors, then share them.
+  echo.
+  echo ERROR: could not link the @iracing-engineer workspace packages.
+  echo Look at the mklink output just above for the real cause. Common ones:
+  echo   - "Cannot create a file when that file already exists" -^> a leftover dir;
+  echo     delete node_modules\@iracing-engineer and re-run.
+  echo   - "You do not have sufficient privilege" / policy-blocked -^> mklink is
+  echo     restricted; enable Windows Developer Mode, or run this from an elevated shell.
+  echo   - "The system cannot find the path specified" -^> confirm packages\types exists
+  echo     ^(are you in the repo ROOT?^).
   goto :fail
 )
 
