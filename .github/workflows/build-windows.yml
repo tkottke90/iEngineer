@@ -2,16 +2,18 @@ name: Build Windows client
 
 # Builds the Tauri client natively on a Windows runner (no cross-compile, no local
 # toolchain/junction headaches) and uploads iracing-engineer.exe as a job artifact.
-# STT is CPU whisper.cpp (statically linked, no Vulkan SDK needed). Trigger manually
-# from the Actions tab, or it runs on pushes that touch the client.
+# Defaults to GPU STT (whisper.cpp + Vulkan): the Vulkan SDK is installed on the
+# runner so the vulkan shaders compile. Trigger manually from the Actions tab
+# (pick a backend) or on pushes that touch the client.
 
 on:
   workflow_dispatch:
     inputs:
-      include_stt:
-        description: "Include push-to-talk STT (CPU whisper.cpp)"
-        type: boolean
-        default: true
+      stt_backend:
+        description: "STT backend for push-to-talk"
+        type: choice
+        options: [vulkan, cpu, none]
+        default: vulkan
   push:
     branches: [main, 005-llm-push-to-talk]
     paths:
@@ -26,6 +28,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Determine cargo features
+        id: feat
+        shell: bash
+        run: |
+          backend="${{ github.event.inputs.stt_backend }}"
+          [ -z "$backend" ] && backend="vulkan"   # push events default to GPU STT
+          case "$backend" in
+            vulkan) f="custom-protocol stt-vulkan" ;;
+            cpu)    f="custom-protocol stt" ;;
+            none)   f="custom-protocol" ;;
+            *)      f="custom-protocol stt-vulkan" ;;
+          esac
+          echo "features=$f" >> "$GITHUB_OUTPUT"
+          echo "Building with features: $f"
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -39,11 +56,31 @@ jobs:
         with:
           workspaces: apps/tauri-client/src-tauri
 
+      # whisper.cpp's Vulkan backend needs the SDK headers, vulkan-1.lib, and glslc
+      # (to compile the compute shaders). Install the full LunarG SDK when building
+      # the vulkan feature. Silent install flags are LunarG's QtIFW commands.
+      - name: Install Vulkan SDK
+        if: contains(steps.feat.outputs.features, 'vulkan')
+        shell: pwsh
+        run: |
+          $ver = "1.3.296.0"
+          $url = "https://sdk.lunarg.com/sdk/download/$ver/windows/VulkanSDK-$ver-Installer.exe"
+          $exe = Join-Path $env:RUNNER_TEMP "VulkanSDK-Installer.exe"
+          Write-Host "Downloading Vulkan SDK $ver ..."
+          Invoke-WebRequest -Uri $url -OutFile $exe
+          Write-Host "Installing (silent) ..."
+          $p = Start-Process -FilePath $exe -ArgumentList "--accept-licenses","--default-answer","--confirm-command","install" -PassThru -Wait -NoNewWindow
+          if ($p.ExitCode -ne 0) { throw "Vulkan SDK installer exited with code $($p.ExitCode)" }
+          $sdk = (Get-ChildItem "C:\VulkanSDK" -Directory | Sort-Object Name -Descending | Select-Object -First 1).FullName
+          Write-Host "VULKAN_SDK = $sdk"
+          "VULKAN_SDK=$sdk" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "$sdk\Bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
       - name: Install dependencies
         run: npm ci
 
-      # GitHub's Windows runner normally links workspaces fine; this is a belt-and-
-      # suspenders fallback that creates the junctions if npm didn't.
+      # GitHub's Windows runner normally links workspaces fine; belt-and-suspenders
+      # fallback that creates the junctions if npm didn't.
       - name: Ensure @iracing-engineer workspace links
         shell: pwsh
         run: |
@@ -68,23 +105,12 @@ jobs:
       - name: Build frontend (embedded via custom-protocol)
         run: npm run build -w apps/tauri-client
 
-      - name: Determine cargo features
-        id: feat
-        shell: bash
-        run: |
-          if [ "${{ github.event.inputs.include_stt }}" = "false" ]; then
-            echo "features=custom-protocol" >> "$GITHUB_OUTPUT"
-          else
-            echo "features=custom-protocol stt" >> "$GITHUB_OUTPUT"
-          fi
-          echo "Building with features: $(tail -n1 "$GITHUB_OUTPUT")"
-
       - name: Build Windows binary (native MSVC)
         working-directory: apps/tauri-client/src-tauri
         run: cargo build --release --features "${{ steps.feat.outputs.features }}"
 
       - name: Fetch Whisper model (STT builds only)
-        if: steps.feat.outputs.features == 'custom-protocol stt'
+        if: contains(steps.feat.outputs.features, 'stt')
         run: curl -L -o apps/tauri-client/src-tauri/models/ggml-base.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
 
       - name: Stage ready-to-run bundle
