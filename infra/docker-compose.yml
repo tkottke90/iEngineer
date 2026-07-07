@@ -5,7 +5,7 @@ services:
       - '0.0.0.0:6379:6379'
     volumes:
       - redis-data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --protected-mode no
 
   postgres:
     image: postgres:16-alpine
@@ -33,13 +33,13 @@ services:
   #   environment:
   #     - WHISPER_MODEL=base.en
 
-  chatterbox:
-    image: ghcr.io/devnen/chatterbox-tts-api:latest
-    ports:
-      - "8004:8004"
-    volumes:
-      - chatterbox-models:/app/models
-      - ./config/chatterbox:/app/config
+  # chatterbox:
+  #   image: ghcr.io/devnen/chatterbox-tts-api:latest
+  #   ports:
+  #     - "8004:8004"
+  #   volumes:
+  #     - chatterbox-models:/app/models
+  #     - ./config/chatterbox:/app/config
 
   # Uncomment when working on observability (Loki/Tempo/Prometheus)
   # otel-collector:
@@ -53,5 +53,5 @@ services:
 volumes:
   redis-data:
   postgres-data:
-  speaches-models:
-  chatterbox-models:
+  # speaches-models:
+  # chatterbox-models:

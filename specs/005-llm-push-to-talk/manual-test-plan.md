@@ -23,24 +23,24 @@ fuel/tire answers) need live or simulated telemetry. Check each box as you go.
 
 ## 1. One-time setup
 
-- [ ] **Infra up:** `docker compose -f infra/docker-compose.yml up -d redis postgres chatterbox`
-- [ ] **Postgres reachable:** `psql "$DATABASE_URL" -c '\dt'` (or the compose defaults
+- [X] **Infra up:** `docker compose -f infra/docker-compose.yml up -d redis postgres chatterbox`
+- [X] **Postgres reachable:** `psql "$DATABASE_URL" -c '\dt'` (or the compose defaults
       `postgresql://iracing:iracing@localhost:5432/iracing_engineer`)
-- [ ] **Install + build:** `npm install && npm run build`
-- [ ] **Whisper model:** `bash apps/tauri-client/src-tauri/models/download.sh`
+- [X] **Install + build:** `npm install && npm run build`
+- [X] **Whisper model:** `bash apps/tauri-client/src-tauri/models/download.sh`
       (~142 MB; sets up `ggml-base.en.bin`). If launching the client from another
       cwd, set `WHISPER_MODEL_PATH=/abs/path/ggml-base.en.bin`.
-- [ ] **LLM config:** confirm `apps/hub-server/config/engineer-config.json` →
+- [X] **LLM config:** confirm `apps/hub-server/config/engineer-config.json` →
       `llm.baseUrl` = `https://lemonade.tdkottke.com/v1`, `llm.model` =
       `user.Ornith-1.0-35B-GGUF`, and the endpoint is reachable:
       `curl -s $BASEURL/models | head`
-- [ ] **Chatterbox reachable:** `curl -s http://10.0.0.12:8004/health` (or your URL
+- [X] **Chatterbox reachable:** `curl -s http://10.0.0.12:8004/health` (or your URL
       in `chatterboxUrl`)
-- [ ] **Env:** the hub auto-loads the repo-root `.env` at startup (walks up from cwd)
+- [X] **Env:** the hub auto-loads the repo-root `.env` at startup (walks up from cwd)
       → expect `[hub] Loaded environment {file: …/.env}`. Ensure `.env` has
       `DATABASE_URL` (defaults to `postgresql://iracing:iracing@localhost:5432/iracing_engineer`),
       or `export DATABASE_URL=…` to override.
-- [ ] **Start the hub:** `cd apps/hub-server && npm start` → expect
+- [X] **Start the hub:** `cd apps/hub-server && npm start` → expect
       `[hub] engineer_events migrations applied` and `[hub] Racing Engineer started`.
       If you instead see `engineer_events migrations failed` or `audit pre-write
       failed … client password must be a string`, Postgres auth/URL is wrong — fix
@@ -50,15 +50,15 @@ fuel/tire answers) need live or simulated telemetry. Check each box as you go.
 
 ## 2. Automated verification 🧪
 
-- [ ] **Hub unit + integration tests:** `npm test -w apps/hub-server` → **122 passing**.
-- [ ] **Postgres round-trip (integration):** `npm run test:integration -w apps/hub-server`
+- [X] **Hub unit + integration tests:** `npm test -w apps/hub-server` → **122 passing**.
+- [X] **Postgres round-trip (integration):** `npm run test:integration -w apps/hub-server`
       → the `engineer_events` round-trip test passes (skips only if PG is down).
-- [ ] **Rust STT tests:** `cargo test --manifest-path apps/tauri-client/src-tauri/Cargo.toml stt::`
+- [X] **Rust STT tests:** `cargo test --manifest-path apps/tauri-client/src-tauri/Cargo.toml stt::`
       → 4 passing (resample + is_speech).
-- [ ] **Personality + tool-calling evals** (live LLM): `npm run eval -w apps/hub-server`
+- [X] **Personality + tool-calling evals** (live LLM): `npm run eval -w apps/hub-server`
       → tool-calling: fuel/tire questions call the tools; personality: each trait's
       direction holds ≥4/5. (Skips if the LLM is unreachable.)
-- [ ] **Gates:** `npm run typecheck` and `npm run build` are clean.
+- [X] **Gates:** `npm run typecheck` and `npm run build` are clean.
 
 ---
 
@@ -66,7 +66,7 @@ fuel/tire answers) need live or simulated telemetry. Check each box as you go.
 
 ### A. On-demand PTT query — hub side 💉 (US1)
 
-- [ ] **A1 — Driver query end-to-end (plumbing).** Inject a transcript as if STT ran:
+- [X] **A1 — Driver query end-to-end (plumbing).** Inject a transcript as if STT ran:
   ```
   redis-cli PUBLISH engineer:query '{"queryId":"t1","transcript":"do we pit this lap?","sessionId":"s1","capturedAtMs":0}'
   ```
@@ -76,13 +76,13 @@ fuel/tire answers) need live or simulated telemetry. Check each box as you go.
   *(Without a live race, tools report "not available" and the answer will say so —
   that's correct, not a bug.)*
 
-- [ ] **A2 — Empty transcription guard (FR-004).**
+- [X] **A2 — Empty transcription guard (FR-004).**
   ```
   redis-cli PUBLISH engineer:query '{"queryId":"t2","transcript":"   ","sessionId":"s1","capturedAtMs":0}'
   ```
   **Expect:** `[engineer] PTT query ignored — empty transcript`; **no** `voice:audio`.
 
-- [ ] **A3 — Concurrency cap (Q4).** With Ornith-35B (slow), fire several fast:
+- [X] **A3 — Concurrency cap (Q4).** With Ornith-35B (slow), fire several fast:
   ```
   for i in 1 2 3 4 5; do redis-cli PUBLISH engineer:query "{\"queryId\":\"q$i\",\"transcript\":\"status?\",\"sessionId\":\"s1\",\"capturedAtMs\":0}"; done
   ```
@@ -91,20 +91,20 @@ fuel/tire answers) need live or simulated telemetry. Check each box as you go.
 
 ### B. Proactive Tier 3 briefings 💉 (US2)
 
-- [ ] **B1 — Pit-lane entry briefing.**
+- [X] **B1 — Pit-lane entry briefing.**
   ```
   redis-cli PUBLISH hub:events '{"type":"hero:pit_entry","sessionId":"s1","sessionTime":0,"lapNumber":5,"payload":{}}'
   ```
   **Expect:** a `voice:audio` clip with `"tier3Type":"pit-entry"`.
 
-- [ ] **B2 — Safety car: immediate Tier 1 + additive Tier 3 (FR-016).**
+- [X] **B2 — Safety car: immediate Tier 1 + additive Tier 3 (FR-016).**
   ```
   redis-cli PUBLISH hub:events '{"type":"session:safety_car_deployed","sessionId":"s1","sessionTime":0,"lapNumber":5,"payload":{}}'
   ```
   **Expect:** first a Tier 1 clip (`"tier":1,"eventType":"session:safety_car_deployed"`),
   then a Tier 3 `"tier3Type":"safety-car"` briefing.
 
-- [ ] **B3 — Post-sector cadence.** Publish `hero:lap_complete` several times:
+- [X] **B3 — Post-sector cadence.** Publish `hero:lap_complete` several times:
   ```
   for l in 1 2 3 4; do redis-cli PUBLISH hub:events "{\"type\":\"hero:lap_complete\",\"sessionId\":\"s1\",\"sessionTime\":0,\"lapNumber\":$l,\"payload\":{}}"; done
   ```
@@ -113,7 +113,7 @@ fuel/tire answers) need live or simulated telemetry. Check each box as you go.
 
 ### C. Personality 🎧 (US3)
 
-- [ ] **C1 — Energy=1 suppresses commentary.** Set the trait directly:
+- [X] **C1 — Energy=1 suppresses commentary.** Set the trait directly:
   ```
   redis-cli SET hub:config:personality '{"openness":3,"warmth":3,"energy":1,"conscientiousness":3,"assertiveness":3}'
   ```
@@ -121,24 +121,24 @@ fuel/tire answers) need live or simulated telemetry. Check each box as you go.
   post-sector clips. (A direct **A1** driver-query still answers — Energy=1 only
   suppresses unsolicited commentary.)
 
-- [ ] **C2 — Direction is audible.** Reset to a chatty/assertive profile
+- [X] **C2 — Direction is audible.** Reset to a chatty/assertive profile
   `'{"openness":3,"warmth":5,"energy":5,"conscientiousness":5,"assertiveness":5}'`
   vs a terse one `'…"energy":1…"assertiveness":1…'`, and compare the answer to the
   same **A1** query. **Expect:** high-energy/assertive is longer and more directive.
 
-- [ ] **C3 — UI panel.** In the Tauri client → Setup → **Engineer Personality**: move
+- [X] **C3 — UI panel.** In the Tauri client → Setup → **Engineer Personality**: move
   the five sliders, click **Save**. **Expect:** `redis-cli GET hub:config:personality`
   reflects the new values; the hub picks them up on the next synthesis.
 
 ### D. Graceful degradation 💉 (US7)
 
-- [ ] **D1 — LLM down.** Point `llm.baseUrl` at a dead URL (or stop the endpoint) and
+- [X] **D1 — LLM down.** Point `llm.baseUrl` at a dead URL (or stop the endpoint) and
   restart the hub. Then:
   - Inject **B1/B2** → `[engineer] Tier 3 skipped — LLM unavailable`; safety car's
     **Tier 1 alert still fires** (rule path unaffected, SC-003).
   - Inject **A1** → a brief canned "reasoning engine unavailable" clip is published.
   - Verify `engineer_events` rows have `outcome = 'skipped-llm-unreachable'`.
-- [ ] **D2 — Recovery.** Restore `llm.baseUrl`, restart, inject **A1** → normal
+- [X] **D2 — Recovery.** Restore `llm.baseUrl`, restart, inject **A1** → normal
   synthesis resumes (no code change needed).
 
 ### E. Override, deference, memory 🏁 (US4/US5/US6)
@@ -219,8 +219,8 @@ fuel/tire answers) need live or simulated telemetry. Check each box as you go.
 
 ## Sign-off
 
-- [ ] Section 2 automated checks green
-- [ ] Sections 3A–3D verified via injection
-- [ ] Section 4 latency within budget (or model swapped)
-- [ ] Section 5 live deploy test passed (SC-010)
-- [ ] Section 6 audit rows present
+- [X] Section 2 automated checks green
+- [X] Sections 3A–3D verified via injection
+- [X] Section 4 latency within budget (or model swapped)
+- [X] Section 5 live deploy test passed (SC-010)
+- [X] Section 6 audit rows present
