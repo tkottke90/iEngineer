@@ -19,13 +19,17 @@ export function assembleContext(
   tokenBudget: number,
 ): ReasoningContext {
   const hero = raceState.hero;
+  // `session` is typed non-null, but at runtime it is null before any session is
+  // seen (injection tests / pre-race) — the same reason synthesize() uses
+  // `race.session?.sessionId`. Guard it so a Tier 3 synthesis can't crash the hub.
+  const session = raceState.session as RaceState['session'] | null;
 
   // Core — never dropped.
   const core = {
     session: {
-      phase: raceState.session.sessionPhase,
-      lapsRemaining: raceState.session.lapsRemaining,
-      flags: raceState.session.flags,
+      phase: session?.sessionPhase ?? null,
+      lapsRemaining: session?.lapsRemaining ?? null,
+      flags: session?.flags ?? null,
     },
     hero: hero
       ? {
@@ -95,6 +99,8 @@ export function assembleContext(
 
   if (truncated) {
     logger.info('[engineer] context truncated to fit token budget', {
+      component: 'engineer',
+      event: 'context_truncated',
       reason: 'context-truncated',
       estimatedTokens: ctx.estimatedTokens,
       tokenBudget,

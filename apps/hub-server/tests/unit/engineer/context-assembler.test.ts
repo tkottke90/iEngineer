@@ -60,6 +60,22 @@ describe('context-assembler — token budget + truncation (FR-012)', () => {
     expect((ctx.raceState as { hero: { position: number } }).hero.position).to.equal(4);
   });
 
+  it('does not crash when there is no active session (session/hero null)', () => {
+    // Pre-race / injection-test state: RaceState.session is typed non-null but is
+    // null at runtime before any session exists. assembleContext must not throw.
+    const noSession = {
+      session: null,
+      field: {},
+      hero: null,
+      signals: { pitWindowOpen: false, safeWindowOpen: false },
+    } as unknown as RaceState;
+    const ctx = assembleContext(noSession, memory(0), 100_000);
+    const rs = ctx.raceState as { session: { phase: unknown; lapsRemaining: unknown }; hero: unknown };
+    expect(rs.session.phase).to.equal(null);
+    expect(rs.session.lapsRemaining).to.equal(null);
+    expect(rs.hero).to.equal(null);
+  });
+
   it('truncates over budget, preserves core, and logs', () => {
     let ctx!: ReturnType<typeof assembleContext>;
     const logs = captureInfo(() => {

@@ -27,6 +27,9 @@ class FakeRedis {
   async get(): Promise<string | null> {
     return null;
   }
+  async set(): Promise<'OK'> {
+    return 'OK';
+  }
   async publish(channel: string, message: string): Promise<number> {
     this.published.push({ channel, message });
     return 1;

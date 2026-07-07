@@ -19,6 +19,7 @@ import { shouldSuppressAlert, parsePersonality } from './personality-config.js';
 import type { Tier3Synthesizer } from './tier3-synthesizer.js';
 import type { OverrideTracker } from './override-tracker.js';
 import { logger } from '../logger.js';
+import { performance } from 'node:perf_hooks';
 
 const DISPATCH_INTERVAL_MS = 100;
 
@@ -37,6 +38,7 @@ export class RacingEngineerService {
   private dispatchTimer: ReturnType<typeof setInterval> | null = null;
   private _generating = false;
   private _personalityWarnEmitted = false;
+  private _personalitySeeded = false;
   // Unified serialized synthesis: driver-query + proactive briefings run one at a
   // time (single LLM call in flight). queueDepthCap bounds pending PTT queries (Q4).
   private _synthQueue: SynthRequest[] = [];
@@ -69,6 +71,8 @@ export class RacingEngineerService {
       });
     } catch (err) {
       logger.error('[engineer] Failed to subscribe to hub:events / engineer:query', {
+        component: 'engineer',
+        event: 'subscribe_failed',
         reason: err instanceof Error ? err.message : String(err),
       });
       return;
@@ -87,7 +91,11 @@ export class RacingEngineerService {
     }
     // Empty/non-speech is already guarded client-side (FR-004); double-guard here.
     if (!q.transcript || !q.transcript.trim()) {
-      logger.info('[engineer] PTT query ignored — empty transcript', { queryId: q.queryId });
+      logger.info('[engineer] PTT query ignored — empty transcript', {
+        component: 'engineer',
+        event: 'ptt_query_ignored_empty',
+        queryId: q.queryId,
+      });
       return;
     }
     this.enqueueSynth({
@@ -105,6 +113,8 @@ export class RacingEngineerService {
       const pending = this._synthQueue.filter((r) => r.isDriverQuery).length;
       if (pending >= this.config.queueDepthCap) {
         logger.warn('[engineer] PTT query dropped — queue depth cap reached', {
+          component: 'engineer',
+          event: 'ptt_query_dropped',
           reason: 'queue-cap-drop',
           queryId: req.triggerSource,
         });
@@ -123,13 +133,26 @@ export class RacingEngineerService {
     try {
       while (this._synthQueue.length > 0) {
         const req = this._synthQueue.shift()!;
-        const personality = await this.readPersonality();
-        await this.synthesizer.synthesize({
-          type: req.type,
-          triggerSource: req.triggerSource,
-          userText: req.userText,
-          personality,
-        });
+        // Isolate each synthesis: a failure logs and drops that request but must
+        // not reject drainSynth (an unhandled rejection would crash the hub) or
+        // stall the queue behind it (SC-003 graceful degradation).
+        try {
+          const personality = await this.readPersonality();
+          await this.synthesizer.synthesize({
+            type: req.type,
+            triggerSource: req.triggerSource,
+            userText: req.userText,
+            personality,
+          });
+        } catch (err) {
+          logger.error('[engineer] Tier 3 synthesis failed', {
+            component: 'engineer',
+            event: 'tier3_synthesis_failed',
+            type: req.type,
+            triggerSource: req.triggerSource,
+            reason: err instanceof Error ? err.message : String(err),
+          });
+        }
       }
     } finally {
       this._synthInFlight = false;
@@ -219,6 +242,8 @@ export class RacingEngineerService {
 
     if (!this.dedup.shouldFire(alert.eventType, alert.lapNumber)) {
       logger.info('[engineer] Alert deduplicated', {
+        component: 'engineer',
+        event: 'alert_deduplicated',
         alertType: alert.eventType,
         lapNumber: alert.lapNumber,
       });
@@ -227,6 +252,8 @@ export class RacingEngineerService {
     this.dedup.recordFired(alert.eventType, alert.lapNumber);
     this.queue.enqueue(alert);
     logger.info('[engineer] Alert enqueued', {
+      component: 'engineer',
+      event: 'alert_enqueued',
       alertType: alert.eventType,
       tier: alert.tier,
       lapNumber: alert.lapNumber,
@@ -247,14 +274,39 @@ export class RacingEngineerService {
       raw = null;
     }
     const { personality, usedFallback } = parsePersonality(raw, this.config.personality);
-    if (usedFallback && !this._personalityWarnEmitted) {
-      this._personalityWarnEmitted = true;
-      logger.warn(
-        '[engineer] Personality key absent, malformed, or out of range — using config defaults',
-        {
-          reason: 'personality-key-fallback',
-        },
-      );
+    if (usedFallback) {
+      if (!this._personalityWarnEmitted) {
+        this._personalityWarnEmitted = true;
+        logger.warn(
+          '[engineer] Personality key absent, malformed, or out of range — using config defaults',
+          {
+            component: 'engineer',
+            event: 'personality_fallback',
+            reason: 'personality-key-fallback',
+          },
+        );
+      }
+      // Seed the resolved default back to Redis so the key exists for the Setup UI
+      // and subsequent reads stop falling back (self-heals an absent/malformed key).
+      // Attempted once per process, best-effort — GET already succeeded, so the
+      // connection is up and SET will normally succeed; on failure we keep the
+      // in-memory default and do NOT retry (avoids a per-tick write/log storm).
+      if (!this._personalitySeeded) {
+        this._personalitySeeded = true;
+        try {
+          await this.commandConn.set('hub:config:personality', JSON.stringify(personality));
+          logger.info('[engineer] Personality default seeded to Redis', {
+            component: 'engineer',
+            event: 'personality_seeded',
+          });
+        } catch (err) {
+          logger.warn('[engineer] Failed to seed personality default to Redis', {
+            component: 'engineer',
+            event: 'personality_seed_failed',
+            reason: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
     }
     return personality;
   }
@@ -273,6 +325,8 @@ export class RacingEngineerService {
       // Tier 3 commentary suppression is enforced earlier, in the synthesizer.
       if (msg.tier !== 3 && shouldSuppressAlert(msg, personality)) {
         logger.info('[engineer] Alert suppressed', {
+          component: 'engineer',
+          event: 'alert_suppressed',
           alertType: msg.eventType,
           reason: 'Energy:1',
         });
@@ -289,18 +343,43 @@ export class RacingEngineerService {
   // voice:audio. Tier 1/2 refs carry eventType; Tier 3 refs carry tier3Type.
   private async generateAndPublish(msg: QueuedMessage): Promise<void> {
     const label = msg.tier === 3 ? msg.tier3Type : msg.eventType;
+    // Per-generation timing (Tier 3 only); Tier 1/2 alerts are rule-based, no inference.
+    const timing = msg.tier === 3 ? msg.timing : undefined;
     try {
+      // Audio stage: TTS round-trip to Chatterbox for this one sentence/clip.
+      const audioStart = performance.now();
       const buffer = await this.generateClipFn(msg.messageText, this.config);
-      logger.info('[engineer] Clip generated', { label, tier: msg.tier });
+      const audioMs = Math.round(performance.now() - audioStart);
+      logger.info('[engineer] Clip generated', {
+        component: 'engineer',
+        event: 'clip_generated',
+        label,
+        tier: msg.tier,
+        audioMs,
+      });
       const { audioId, clipUrl, storedAt } = this.audioStore.store(buffer);
       const ref: AudioClipRef =
         msg.tier === 3
           ? { audioId, clipUrl, tier: 3, tier3Type: msg.tier3Type, generatedAt: storedAt }
           : { audioId, clipUrl, tier: msg.tier, eventType: msg.eventType, generatedAt: storedAt };
       await this.commandConn.publish('voice:audio', JSON.stringify(ref));
-      logger.info('[engineer] Clip published', { label, tier: msg.tier, audioId });
+      logger.info('[engineer] Clip published', {
+        component: 'engineer',
+        event: 'clip_published',
+        label,
+        tier: msg.tier,
+        audioId,
+        // Inference stage (whole LLM call for this generation); null for Tier 1/2,
+        // or for a Tier 3 clip published before inference finished (streamed clip).
+        inferenceMs: timing?.inferenceMs ?? null,
+        audioMs,
+        // End-to-end: inference trigger → this clip on voice:audio (Tier 3 only).
+        totalMs: timing ? Math.round(performance.now() - timing.startedAt) : null,
+      });
     } catch (err) {
       logger.error('[engineer] TTS failure', {
+        component: 'engineer',
+        event: 'tts_failure',
         label,
         tier: msg.tier,
         failureReason: err instanceof Error ? err.message : String(err),

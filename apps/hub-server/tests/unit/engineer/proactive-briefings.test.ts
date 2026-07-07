@@ -27,6 +27,10 @@ class FakeRedis {
   async get(key: string): Promise<string | null> {
     return key === 'hub:config:personality' ? this.personalityRaw : null;
   }
+  async set(key: string, value: string): Promise<'OK'> {
+    if (key === 'hub:config:personality') this.personalityRaw = value;
+    return 'OK';
+  }
   async publish(channel: string, message: string): Promise<number> {
     this.published.push({ channel, message });
     return 1;

@@ -30,6 +30,10 @@ class FakeRedis {
   async get(key: string): Promise<string | null> {
     return this.kv[key] ?? null;
   }
+  async set(key: string, value: string): Promise<'OK'> {
+    this.kv[key] = value;
+    return 'OK';
+  }
   async publish(channel: string, message: string): Promise<number> {
     this.published.push({ channel, message });
     return 1;
@@ -161,6 +165,26 @@ describe('driver-query flow — engineer:query → voice:audio (US1)', () => {
     expect(refs).to.have.length(2);
     expect(refs[0].tier).to.equal(3);
     expect(refs[0].tier3Type).to.equal('driver-query');
+  });
+
+  it('seeds the default personality to Redis when the key is absent', async () => {
+    const okRun: SynthDeps['runLlm'] = async (_c, _m, _t, opts) => {
+      opts?.onDelta?.('Box now.');
+      return { status: 'ok', text: 'Box now.', toolsCalled: [], latencyMs: 1 } as LlmResult;
+    };
+    const { engineer, conn } = makeEngineer(okRun);
+    active = engineer;
+    // Key absent up front → readPersonality falls back and should seed the default.
+    expect(conn.kv['hub:config:personality']).to.equal(undefined);
+    await engineer.start();
+
+    conn.deliver(
+      'engineer:query',
+      JSON.stringify({ queryId: 'q1', transcript: 'do we pit?', sessionId: 's1', capturedAtMs: 1 }),
+    );
+
+    await waitUntil(() => conn.kv['hub:config:personality'] !== undefined);
+    expect(JSON.parse(conn.kv['hub:config:personality'])).to.deep.equal(CONFIG.personality);
   });
 
   it('ignores an empty transcript (no synthesis, no publish)', async () => {

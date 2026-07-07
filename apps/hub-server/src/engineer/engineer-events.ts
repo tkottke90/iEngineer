@@ -40,6 +40,8 @@ export async function recordEvent(
     return id;
   } catch (err) {
     logger.error('[engineer] audit pre-write failed — skipping synthesis (fail-closed)', {
+      component: 'engineer',
+      event: 'audit_prewrite_failed',
       tier3Type: input.tier3Type,
       sessionId: input.sessionId,
       error: String(err),
@@ -67,6 +69,8 @@ export async function finalizeEvent(
     );
   } catch (err) {
     logger.error('[engineer] audit finalize failed', {
+      component: 'engineer',
+      event: 'audit_finalize_failed',
       id,
       outcome: input.outcome,
       error: String(err),

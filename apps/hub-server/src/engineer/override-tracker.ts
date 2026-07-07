@@ -27,7 +27,13 @@ export class OverrideTracker {
       actionWindow: { recommendedLap },
       outcome: 'pending',
     });
-    logger.info('[engineer] Recommendation logged', { recId, type, recommendedLap });
+    logger.info('[engineer] Recommendation logged', {
+      component: 'engineer',
+      event: 'recommendation_logged',
+      recId,
+      type,
+      recommendedLap,
+    });
     return recId;
   }
 
@@ -39,7 +45,12 @@ export class OverrideTracker {
     for (const rec of this.pendingPitRecs()) {
       if (lap >= rec.actionWindow.recommendedLap) {
         rec.outcome = 'followed';
-        logger.info('[engineer] Pit recommendation followed', { recId: rec.recId, lap });
+        logger.info('[engineer] Pit recommendation followed', {
+          component: 'engineer',
+          event: 'recommendation_followed',
+          recId: rec.recId,
+          lap,
+        });
       }
     }
   }
@@ -55,6 +66,8 @@ export class OverrideTracker {
         rec.outcome = 'overridden';
         this.recordOverride(rec.type);
         logger.info('[engineer] Pit recommendation overridden — engineer will stop advocating', {
+          component: 'engineer',
+          event: 'recommendation_overridden',
           recId: rec.recId,
           lap,
         });
@@ -74,6 +87,8 @@ export class OverrideTracker {
     if (d.overrideCountByType[type] >= this.deferenceThreshold && !d.deferredTypes.includes(type)) {
       d.deferredTypes.push(type);
       logger.info('[engineer] Entering deference (information) mode for recommendation type', {
+        component: 'engineer',
+        event: 'deference_entered',
         type,
         overrides: d.overrideCountByType[type],
         threshold: this.deferenceThreshold,

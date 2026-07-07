@@ -157,7 +157,11 @@ export async function runLlm(
       return { status: 'ok', text: '', toolsCalled, latencyMs: Date.now() - start };
     } catch (err) {
       if (controller.signal.aborted) return { status: 'timeout' };
-      logger.warn('[engineer] LLM unreachable', { error: String(err) });
+      logger.warn('[engineer] LLM unreachable', {
+        component: 'engineer',
+        event: 'llm_unreachable',
+        error: String(err),
+      });
       return { status: 'unreachable', error: String(err) };
     }
   };

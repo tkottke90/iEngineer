@@ -41,6 +41,7 @@ export function loadBlackoutZones(
   } catch {
     logger.warn(
       '[engineer] radio-blackout-zones.json missing or invalid — treating entire lap as safe window',
+      { component: 'engineer', event: 'blackout_zones_fallback' },
     );
     return [];
   }

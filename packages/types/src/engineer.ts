@@ -117,6 +117,17 @@ export interface Tier3Message {
   createdAtMs: number;
 }
 
+// Per-generation timing handle, shared (by reference) across every sentence clip
+// produced by one LLM synthesis, so the dispatcher can report inference + audio
+// timings when it publishes each clip. Mutable: `inferenceMs` stays null until the
+// LLM call finishes — clips streamed mid-inference are published before it's known,
+// which is itself a useful signal (time-to-first-audio < full inference time).
+export interface GenerationTiming {
+  genId: string;
+  startedAt: number; // performance.now() when inference was triggered
+  inferenceMs: number | null; // full LLM-call duration; null if published mid-stream
+}
+
 // A single per-sentence Tier 3 clip enqueued into the PriorityMessageQueue. The
 // dispatcher turns it into TTS + an AudioClipRef, dispatched after all pending
 // Tier 1/2 items (FR-015). Within Tier 3, driver-query outranks proactive commentary.
@@ -125,6 +136,7 @@ export interface QueuedTier3 {
   tier3Type: Tier3Type;
   messageText: string;
   sentenceIndex: number; // order within one synthesized message
+  timing?: GenerationTiming; // perf timing for the generation this sentence belongs to
 }
 
 // Anything the PriorityMessageQueue can hold. Discriminated by `tier`.

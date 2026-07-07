@@ -68,6 +68,8 @@ export class PriorityMessageQueue {
       if (this.now() - (head.enqueuedAt ?? this.now()) >= NO_SAFE_WINDOW_TIMEOUT_MS) {
         this.tier2.shift();
         logger.warn('[engineer] Tier 2 alert dropped — no safe window within 30s', {
+          component: 'engineer',
+          event: 'tier2_dropped_no_window',
           alertType: head.eventType,
           enqueuedAt: head.enqueuedAt,
         });

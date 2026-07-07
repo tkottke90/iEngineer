@@ -1,11 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 import type {
   RaceState,
   EngineerConfig,
   PersonalityConfig,
   Tier3Type,
+  GenerationTiming,
 } from '@iracing-engineer/types';
 import { assembleContext } from './context-assembler.js';
 import { SentenceStreamSplitter } from './sentence-splitter.js';
@@ -69,7 +72,11 @@ export class Tier3Synthesizer {
     // 1. Suppression — Energy=1 (Tranquil) suppresses proactive commentary, but a
     //    direct driver-query is always answered.
     if (personality.energy === 1 && type !== 'driver-query') {
-      logger.info('[engineer] Tier 3 suppressed at Energy 1', { type });
+      logger.info('[engineer] Tier 3 suppressed at Energy 1', {
+        component: 'engineer',
+        event: 'tier3_suppressed',
+        type,
+      });
       return;
     }
 
@@ -111,11 +118,31 @@ export class Tier3Synthesizer {
         prompt: `${system}\n\n${contextMsg}`,
       });
     } catch {
-      logger.warn('[engineer] Tier 3 skipped — audit pre-write failed', { type });
+      logger.warn('[engineer] Tier 3 skipped — audit pre-write failed', {
+        component: 'engineer',
+        event: 'tier3_skipped_audit',
+        type,
+      });
       return;
     }
 
-    // 6–7. Stream → split → enqueue each completed sentence.
+    // 6–7. Stream → split → enqueue each completed sentence. A single timing handle
+    // is shared (by reference) across every sentence clip so the dispatcher can
+    // report inference + audio timings on publish; inferenceMs is filled in once the
+    // LLM call returns (below).
+    const timing: GenerationTiming = {
+      genId: randomUUID(),
+      startedAt: performance.now(),
+      inferenceMs: null,
+    };
+    logger.info('[engineer] Inference triggered', {
+      component: 'engineer',
+      event: 'inference_triggered',
+      type,
+      triggerSource: input.triggerSource,
+      genId: timing.genId,
+    });
+
     const splitter = new SentenceStreamSplitter();
     let sentenceIndex = 0;
     const enqueueSentence = (text: string): void => {
@@ -126,6 +153,7 @@ export class Tier3Synthesizer {
         tier3Type: type,
         messageText: clean,
         sentenceIndex: sentenceIndex++,
+        timing,
       });
     };
 
@@ -133,6 +161,23 @@ export class Tier3Synthesizer {
       onDelta: (t) => {
         for (const s of splitter.push(t)) enqueueSentence(s);
       },
+    });
+
+    // Inference finished — stamp the handle (visible to clips still queued) and log.
+    timing.inferenceMs = Math.round(performance.now() - timing.startedAt);
+    const toolsCalled = result.status === 'ok' ? result.toolsCalled : [];
+    logger.info('[engineer] Inference complete', {
+      component: 'engineer',
+      event: 'inference_complete',
+      type,
+      genId: timing.genId,
+      status: result.status,
+      inferenceMs: timing.inferenceMs,
+      sentences: sentenceIndex,
+      toolsCalled,
+      // Scalar mirror of toolsCalled — Loki's json parser skips arrays, so this is
+      // the field to unwrap/alert on (e.g. tool-call rate, "0 tools" detection).
+      toolsCalledCount: toolsCalled.length,
     });
 
     // 8. Finalize audit + degradation.
@@ -149,7 +194,12 @@ export class Tier3Synthesizer {
     }
 
     // LLM unreachable/timeout — skip proactive; canned line for a driver-query (FR-023).
-    logger.warn('[engineer] Tier 3 skipped — LLM unavailable', { type, reason: result.status });
+    logger.warn('[engineer] Tier 3 skipped — LLM unavailable', {
+      component: 'engineer',
+      event: 'tier3_skipped_llm',
+      type,
+      reason: result.status,
+    });
     await this.deps.finalizeEvent(eventId, {
       response: null,
       latencyMs: null,
@@ -162,6 +212,7 @@ export class Tier3Synthesizer {
         tier3Type: type,
         messageText: 'Reasoning engine unavailable.',
         sentenceIndex: 0,
+        timing,
       });
     }
   }

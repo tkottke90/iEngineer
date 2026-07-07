@@ -24,6 +24,9 @@ class FakeRedis {
   async get(): Promise<string | null> {
     return null;
   }
+  async set(): Promise<'OK'> {
+    return 'OK';
+  }
   async publish(): Promise<number> {
     return 1;
   }
