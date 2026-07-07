@@ -1,0 +1,2 @@
+# Whisper model binaries are downloaded via download.sh, not committed
+*.bin

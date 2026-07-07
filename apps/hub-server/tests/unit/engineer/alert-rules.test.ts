@@ -58,9 +58,9 @@ describe('alert-rules Tier 1', () => {
   });
 
   it('T1-04: pit limiter active only when payload.active === true', () => {
-    expect(evaluateTier1(ev('hero:pit_limiter_active', { active: true }), CONFIG)!.messageText).to.equal(
-      'Pit limiter active',
-    );
+    expect(
+      evaluateTier1(ev('hero:pit_limiter_active', { active: true }), CONFIG)!.messageText,
+    ).to.equal('Pit limiter active');
     expect(evaluateTier1(ev('hero:pit_limiter_active', { active: false }), CONFIG)).to.be.null;
   });
 });
@@ -74,7 +74,11 @@ describe('alert-rules Tier 2', () => {
   });
 
   it('T2-01: null when pitWindowOpen signal is false', () => {
-    const a = evaluateTier2(ev('hero:pit_window_open'), { ...SIGNALS, pitWindowOpen: false }, CONFIG);
+    const a = evaluateTier2(
+      ev('hero:pit_window_open'),
+      { ...SIGNALS, pitWindowOpen: false },
+      CONFIG,
+    );
     expect(a).to.be.null;
   });
 

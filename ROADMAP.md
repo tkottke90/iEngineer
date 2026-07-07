@@ -53,7 +53,7 @@ POCs are run, results documented in `pocs/<name>/results/`, and findings folded 
 
 ---
 
-## M4 — Racing Engineer: Rule-Based Alerts + Voice
+## M4 — Racing Engineer: Rule-Based Alerts + Voice *(complete)*
 
 **Theme:** First feature the driver can use. The engineer speaks during a live race without requiring LLM inference.
 

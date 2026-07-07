@@ -14,11 +14,28 @@ pub struct AppConfig {
     pub audio_input_device: Option<String>,
     pub audio_output_device: Option<String>,
     pub ptt_hotkey: String,
-    /// Chattiness: "Low" suppresses Tier 2 alerts, "Default" allows all (FR-011).
+    /// DEPRECATED (M5): retained for the current Setup UI until T053 migrates it
+    /// to the five OCEAN traits below; then these three String fields are removed.
     pub chattiness: String,
-    /// M5 personality stubs — no behavioral effect in M4 (FR-012).
     pub familiarity: String,
     pub aggression: String,
+    /// M5 personality — five OCEAN traits, each 1–5 (default 3). Written to the
+    /// hub via Redis `hub:config:personality`. Wired to the UI in T053.
+    /// `serde(default)` so pre-M5 saved configs (without these fields) still load.
+    #[serde(default = "default_trait_level")]
+    pub openness: u8,
+    #[serde(default = "default_trait_level")]
+    pub warmth: u8,
+    #[serde(default = "default_trait_level")]
+    pub energy: u8,
+    #[serde(default = "default_trait_level")]
+    pub conscientiousness: u8,
+    #[serde(default = "default_trait_level")]
+    pub assertiveness: u8,
+}
+
+fn default_trait_level() -> u8 {
+    3
 }
 
 impl Default for AppConfig {
@@ -33,6 +50,11 @@ impl Default for AppConfig {
             chattiness: "Default".into(),
             familiarity: "Default".into(),
             aggression: "Default".into(),
+            openness: 3,
+            warmth: 3,
+            energy: 3,
+            conscientiousness: 3,
+            assertiveness: 3,
         }
     }
 }

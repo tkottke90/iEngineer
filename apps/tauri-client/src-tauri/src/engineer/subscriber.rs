@@ -18,8 +18,14 @@ struct AudioClipRef {
     clip_url: String,
     #[allow(dead_code)]
     tier: u8,
+    // Tier 1/2 clips carry eventType; Tier 3 (LLM-synthesized) carry tier3Type
+    // (Model A). Both optional so either shape deserializes.
     #[allow(dead_code)]
-    event_type: String,
+    #[serde(default)]
+    event_type: Option<String>,
+    #[allow(dead_code)]
+    #[serde(default)]
+    tier3_type: Option<String>,
     generated_at: u128,
 }
 

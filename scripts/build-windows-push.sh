@@ -79,3 +79,8 @@ cp "$EXE_PATH" "$DEST"
 echo ""
 echo "Done. Run on Windows:"
 echo "  \\\\<server>\\<share>\\iracing-engineer.exe"
+
+# NOTE: STT (whisper.cpp) is NOT in this cross-build — it cannot cross-compile from
+# macOS (missing target C headers + Vulkan SDK). Push-to-talk is disabled in this
+# exe; everything else works. For PTT, build natively on Windows with:
+#   cargo build --release --features "custom-protocol stt"   (needs the Vulkan SDK)

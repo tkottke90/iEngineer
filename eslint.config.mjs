@@ -6,7 +6,14 @@ import reactHooks from 'eslint-plugin-react-hooks';
 export default tseslint.config(
   // Global ignores — dist, generated, and experimental POC code
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/target/**', 'pocs/**', 'scripts/**', '**/*.d.ts'],
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/target/**',
+      'pocs/**',
+      'scripts/**',
+      '**/*.d.ts',
+    ],
   },
 
   // TypeScript-ESLint recommended rules for all .ts / .tsx files
@@ -32,6 +39,16 @@ export default tseslint.config(
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
+
+  // Test & eval files: chai assertions (`expect(x).to.be.true`) read as unused
+  // expressions, and test doubles use casts/`any` freely.
+  {
+    files: ['**/*.test.ts', '**/*.eval.ts', '**/test/**/*.ts', '**/tests/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-unused-expressions': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 );

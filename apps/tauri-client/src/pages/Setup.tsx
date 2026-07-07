@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'preact/hooks';
 import { invoke } from '@tauri-apps/api/core';
-import { AudioDeviceTestPanel } from '@iracing-engineer/ui';
+import { AudioDeviceTestPanel, PersonalityPanel } from '@iracing-engineer/ui';
+import type { PersonalityValue } from '@iracing-engineer/ui';
+
+const DEFAULT_PERSONALITY: PersonalityValue = {
+  openness: 3,
+  warmth: 3,
+  energy: 3,
+  conscientiousness: 3,
+  assertiveness: 3,
+};
 
 interface AudioDevice {
   name: string;
@@ -18,6 +27,11 @@ interface AppConfig {
   chattiness: string;
   familiarity: string;
   aggression: string;
+  openness: number;
+  warmth: number;
+  energy: number;
+  conscientiousness: number;
+  assertiveness: number;
 }
 
 type ConnStatus = 'checking' | 'connected' | 'disconnected';
@@ -47,6 +61,7 @@ export function Setup() {
   const [hubUrl, setHubUrl] = useState('http://localhost:5173');
   const [pttKey, _setPttKey] = useState('F13');
   const [chattiness, setChattiness] = useState<'Default' | 'Low'>('Default');
+  const [personality, setPersonality] = useState<PersonalityValue>(DEFAULT_PERSONALITY);
   const [redisStatus, setRedisStatus] = useState<ConnStatus>('checking');
   const [hubStatus, setHubStatus] = useState<ConnStatus>('checking');
   const [config, setConfig] = useState<AppConfig | null>(null);
@@ -60,6 +75,13 @@ export function Setup() {
         setRedisUrl(c.redis_url);
         setHubUrl(c.hub_url);
         if (c.chattiness === 'Low' || c.chattiness === 'Default') setChattiness(c.chattiness);
+        setPersonality({
+          openness: c.openness ?? 3,
+          warmth: c.warmth ?? 3,
+          energy: c.energy ?? 3,
+          conscientiousness: c.conscientiousness ?? 3,
+          assertiveness: c.assertiveness ?? 3,
+        });
       })
       .catch(console.error);
   }, []);
@@ -96,10 +118,12 @@ export function Setup() {
         chattiness,
         familiarity: 'Default',
         aggression: 'Default',
+        ...personality,
       }),
       redis_url: redisUrl,
       hub_url: hubUrl,
       chattiness,
+      ...personality,
     };
     invoke('save_config', { config: updated })
       .then(() => setConfig(updated))
@@ -185,20 +209,12 @@ export function Setup() {
       </section>
 
       <section>
-        <h2>Racing Engineer</h2>
-        <label>
-          Chattiness{' '}
-          <select
-            value={chattiness}
-            onChange={(e) => {
-              const v = (e.target as HTMLSelectElement).value as 'Default' | 'Low';
-              setChattiness(v);
-            }}
-          >
-            <option value="Default">Default — all alerts</option>
-            <option value="Low">Low — suppress Tier 2 alerts</option>
-          </select>
-        </label>
+        <h2>Engineer Personality</h2>
+        <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: 0 }}>
+          Five traits, each 1–5. Energy at 1 (Tranquil) keeps the engineer quiet — it suppresses
+          Tier 2 alerts and Tier 3 commentary.
+        </p>
+        <PersonalityPanel value={personality} onChange={setPersonality} />
         <button onClick={handleSave}>Save</button>
       </section>
     </div>

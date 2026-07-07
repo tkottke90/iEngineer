@@ -48,13 +48,22 @@ export async function reclaimPendingMessages(redis: Redis, idleMs = 30_000): Pro
   for (const { stream, group } of streams) {
     try {
       // XAUTOCLAIM: reclaim messages idle > idleMs
-      const result = await (redis as any).xautoclaim(stream, group, CONSUMER_NAME, idleMs, '0-0', 'COUNT', '100');
+      const result = await (redis as any).xautoclaim(
+        stream,
+        group,
+        CONSUMER_NAME,
+        idleMs,
+        '0-0',
+        'COUNT',
+        '100',
+      );
       // result is [nextId, entries, deletedIds] or [nextId, entries]
       const entries = Array.isArray(result[1]) ? result[1] : [];
       totalReclaimed += entries.length;
     } catch (err: unknown) {
       // Stream may not exist yet — ignore
-      if (err instanceof Error && (err.message.includes('ERR') || err.message.includes('NOGROUP'))) continue;
+      if (err instanceof Error && (err.message.includes('ERR') || err.message.includes('NOGROUP')))
+        continue;
       throw err;
     }
   }
@@ -65,11 +74,40 @@ export async function reclaimPendingMessages(redis: Redis, idleMs = 30_000): Pro
 type EntryPayload = string;
 type Callback = (payload: EntryPayload, entryId: string) => Promise<void> | void;
 
-function parseEntries(raw: [string, string[]][]): Array<{ id: string; payload: string }> {
+// Coerce a Redis stream field value (always a string on the wire) back to the JSON
+// type the processors expect — numbers, booleans, arrays like "[1,3,2,4]", or the
+// raw string. An empty value (iRacing "Unavailable") becomes null.
+function coerceFieldValue(v: string): unknown {
+  if (v === '') return null;
+  if (v.startsWith('[') && v.endsWith(']')) {
+    try {
+      return JSON.parse(v);
+    } catch {
+      return v;
+    }
+  }
+  if (v === 'true') return true;
+  if (v === 'false') return false;
+  if (/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
+  return v;
+}
+
+// Two on-wire encodings exist:
+//   • Events streams write a single `payload` JSON field (RedisPublisher.publish_event).
+//   • Telemetry streams (live/session) write field-per-column (publish_live/publish_session).
+// Normalize both to the `payload` JSON string the processors JSON.parse.
+export function parseEntries(raw: [string, string[]][]): Array<{ id: string; payload: string }> {
   return raw.map(([id, fields]) => {
     const idx = fields.indexOf('payload');
-    const payload = idx !== -1 ? fields[idx + 1] : '';
-    return { id, payload };
+    if (idx !== -1) {
+      return { id, payload: fields[idx + 1] ?? '' };
+    }
+    // Field-per-column telemetry — reconstruct the tick object.
+    const obj: Record<string, unknown> = {};
+    for (let i = 0; i + 1 < fields.length; i += 2) {
+      obj[fields[i]] = coerceFieldValue(fields[i + 1]);
+    }
+    return { id, payload: JSON.stringify(obj) };
   });
 }
 
@@ -100,7 +138,14 @@ export async function streamConsumerLoop(
   await Promise.all([
     singleStreamLoop(consumerConn, commandConn, STREAMS.live, GROUPS.live, onLive, signal),
     singleStreamLoop(consumerConn, commandConn, STREAMS.session, GROUPS.session, onSession, signal),
-    singleStreamLoop(consumerConn, commandConn, STREAMS.sessionEvent, GROUPS.sessionEvent, onSessionEvent, signal),
+    singleStreamLoop(
+      consumerConn,
+      commandConn,
+      STREAMS.sessionEvent,
+      GROUPS.sessionEvent,
+      onSessionEvent,
+      signal,
+    ),
   ]);
 }
 
@@ -114,11 +159,16 @@ async function singleStreamLoop(
 ): Promise<void> {
   while (!signal?.aborted) {
     try {
-      const result = await (consumerConn as any).xreadgroup(
-        'GROUP', group, CONSUMER_NAME,
-        'BLOCK', 100,
-        'STREAMS', stream, '>'
-      ) as Array<[string, [string, string[]][]]> | null;
+      const result = (await (consumerConn as any).xreadgroup(
+        'GROUP',
+        group,
+        CONSUMER_NAME,
+        'BLOCK',
+        100,
+        'STREAMS',
+        stream,
+        '>',
+      )) as Array<[string, [string, string[]][]]> | null;
 
       if (!result) continue;
 
@@ -138,7 +188,7 @@ async function singleStreamLoop(
       if (signal?.aborted) break;
       const errMsg = err instanceof Error ? err.message : String(err);
       logger.error('[hub] XREADGROUP error', { stream, group, error: errMsg, retryIn: 1000 });
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 1000));
     }
   }
 }

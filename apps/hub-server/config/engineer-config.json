@@ -3,5 +3,23 @@
   "chatterboxVoiceFile": "voice2.wav",
   "fuelCriticalLapsRemaining": 1.0,
   "gapThresholdSeconds": 2.0,
-  "audioIdleCleanupIntervalMs": 30000
+  "audioIdleCleanupIntervalMs": 30000,
+  "llm": {
+    "baseUrl": "https://lemonade.tdkottke.com/v1",
+    "model": "user.Ornith-1.0-35B-GGUF",
+    "provider": "openai-compatible",
+    "timeoutMs": 8000,
+    "maxResponseTokens": 300,
+    "tokenBudget": 6000
+  },
+  "personality": {
+    "openness": 3,
+    "warmth": 3,
+    "energy": 3,
+    "conscientiousness": 3,
+    "assertiveness": 3
+  },
+  "deferenceThreshold": 2,
+  "queueDepthCap": 3,
+  "postSectorMinLapGap": 2
 }

@@ -8,6 +8,17 @@ edition = "2021"
 # tauri dev strips this; tauri build (or manual --features custom-protocol) adds it.
 custom-protocol = ["tauri/custom-protocol"]
 
+# Local push-to-talk STT (whisper.cpp via whisper-rs). OFF by default so the
+# macOS→Windows MinGW cross-compile still builds (whisper.cpp can't cross-compile
+# there). `stt` alone is CPU-only: portable, statically linked into the exe, and
+# needs NO GPU SDK — ideal for CI and a self-contained binary. Opt into a GPU
+# backend for a faster native build:
+#   cargo build --features stt-metal    (macOS)
+#   cargo build --features stt-vulkan   (Windows/AMD; needs the LunarG Vulkan SDK)
+stt = ["dep:whisper-rs"]
+stt-metal = ["stt", "whisper-rs/metal"]
+stt-vulkan = ["stt", "whisper-rs/vulkan"]
+
 [lib]
 name = "iracing_engineer_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
@@ -27,9 +38,21 @@ rodio = { version = "0.19", default-features = false, features = ["mp3"] }
 rubato = "0.15"
 reqwest = { version = "0.12", features = ["json"] }
 tracing = "0.1"
-tracing-subscriber = "0.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# Daily-rolling file log target (RUST_LOG-filterable) so audio/STT diagnostics
+# are recoverable on Windows release builds, where the console is detached.
+tracing-appender = "0.2"
 anyhow = "1"
 thiserror = "1"
+# M5: global (unfocused) PTT hotkey + Stream Deck key passthrough (FR-003).
+# Requires OS accessibility permission for global key capture.
+tauri-plugin-global-shortcut = "2"
+
+# M5 STT: local Whisper base.en via whisper-rs (POC-0002), gated by the `stt`
+# feature (optional dep). CPU by default; a GPU backend is opt-in via the
+# stt-metal / stt-vulkan features above. Requires `ggml-base.en.bin` at runtime.
+[target.'cfg(target_os = "macos")'.dependencies]
+whisper-rs = { version = "0.14", optional = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.58", features = [
@@ -38,6 +61,7 @@ windows = { version = "0.58", features = [
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_WindowsAndMessaging",
 ] }
+whisper-rs = { version = "0.14", optional = true }
 
 [build-dependencies]
 tauri-build = { version = "2.0", features = [] }

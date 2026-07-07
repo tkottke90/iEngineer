@@ -25,35 +25,47 @@ pub async fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String>
 #[tauri::command]
 pub async fn save_config(config: AppConfig, state: State<'_, AppState>) -> Result<(), String> {
     let new_url = config.redis_url.clone();
-    // Capture values for the hub Chattiness sync before moving `config`.
-    let chattiness = config.chattiness.clone();
+    let new_hub_url = config.hub_url.clone();
+    // Capture the five personality traits for the hub sync before moving `config`.
+    let personality = serde_json::json!({
+        "openness": config.openness,
+        "warmth": config.warmth,
+        "energy": config.energy,
+        "conscientiousness": config.conscientiousness,
+        "assertiveness": config.assertiveness,
+    })
+    .to_string();
     let redis_url = config.redis_url.clone();
     let mut current = state.config.lock().map_err(|e| e.to_string())?;
-    let url_changed = current.redis_url != new_url;
+    // A hub_url change matters too: the engineer subscriber resolves clip URLs
+    // against it, so notify on either so it resubscribes with fresh config.
+    let url_changed = current.redis_url != new_url || current.hub_url != new_hub_url;
     *current = config;
     drop(current);
     if url_changed {
+        // The watch carries redis_url, but the engineer task re-reads both URLs
+        // from config on wake — so sending here applies redis_url and hub_url edits.
         let _ = state.redis_url_watch_tx.send(new_url);
-        info!("redis url updated — will apply on next reconnect");
+        info!("connection config updated — engineer subscriber will resubscribe");
     }
 
-    // Tauri→hub Chattiness sync: write the preference to a Redis key the
-    // RacingEngineerService reads at each dispatcher tick (T037). Best-effort —
-    // a Redis failure must not block saving the local config.
+    // Tauri→hub personality sync (M5): write the five-trait config to the Redis key
+    // the RacingEngineerService reads (T016). Best-effort — a Redis failure must not
+    // block saving the local config.
     tokio::spawn(async move {
-        if let Err(e) = write_chattiness(&redis_url, &chattiness).await {
-            tracing::warn!(error = %e, "failed to write hub:config:chattiness");
+        if let Err(e) = write_personality(&redis_url, &personality).await {
+            tracing::warn!(error = %e, "failed to write hub:config:personality");
         }
     });
 
     Ok(())
 }
 
-async fn write_chattiness(redis_url: &str, value: &str) -> anyhow::Result<()> {
+async fn write_personality(redis_url: &str, value: &str) -> anyhow::Result<()> {
     let client = redis::Client::open(redis_url)?;
     let mut conn = client.get_multiplexed_async_connection().await?;
     let _: () = redis::cmd("SET")
-        .arg("hub:config:chattiness")
+        .arg("hub:config:personality")
         .arg(value)
         .query_async(&mut conn)
         .await?;
@@ -236,8 +248,8 @@ pub async fn set_watchlist(fields: Vec<String>, state: State<'_, AppState>) -> R
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FocusedCarData {
     pub cam_car_idx: i32,
-    pub cam_group:   i32,
-    pub cam_num:     i32,
+    pub cam_group: i32,
+    pub cam_num: i32,
     pub fields: std::collections::HashMap<String, TelemetryValue>,
 }
 
@@ -272,7 +284,7 @@ pub async fn get_focused_car_data() -> Result<Option<FocusedCarData>, String> {
             _ => return Ok(None),
         };
         let cam_group = sdk.read_var_int("CamGroupNumber").unwrap_or(-1);
-        let cam_num   = sdk.read_var_int("CamCameraNumber").unwrap_or(-1);
+        let cam_num = sdk.read_var_int("CamCameraNumber").unwrap_or(-1);
 
         let mut fields = std::collections::HashMap::new();
         for &name in FOCUSED_FIELDS {
@@ -281,7 +293,12 @@ pub async fn get_focused_car_data() -> Result<Option<FocusedCarData>, String> {
             }
         }
 
-        return Ok(Some(FocusedCarData { cam_car_idx, cam_group, cam_num, fields }));
+        return Ok(Some(FocusedCarData {
+            cam_car_idx,
+            cam_group,
+            cam_num,
+            fields,
+        }));
     }
     #[cfg(not(target_os = "windows"))]
     Ok(None)
