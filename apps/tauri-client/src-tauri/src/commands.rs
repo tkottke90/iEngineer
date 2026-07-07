@@ -25,6 +25,7 @@ pub async fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String>
 #[tauri::command]
 pub async fn save_config(config: AppConfig, state: State<'_, AppState>) -> Result<(), String> {
     let new_url = config.redis_url.clone();
+    let new_hub_url = config.hub_url.clone();
     // Capture the five personality traits for the hub sync before moving `config`.
     let personality = serde_json::json!({
         "openness": config.openness,
@@ -36,12 +37,16 @@ pub async fn save_config(config: AppConfig, state: State<'_, AppState>) -> Resul
     .to_string();
     let redis_url = config.redis_url.clone();
     let mut current = state.config.lock().map_err(|e| e.to_string())?;
-    let url_changed = current.redis_url != new_url;
+    // A hub_url change matters too: the engineer subscriber resolves clip URLs
+    // against it, so notify on either so it resubscribes with fresh config.
+    let url_changed = current.redis_url != new_url || current.hub_url != new_hub_url;
     *current = config;
     drop(current);
     if url_changed {
+        // The watch carries redis_url, but the engineer task re-reads both URLs
+        // from config on wake — so sending here applies redis_url and hub_url edits.
         let _ = state.redis_url_watch_tx.send(new_url);
-        info!("redis url updated — will apply on next reconnect");
+        info!("connection config updated — engineer subscriber will resubscribe");
     }
 
     // Tauri→hub personality sync (M5): write the five-trait config to the Redis key

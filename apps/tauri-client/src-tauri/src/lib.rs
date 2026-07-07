@@ -67,10 +67,7 @@ pub fn run() {
                 .lock()
                 .map(|c| c.redis_url.clone())
                 .unwrap_or_default();
-            tauri::async_runtime::spawn(engineer::spawn_engineer_task(
-                app.handle().clone(),
-                redis_url.clone(),
-            ));
+            tauri::async_runtime::spawn(engineer::spawn_engineer_task(app.handle().clone()));
 
             // Push-to-talk (M5 US1): global hotkey → capture → local Whisper STT →
             // publish engineer:query. The global shortcut works while the sim is
