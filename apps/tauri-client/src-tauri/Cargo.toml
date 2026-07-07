@@ -38,7 +38,10 @@ rodio = { version = "0.19", default-features = false, features = ["mp3"] }
 rubato = "0.15"
 reqwest = { version = "0.12", features = ["json"] }
 tracing = "0.1"
-tracing-subscriber = "0.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# Daily-rolling file log target (RUST_LOG-filterable) so audio/STT diagnostics
+# are recoverable on Windows release builds, where the console is detached.
+tracing-appender = "0.2"
 anyhow = "1"
 thiserror = "1"
 # M5: global (unfocused) PTT hotkey + Stream Deck key passthrough (FR-003).

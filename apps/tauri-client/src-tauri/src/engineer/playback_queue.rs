@@ -53,7 +53,9 @@ async fn run_receiver(mut rx: mpsc::UnboundedReceiver<String>, play: PlayFn) {
                     serde_json::json!({
                         "msg": "[engineer] Audio playback failed",
                         "url": url,
-                        "reason": e.to_string(),
+                        // {:#} renders the full anyhow context chain (e.g.
+                        // "HTTP request to hub failed: connection refused").
+                        "reason": format!("{e:#}"),
                     })
                 );
             }

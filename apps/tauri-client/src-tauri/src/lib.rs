@@ -5,6 +5,7 @@ mod db;
 mod engineer;
 mod hotkeys;
 mod iracing;
+mod logging;
 mod redis;
 mod state;
 #[cfg(feature = "stt")]
@@ -23,8 +24,6 @@ use tauri_plugin_global_shortcut::ShortcutState;
 static PTT_TX: OnceLock<tokio::sync::mpsc::Sender<bool>> = OnceLock::new();
 
 pub fn run() {
-    tracing_subscriber::fmt::init();
-
     tauri::Builder::default()
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -54,6 +53,11 @@ pub fn run() {
             get_sdk_debug,
         ])
         .setup(|app| {
+            // Init logging first so every subsequent task logs to stdout AND the
+            // on-disk file (the only way to see audio/STT errors in a Windows
+            // release build, where the console is detached).
+            logging::init(app.handle());
+
             iracing::spawn_connection_watcher(app.handle().clone());
             tauri::async_runtime::spawn(telemetry::spawn_publisher_task(app.handle().clone()));
             // Racing Engineer (M4): subscribe to voice:audio and play clips.
