@@ -1,7 +1,7 @@
 # iRacing Engineer — Implementation Roadmap
 
 **Status:** Living document  
-**Last updated:** 2026-06-30
+**Last updated:** 2026-07-07
 
 Each milestone is self-contained and deployable. A milestone gate is: the feature can be used in a real iRacing session (or meaningfully tested without one) without depending on an unbuilt milestone.
 
@@ -53,7 +53,7 @@ POCs are run, results documented in `pocs/<name>/results/`, and findings folded 
 
 ---
 
-## M4 — Racing Engineer: Rule-Based Alerts + Voice *(complete)*
+## ✅ M4 — Racing Engineer: Rule-Based Alerts + Voice *(complete)*
 
 **Theme:** First feature the driver can use. The engineer speaks during a live race without requiring LLM inference.
 
@@ -76,25 +76,28 @@ POCs are run, results documented in `pocs/<name>/results/`, and findings folded 
 
 ---
 
-## M5 — Racing Engineer: LLM + Push-to-Talk
+## ✅ M5 — Racing Engineer: LLM + Push-to-Talk *(complete)*
 
 **Theme:** Completes the voice loop. The engineer reasons, the driver can ask questions.
 
 **Prerequisites:** M4 complete; POCs 0002 and 0003 results in hand.
 
-**What it delivers:**
-- **Whisper STT** — local endpoint, transcribes push-to-talk audio from Tauri mic
-- **PTT activation** — configurable hotkey in Tauri client (hardware and Stream Deck passthrough)
-- **LLM integration** — OpenAI-compatible API, LLM tool calling for `get_fuel_status()` and `get_tire_status()`
+**Delivered:**
+- **Whisper STT** — local `base.en` (whisper-rs) embedded in the Tauri client, gated behind an optional `stt` cargo feature (`stt` CPU / `stt-vulkan` GPU); transcribes push-to-talk audio from the mic
+- **PTT activation** — configurable global hotkey in the Tauri client (default F13, hardware and Stream Deck passthrough)
+- **LLM integration** — OpenAI-compatible API, tool calling for `get_fuel_status()` and `get_tire_status()`
 - **Context assembly** — structured race state summary with field truncation rules, token budget ceiling
-- **Tier 3 messages** — LLM-synthesized: pit lane entry briefing, safety car briefing, on-demand driver queries, post-sector commentary
-- **Personality system** — all three dimensions active (Chattiness, Familiarity, Aggression), system prompt construction with POC validation findings
+- **Tier 3 messages** — LLM-synthesized, sentence-streamed to TTS: pit lane entry briefing, safety car briefing, on-demand driver queries, post-sector commentary
+- **Personality system** — five OCEAN traits (openness, warmth, energy, conscientiousness, assertiveness), each 1–5, live via `hub:config:personality`; Energy=1 suppresses unsolicited commentary; Tauri Setup panel + evals
 - **Driver override tracking** — detects when a recommendation window passes without action; engineer stops advocating, pivots to the driver's decision
 - **Adaptive deference** — shifts from recommendations to information presentation after repeated overrides in a session
-- **Session memory** — recommendation log, override outcomes, fuel model calibration updates; context included in LLM context assembly
-- Graceful degradation: if LLM is unreachable, Tier 3 messages are skipped; Tier 1/2 continue unaffected
+- **Session memory** — recommendation log, override outcomes, fuel model calibration updates; folded into LLM context assembly
+- **Graceful degradation** — if the LLM is unreachable, Tier 3 is skipped (audit records the outcome); Tier 1/2 rule alerts continue unaffected
+- **Native Windows client build** — CI workflow producing a client artifact (CPU/GPU STT split)
 
 **Deploy test:** Drive a race stint. Ask "do we pit this lap?" verbally and receive a synthesized briefing under 5 seconds. Override a pit recommendation, then confirm the engineer stops repeating it.
+
+**Shipped in PR #3** (127 hub tests passing). Hardening added during verification: client file logging (Windows release builds), `voice:audio` subscriber resubscribe/self-heal on config change, `perf_hooks` inference/audio timings + Loki-friendly `component`/`event` log fields, a null-session crash fix, and personality-default seed-back. Follow-ups deferred to later milestones: output-device selection (M10), and first-audio latency depends on model choice (config-only).
 
 ---
 
@@ -226,9 +229,9 @@ POCs are run, results documented in `pocs/<name>/results/`, and findings folded 
 | ✅ 001 | SDK Diagnostics | SDK connection, diagnostic UI |
 | ✅ 002 | Redis Telemetry Publish | Live + session telemetry on Redis Streams |
 | ✅ M3 | Race State Engine | Fuel/Tire/Gap models, event bus, safe window signal |
-| 🔲 POC Gate | Audio pipeline, STT latency, streaming LLM+TTS | De-risks voice pipeline |
-| 🔲 M4 | RE: Rule-Based Alerts + Voice | Tier 1/2 messages, TTS, audio playback — drivable |
-| 🔲 M5 | RE: LLM + PTT | Whisper STT, Tier 3, personality, override tracking |
+| ✅ POC Gate | Audio pipeline, STT latency, streaming LLM+TTS | De-risks voice pipeline |
+| ✅ M4 | RE: Rule-Based Alerts + Voice | Tier 1/2 messages, TTS, audio playback — drivable |
+| ✅ M5 | RE: LLM + PTT | Whisper STT, Tier 3, personality, override tracking |
 | 🔲 M6 | SE: OBS Control + Broadcast Plan | Autonomous camera direction, Postgres schema |
 | 🔲 M7 | Operator UI | Race Control Center, Broadcast Plan Editor |
 | 🔲 M8 | Overlay Server | Browser source graphics, stream delay sync |
