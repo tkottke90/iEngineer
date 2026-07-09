@@ -189,7 +189,11 @@ pub fn spawn_logger(capacity: usize) -> (LoggerHandle, mpsc::UnboundedReceiver<L
         capacity,
     };
 
-    tokio::spawn(async move {
+    // tauri::async_runtime, NOT bare tokio::spawn: this function is called
+    // synchronously from the setup closure (no tokio context on that thread) —
+    // a bare tokio::spawn panics with "there is no reactor running" and killed
+    // the app at startup (regression test below).
+    tauri::async_runtime::spawn(async move {
         let mut enabled_dir: Option<PathBuf> = None;
         let mut open: Option<OpenLog> = None;
         let mut depth_ticker = tokio::time::interval(Duration::from_secs(1));
@@ -340,6 +344,20 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    /// Regression (Windows startup crash, 2026-07-09): spawn_logger is called
+    /// synchronously from Tauri's setup closure — a plain thread with NO tokio
+    /// runtime context. A bare tokio::spawn inside it panics with "there is no
+    /// reactor running" and kills the app right after logging init. This test
+    /// deliberately has no #[tokio::test] runtime.
+    #[test]
+    fn spawn_logger_works_outside_a_tokio_runtime() {
+        let (handle, _warn_rx) = spawn_logger(4);
+        // The handle's non-async surface must also be safe from here.
+        handle.log_frame(frame("1", 0));
+        let (_depth, capacity) = handle.channel_depth();
+        assert_eq!(capacity, 4);
     }
 
     /// T033: NDJSON round-trip — the frame the analyzer reads equals the frame
