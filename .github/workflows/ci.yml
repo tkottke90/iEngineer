@@ -64,3 +64,10 @@ jobs:
 
       - name: "Step 4: Build hub-server"
         run: npm run build -w apps/hub-server
+
+      # Step 5 (M10 T043 — Constitution III & V enforcement): run the hub unit
+      # suite in CI. Before this step existed no workflow ran `npm test`, so the
+      # tier3-synthesizer write-path audit test could pass locally yet never
+      # execute here — FR-029's enforcement ladder branch (a) requires it.
+      - name: "Step 5: Hub-server unit tests (incl. tier3 audit gate)"
+        run: npm test -w apps/hub-server

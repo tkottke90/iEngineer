@@ -37,19 +37,13 @@ pub async fn spawn_engineer_task(app_handle: AppHandle) {
 
     // The playback queue (and its sender) is created ONCE and reused across every
     // re-subscription, so the queue receiver — and the audio-test-panel sender slot
-    // (T038) — stay valid for the process lifetime.
-    let output_device = {
-        let state = app_handle.state::<AppState>();
-        let cfg = match state.config.lock() {
-            Ok(c) => c,
-            Err(e) => {
-                tracing::error!(error = %e, "[engineer] Failed to read config");
-                return;
-            }
-        };
-        cfg.audio_output_device.clone()
-    };
-    let queue = PlaybackQueue::new(output_device);
+    // (T038) — stay valid for the process lifetime. The output device is read from
+    // the watch channel per clip (T013), so a change in Settings needs no restart.
+    let output_rx = app_handle
+        .state::<AppState>()
+        .audio_output_watch_tx
+        .subscribe();
+    let queue = PlaybackQueue::new(output_rx);
     let tx = queue.sender();
     if let Ok(mut slot) = app_handle.state::<AppState>().engineer_playback_tx.lock() {
         *slot = Some(tx.clone());

@@ -6,7 +6,8 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "mocha --import=tsx --require global-jsdom/register \"test/**/*.test.tsx\""
   },
   "peerDependencies": {
     "preact": "^10.0.0"
@@ -15,7 +16,16 @@
     "@iracing-engineer/types": "*"
   },
   "devDependencies": {
-    "typescript": "^5.4.0",
-    "preact": "^10.0.0"
+    "@testing-library/preact": "^3.2.4",
+    "@types/chai": "^4.3.0",
+    "@types/mocha": "^10.0.0",
+    "@types/node": "^20.0.0",
+    "chai": "^4.4.0",
+    "global-jsdom": "^25.0.0",
+    "jsdom": "^25.0.0",
+    "mocha": "^10.4.0",
+    "preact": "^10.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.4.0"
   }
 }

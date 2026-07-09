@@ -2,7 +2,7 @@ use anyhow::Result;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, watch};
 
 use crate::audio::playback::AudioPlayback;
 
@@ -19,10 +19,12 @@ pub struct PlaybackQueue {
 }
 
 impl PlaybackQueue {
-    /// Create a queue that plays through the given output device.
-    pub fn new(output_device: Option<String>) -> Self {
+    /// Create a queue that plays through the currently selected output device.
+    /// The watch channel (T013) is read at play time, so a device change in
+    /// Settings applies to the very next clip — no queue restart needed.
+    pub fn new(device_rx: watch::Receiver<Option<String>>) -> Self {
         let play: PlayFn = Arc::new(move |url: String| {
-            let device = output_device.clone();
+            let device = device_rx.borrow().clone();
             Box::pin(async move { AudioPlayback::new(device).play_url(&url).await })
         });
         Self::with_player(play)

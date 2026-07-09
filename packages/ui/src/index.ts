@@ -5,4 +5,6 @@ export { BroadcastPlanEditor } from './components/BroadcastPlanEditor/index.js';
 export { AudioDeviceTestPanel } from './components/AudioDeviceTestPanel/index.js';
 export { PersonalityPanel } from './components/PersonalityPanel/index.js';
 export type { PersonalityValue } from './components/PersonalityPanel/index.js';
+export { SettingsTabs } from './components/SettingsTabs/index.js';
+export type { SettingsTab, SettingsTabsProps } from './components/SettingsTabs/index.js';
 export { useMicLevel } from './hooks/useMicLevel.js';

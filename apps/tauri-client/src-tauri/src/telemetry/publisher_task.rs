@@ -375,6 +375,18 @@ pub async fn spawn_publisher_task(handle: AppHandle) {
                         }
                     }
 
+                    // M10 US7 (FR-020): raw telemetry logging — strictly
+                    // non-blocking try_send into the isolated writer task; a
+                    // full channel drops the frame, never delays this loop.
+                    if let Ok(logger_slot) = handle.state::<AppState>().telemetry_logger.lock() {
+                        if let Some(logger) = logger_slot.as_ref() {
+                            logger.log_frame(crate::telemetry::logger::frame_from_fields(
+                                &fields,
+                                unix_ms(),
+                            ));
+                        }
+                    }
+
                     // T019: publish live at 60 Hz
                     let live_refs: Vec<(&str, &str)> =
                         live_fields.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();

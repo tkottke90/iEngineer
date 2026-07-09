@@ -8,6 +8,11 @@ export interface RecordEventInput {
   sessionId: string;
   tier3Type: Tier3Type;
   prompt: string;
+  // M10 T043 (FR-029): the LLM resolved for THIS call — from hub:config:llm or
+  // the engineer-config fallback. Required so a runtime model switch stays
+  // auditable per event.
+  llmModel: string;
+  llmBaseUrl: string;
 }
 
 export interface FinalizeEventInput {
@@ -33,9 +38,9 @@ export async function recordEvent(
   const id = randomUUID();
   try {
     await pool.query(
-      `INSERT INTO engineer_events (id, session_id, tier3_type, prompt, tools_called, outcome)
-       VALUES ($1, $2, $3, $4, '{}', 'error')`,
-      [id, input.sessionId, input.tier3Type, input.prompt],
+      `INSERT INTO engineer_events (id, session_id, tier3_type, prompt, tools_called, outcome, llm_model, llm_base_url)
+       VALUES ($1, $2, $3, $4, '{}', 'error', $5, $6)`,
+      [id, input.sessionId, input.tier3Type, input.prompt, input.llmModel, input.llmBaseUrl],
     );
     return id;
   } catch (err) {

@@ -1,4 +1,6 @@
+pub mod debug_snapshot;
 pub mod downsampler;
+pub mod logger;
 pub mod publisher;
 pub mod publisher_task;
 

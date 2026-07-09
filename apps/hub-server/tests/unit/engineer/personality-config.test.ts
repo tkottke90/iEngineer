@@ -137,3 +137,17 @@ describe('personality-config — loadBlackoutZones (FR-010 fallback)', () => {
     }
   });
 });
+
+// M10 T025/F3(a): clamp-on-load covers BOTH out-of-range directions — a
+// corrupted value above the range falls back the same as one below it.
+describe('parsePersonality — out-of-range clamping (M10 T025/F3)', () => {
+  it('energy above the 1–5 range falls back to the default on load', () => {
+    const fallback = { openness: 3, warmth: 3, energy: 3, conscientiousness: 3, assertiveness: 3 } as const;
+    const { personality, usedFallback } = parsePersonality(
+      JSON.stringify({ openness: 3, warmth: 3, energy: 6, conscientiousness: 3, assertiveness: 3 }),
+      fallback,
+    );
+    expect(personality.energy).to.equal(3);
+    expect(usedFallback).to.be.true;
+  });
+});

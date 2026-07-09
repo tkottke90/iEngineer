@@ -12,7 +12,7 @@ import type {
 } from '@iracing-engineer/types';
 import { assembleContext } from './context-assembler.js';
 import { SentenceStreamSplitter } from './sentence-splitter.js';
-import { runLlm, type ChatMessage } from './llm-client.js';
+import { runLlm, resolveLlmConfig, type ChatMessage } from './llm-client.js';
 import { recordEvent, finalizeEvent } from './engineer-events.js';
 import type { Tools } from './tools.js';
 import type { SessionMemoryStore } from './session-memory.js';
@@ -28,6 +28,10 @@ export interface SynthDeps {
   recordEvent: typeof recordEvent;
   finalizeEvent: typeof finalizeEvent;
   loadPrompt: (name: string) => string;
+  /** Raw `hub:config:llm` Redis value (M10 T018) — production wiring binds this
+   *  to the hub's command connection (server-init); null = key absent, which
+   *  falls back to the engineer-config defaults with a once-per-startup warn. */
+  getLlmConfigRaw: () => Promise<string | null>;
 }
 
 function defaultLoadPrompt(name: string): string {
@@ -35,7 +39,13 @@ function defaultLoadPrompt(name: string): string {
 }
 
 function defaultDeps(): SynthDeps {
-  return { runLlm, recordEvent, finalizeEvent, loadPrompt: defaultLoadPrompt };
+  return {
+    runLlm,
+    recordEvent,
+    finalizeEvent,
+    loadPrompt: defaultLoadPrompt,
+    getLlmConfigRaw: async () => null,
+  };
 }
 
 export interface SynthesizeInput {
@@ -94,9 +104,16 @@ export class Tier3Synthesizer {
     const fuel = this.tools.run('get_fuel_status');
     if (fuel.available) this.memory.setFuelCalibration(fuel.data ?? null);
 
+    // M10 T018 (FR-009): resolve the LLM config for THIS call — one Redis read
+    // at the start of the request; the resolved value feeds both the audit row
+    // and the LLM call, so an in-flight synthesis never switches models
+    // mid-execution (edge case E1) and a saved model change applies to the
+    // NEXT call with no restart.
+    const llm = await resolveLlmConfig(this.deps.getLlmConfigRaw, this.config.llm);
+
     // 3. Context assembly (token-budgeted) — includes the recommendation log,
     //    override outcomes, deference state, and fuel calibration (FR-011/018).
-    const context = assembleContext(race, this.memory.get(), this.config.llm.tokenBudget);
+    const context = assembleContext(race, this.memory.get(), llm.tokenBudget);
 
     // 4. Prompt build (versioned files + personality substitution).
     const system = this.buildSystemPrompt(personality, type, informationMode);
@@ -109,13 +126,16 @@ export class Tier3Synthesizer {
       { role: 'user', content: contextMsg },
     ];
 
-    // 5. Audit pre-write (fail-closed — skip synthesis if the row cannot be written).
+    // 5. Audit pre-write (fail-closed — skip synthesis if the row cannot be
+    //    written). Records the LLM resolved for this call (FR-029/T043).
     let eventId: string;
     try {
       eventId = await this.deps.recordEvent({
         sessionId,
         tier3Type: type,
         prompt: `${system}\n\n${contextMsg}`,
+        llmModel: llm.model,
+        llmBaseUrl: llm.baseUrl,
       });
     } catch {
       logger.warn('[engineer] Tier 3 skipped — audit pre-write failed', {
@@ -157,7 +177,7 @@ export class Tier3Synthesizer {
       });
     };
 
-    const result = await this.deps.runLlm(this.config.llm, messages, this.tools, {
+    const result = await this.deps.runLlm(llm, messages, this.tools, {
       onDelta: (t) => {
         for (const s of splitter.push(t)) enqueueSentence(s);
       },
@@ -189,6 +209,27 @@ export class Tier3Synthesizer {
         latencyMs: result.latencyMs,
         toolsCalled: result.toolsCalled,
         outcome: 'synthesized',
+      });
+      return;
+    }
+
+    // T018/U1: the endpoint RESPONDED with an HTTP error (e.g. 404 from a
+    // model-name typo, 401 from a cloud endpoint). Suppress Tier 3 output
+    // ENTIRELY — no canned line, no fallback to a previous model, no silent
+    // retry. The driver fixes the model via the UI; the next call uses it.
+    if (result.status === 'unreachable' && result.httpStatus !== undefined) {
+      logger.warn('[engineer] Tier 3 synthesis failed — LLM endpoint returned an error', {
+        component: 'engineer',
+        event: 'llm-synthesis-failed',
+        model: llm.model,
+        reason: result.error,
+        statusCode: result.httpStatus,
+      });
+      await this.deps.finalizeEvent(eventId, {
+        response: null,
+        latencyMs: null,
+        toolsCalled: [],
+        outcome: 'skipped-llm-unreachable',
       });
       return;
     }

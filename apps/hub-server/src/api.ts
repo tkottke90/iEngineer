@@ -1,9 +1,12 @@
 import { Hono } from 'hono';
+import { writeFile, unlink } from 'node:fs/promises';
+import { parseBuffer } from 'music-metadata';
 import { getSnapshot } from './state/race-state.js';
 import { createCommandConnection } from './redis/client.js';
 import { getAudioStore } from './engineer/audio-store.js';
 import { generateClip } from './engineer/tts-client.js';
 import { loadEngineerConfig } from './engineer/personality-config.js';
+import { handleVoiceProfileUpload } from './engineer/voice-profile.js';
 
 // Your custom HTTP routes and Hono middleware go here. The framework
 // mounts this app ahead of its reserved /__loaders path
@@ -34,6 +37,46 @@ app.post('/api/audio/test', async (c) => {
   } catch (err) {
     return c.json({ error: String(err) }, 502);
   }
+});
+
+// M10 US6 (T034, FR-021/FR-022): voice profile upload. Validation + writes in
+// handleVoiceProfileUpload (contracts/hub-voice-profile.md); hub budget ≤50s
+// (C4b — SC-006's 60s is user-side).
+app.post('/api/voice-profile', async (c) => {
+  const store = getAudioStore();
+  if (!store) return c.json({ error: 'engineer not initialized' }, 503);
+  const body = await c.req.parseBody();
+  const file = body['audio'];
+  if (!(file instanceof File)) {
+    return c.json({ error: 'invalid-format', message: 'multipart field "audio" is required' }, 422);
+  }
+  const config = loadEngineerConfig();
+  const data = Buffer.from(await file.arrayBuffer());
+  const conn = createCommandConnection();
+  const outcome = await handleVoiceProfileUpload(
+    {
+      config,
+      parseDurationSecs: async (buf) => {
+        const meta = await parseBuffer(new Uint8Array(buf), { mimeType: 'audio/mpeg' });
+        const duration = meta.format.duration;
+        if (duration === undefined) throw new Error('duration not present in MP3 metadata');
+        return duration;
+      },
+      writeFile: (path, buf) => writeFile(path, buf),
+      unlink: (path) => unlink(path),
+      redisSet: async (key, value) => {
+        await conn.set(key, value);
+      },
+      // The in-memory voice file was already switched — this clip confirms it.
+      synthesizeTestClip: () =>
+        generateClip('Racing engineer online. Voice profile active.', config),
+      storeClip: (buffer) => store.store(buffer),
+      now: () => new Date(),
+    },
+    file.type,
+    data,
+  );
+  return c.json(outcome.body, outcome.status as 200);
 });
 
 app.get('/api/race-state', async (c) => {

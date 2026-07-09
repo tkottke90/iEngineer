@@ -36,7 +36,7 @@ rusqlite = { version = "0.31", features = ["bundled"] }
 cpal = "0.15"
 rodio = { version = "0.19", default-features = false, features = ["mp3"] }
 rubato = "0.15"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "multipart"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Daily-rolling file log target (RUST_LOG-filterable) so audio/STT diagnostics

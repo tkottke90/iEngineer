@@ -40,6 +40,16 @@ services:
   #   volumes:
   #     - chatterbox-models:/app/models
   #     - ./config/chatterbox:/app/config
+  #     # M10 T005 — voice-profile reference audio shared with the hub server.
+  #     # The hub currently runs on the HOST (there is no hub-server service in
+  #     # this compose file), so this is a host bind mount rather than a named
+  #     # volume: the host-run hub writes uploaded MP3s to
+  #     # infra/data/chatterbox/reference and the container reads them here.
+  #     # NOTE (open decision — spec 006 analysis C1): engineer-config.json
+  #     # currently points chatterboxUrl at a REMOTE host (10.0.0.12), which a
+  #     # local mount cannot reach. T034b (Phase 8 gate) MUST resolve local-vs-
+  #     # remote and re-verify this mount before any voice-profile hub code runs.
+  #     - ./data/chatterbox/reference:/app/voices
 
   # Uncomment when working on observability (Loki/Tempo/Prometheus)
   # otel-collector:

@@ -1,6 +1,9 @@
 {
   "chatterboxUrl": "http://10.0.0.12:8004",
   "chatterboxVoiceFile": "voice2.wav",
+  "chatterboxReferenceAudioDir": "/data/chatterbox/reference",
+  "minVoiceProfileDurationSecs": 3,
+  "maxVoiceProfileDurationSecs": 60,
   "fuelCriticalLapsRemaining": 1.0,
   "gapThresholdSeconds": 2.0,
   "audioIdleCleanupIntervalMs": 30000,

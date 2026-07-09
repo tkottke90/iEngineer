@@ -93,6 +93,13 @@ export interface LlmConfig {
 export interface EngineerConfig {
   chatterboxUrl: string;
   chatterboxVoiceFile: string;
+  // M10 voice profile upload (spec 006): directory the hub writes uploaded
+  // reference MP3s to (shared with Chatterbox — see infra/docker-compose.yml
+  // T005 note), plus the accepted clip duration bounds (assumed 3–60s until
+  // T034b confirms Chatterbox's real limits).
+  chatterboxReferenceAudioDir: string;
+  minVoiceProfileDurationSecs: number;
+  maxVoiceProfileDurationSecs: number;
   fuelCriticalLapsRemaining: number;
   gapThresholdSeconds: number; // FR-015 M4 placeholder — gap rule returns null in M4
   audioIdleCleanupIntervalMs: number;
