@@ -42,7 +42,10 @@ jobs:
           workspaces: apps/tauri-client/src-tauri
 
       - name: "Step 3: cargo test"
-        run: cargo test -p iracing-engineer-lib -- --test-threads=1
+        # -p takes the PACKAGE name (iracing-engineer), not the lib target
+        # (iracing_engineer_lib). The old spec never matched — this step failed
+        # in ~30s on every run since M4, so the npm steps below never executed.
+        run: cargo test -p iracing-engineer --lib -- --test-threads=1
         working-directory: apps/tauri-client/src-tauri
         env:
           REDIS_URL: redis://localhost:6379
@@ -62,12 +65,13 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      - name: "Step 4: Build hub-server"
-        run: npm run build -w apps/hub-server
+      # Workspace-wide so packages/types + packages/ui dist/ exist before the
+      # hub (and any consumer) builds or tests against their `main` entries.
+      - name: "Step 4: Build workspace"
+        run: npm run build
 
-      # Step 5 (M10 T043 — Constitution III & V enforcement): run the hub unit
-      # suite in CI. Before this step existed no workflow ran `npm test`, so the
-      # tier3-synthesizer write-path audit test could pass locally yet never
-      # execute here — FR-029's enforcement ladder branch (a) requires it.
-      - name: "Step 5: Hub-server unit tests (incl. tier3 audit gate)"
-        run: npm test -w apps/hub-server
+      # Step 5 (M10 T043 — Constitution III & V enforcement): the tier3
+      # write-path audit test MUST run in CI (FR-029 ladder branch a). Also
+      # runs the client/ui/types suites per T041/C1.
+      - name: "Step 5: Unit tests (hub tier3 audit gate + client + ui + types)"
+        run: npm test -w packages/types -w packages/ui -w apps/tauri-client -w apps/hub-server
