@@ -1,7 +1,7 @@
 # iRacing Engineer — Implementation Roadmap
 
 **Status:** Living document  
-**Last updated:** 2026-06-30
+**Last updated:** 2026-07-10
 
 Each milestone is self-contained and deployable. A milestone gate is: the feature can be used in a real iRacing session (or meaningfully tested without one) without depending on an unbuilt milestone.
 
@@ -76,7 +76,7 @@ POCs are run, results documented in `pocs/<name>/results/`, and findings folded 
 
 ---
 
-## M5 — Racing Engineer: LLM + Push-to-Talk
+## M5 — Racing Engineer: LLM + Push-to-Talk *(complete)*
 
 **Theme:** Completes the voice loop. The engineer reasons, the driver can ask questions.
 
@@ -182,7 +182,7 @@ POCs are run, results documented in `pocs/<name>/results/`, and findings folded 
 
 ---
 
-## M10 — Tauri Client Configuration UI
+## ✅ M10 — Tauri Client Configuration UI *(complete)*
 
 **Theme:** The driver can configure the app without editing config files.
 
@@ -226,14 +226,14 @@ POCs are run, results documented in `pocs/<name>/results/`, and findings folded 
 | ✅ 001 | SDK Diagnostics | SDK connection, diagnostic UI |
 | ✅ 002 | Redis Telemetry Publish | Live + session telemetry on Redis Streams |
 | ✅ M3 | Race State Engine | Fuel/Tire/Gap models, event bus, safe window signal |
-| 🔲 POC Gate | Audio pipeline, STT latency, streaming LLM+TTS | De-risks voice pipeline |
-| 🔲 M4 | RE: Rule-Based Alerts + Voice | Tier 1/2 messages, TTS, audio playback — drivable |
-| 🔲 M5 | RE: LLM + PTT | Whisper STT, Tier 3, personality, override tracking |
+| ✅ POC Gate | Audio pipeline, STT latency, streaming LLM+TTS | De-risks voice pipeline |
+| ✅ M4 | RE: Rule-Based Alerts + Voice | Tier 1/2 messages, TTS, audio playback — drivable |
+| ✅ M5 | RE: LLM + PTT | Whisper STT, Tier 3, personality, override tracking |
 | 🔲 M6 | SE: OBS Control + Broadcast Plan | Autonomous camera direction, Postgres schema |
 | 🔲 M7 | Operator UI | Race Control Center, Broadcast Plan Editor |
 | 🔲 M8 | Overlay Server | Browser source graphics, stream delay sync |
 | 🔲 M9 | Post-Session Debrief | Postgres persistence, iRacing REST API, debrief + zone editor |
-| 🔲 M10 | Tauri Config UI | Audio, connection, hotkeys, debug readout |
+| ✅ M10 | Tauri Config UI | Audio, connection, hotkeys, debug readout |
 | 🔲 M11 | Team Observer + Discord | Multi-client, Discord webhook, observer mode |
 
 M3 → M4 → M5 is the critical path. M6 can start in parallel with M4/M5 once M3 is complete. M7 follows M6. M8 can start once M3 and M6 are both done. M9, M10, and M11 are independent of each other and can run in parallel once their prerequisites are met.
