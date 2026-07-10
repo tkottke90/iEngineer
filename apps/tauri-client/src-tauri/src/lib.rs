@@ -258,6 +258,23 @@ pub fn run() {
                     telemetry::debug_snapshot::WHISPER_FAILED,
                     std::sync::atomic::Ordering::Relaxed,
                 );
+                // FR-005 (manual-test finding 2.3): the mic level meter's data
+                // source (audio:mic-level) is emitted by the capture stream,
+                // which previously started only inside the stt-gated PTT
+                // pipeline — leaving the Audio tab meter dead in default
+                // builds. Start a METER-ONLY capture here: the PTT gate sender
+                // is dropped immediately, so the recording gate never arms and
+                // on_audio never fires — this is purely the level meter.
+                let meter_rx = app.state::<AppState>().audio_input_watch_tx.subscribe();
+                let meter_app = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    let (gate_tx, gate_rx) = tokio::sync::mpsc::channel::<bool>(1);
+                    drop(gate_tx);
+                    let capture = audio::capture::AudioCapture::new(meter_rx);
+                    if let Err(e) = capture.start(meter_app, gate_rx, |_samples, _rate| {}) {
+                        tracing::warn!(error = %e, "[audio] meter-only capture failed to start");
+                    }
+                });
                 tracing::info!("[stt] built without the `stt` feature — push-to-talk disabled (rebuild with --features stt on a native Windows/macOS toolchain)");
             }
             Ok(())

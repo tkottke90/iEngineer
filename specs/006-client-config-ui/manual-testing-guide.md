@@ -103,11 +103,11 @@ directory to the remote host).
 
 1. [X] In the app's top nav, click **Setup**. Confirm seven tabs render: Audio,
    Connection, Hotkeys, Personality, Debug, Voice, Logging.
-2. [ ] **Cross-tab unsaved state**: in the Connection tab, change the Redis URL to
+2. [X] **Cross-tab unsaved state**: in the Connection tab, change the Redis URL to
    any garbage value (do NOT click Save). Switch to the Audio tab, then back
    to Connection. The edited value must still be in the field.
-3. [ ] Fix the field back before moving on.
-4. [ ] **FR-030 redirect**: click the **Diagnostics** nav button. You must land on
+3. [X] Fix the field back before moving on.
+4. [X] **FR-030 redirect**: click the **Diagnostics** nav button. You must land on
    the Settings page with the **Debug** tab already active (the old
    diagnostics content — connection status, field browser, watchlist — now
    lives inside that tab, below the new "Live Snapshot" section). No blank
@@ -124,22 +124,31 @@ Debug tab.
 > tab; the test clip should be playing through your chosen speaker in under
 > 3 minutes.
 
-1. [ ] Open **Setup → Audio**. Both dropdowns must list your system devices plus a
+1. [X] Open **Setup → Audio**. Both dropdowns must list your system devices plus a
    "System default" entry.
-2. [ ] Select your headset microphone in the **Microphone** dropdown. This applies
+2. [X] Select your headset microphone in the **Microphone** dropdown. This applies
    IMMEDIATELY (live switch) — no Save needed.
 3. [ ] Speak into the mic. The level meter bar under the dropdown must respond
    within ~100ms of your voice (it is fed by the Rust capture stream, so it
    confirms the *selected* device is live).
-4. [ ] Select your speaker/headset in the **Playback** dropdown.
-5. [ ] Click **Test Playback** (inside the audio test panel). A short clip should
+   > There are TWO meters on this tab: this one (under the dropdown) reflects
+   > the device selected above; the one inside the audio test panel below uses
+   > the browser's default microphone and may track a different device. Judge
+   > this step by the dropdown meter.
+   > **Finding 2.3 (2026-07-10, FIXED — retest)**: this meter was dead in
+   > non-`stt` builds because the capture stream only started inside the
+   > stt-gated PTT pipeline; a meter-only capture now runs in every build.
+   > macOS shows a one-time microphone permission prompt on first launch as a
+   > result.
+4. [X] Select your speaker/headset in the **Playback** dropdown.
+5. [X] Click **Test Playback** (inside the audio test panel). A short clip should
    play through the selected output.
    > This calls the hub, which synthesizes via Chatterbox — the hub terminal
    > will show the request. If Chatterbox is unreachable you get an error
    > instead of audio; that is a Chatterbox/network issue, not an M10 bug.
-6. [ ] Click **Save** (bottom of the page), then quit and relaunch the app. Reopen
+6. [X] Click **Save** (bottom of the page), then quit and relaunch the app. Reopen
    the Audio tab — both selections must display the saved devices.
-7. [ ] **Unavailable device** (needs an unpluggable device, e.g. a USB or
+7. [S] **Unavailable device** (needs an unpluggable device, e.g. a USB or
    Bluetooth headset): select it in both dropdowns, Save, quit the app,
    unplug/disconnect the device, relaunch. The Audio tab must show
    `"<name>" unavailable — using system default` next to each affected
@@ -157,51 +166,64 @@ notice.
 
 ### 3.1 Per-service Test buttons
 
-1. [ ] Open **Setup → Connection**.
-2. [ ] Click **Test Redis** → green `✓`. Click **Test Hub** → green `✓`. Click
-   **Test LLM** → green `✓` with a latency (this probes
-   `GET {base_url}/models` on your Lemonade endpoint — never a synthesis
-   call).
-3. [ ] Failure cases — change the LLM Base URL port to something dead (e.g.
+1. [X] Open **Setup → Connection**.
+2. [!] Click each Test button → a green pill appears next to it reading
+   `✓ Connected (Nms)` (the LLM probe hits `GET {base_url}/models` on your
+   Lemonade endpoint — never a synthesis call).
+   > **Finding 3.1.2 (2026-07-10, improved — retest Test Redis)**: the result
+   > used to be a bare small `✓` glyph beside the already-green status badge —
+   > easy to read as "nothing happened". It is now a labeled pill with
+   > measured latency, plus a visible `testing…` state while in flight. Note
+   > Test Hub and Test LLM passed through the identical code path, and the
+   > status badge polls the same `check_redis` command successfully — so if
+   > Test Redis still shows literally nothing after this change, open the
+   > webview devtools (right-click → Inspect in a dev build) and check the
+   > console for errors when clicking.
+
+    - [!] **Test Redis**
+    - [X] **Test Hub**
+    - [X] **Test LLM**
+
+3. [X] Failure cases — change the LLM Base URL port to something dead (e.g.
    `http://localhost:9`), click **Test LLM**, and confirm the exact message
    `✗ connection refused`. Point it at a URL that answers with an error to see
    the `HTTP <status>` taxonomy messages. Restore the real URL after.
 
 ### 3.2 Inline validation (FR-026, G1)
 
-1. [ ] Blank out the **LLM Model** field → an inline error appears and the
+1. [X] Blank out the **LLM Model** field → an inline error appears and the
    page-level **Save** button becomes disabled with an explanatory note.
-2. [ ] Type a malformed URL (`not a url`) into Redis URL → same behavior.
-3. [ ] Restore valid values → errors clear, Save re-enables.
-4. [ ] The **LLM API Key** field must accept being EMPTY without any validation
+2. [X] Type a malformed URL (`not a url`) into Redis URL → same behavior.
+3. [X] Restore valid values → errors clear, Save re-enables.
+4. [X] The **LLM API Key** field must accept being EMPTY without any validation
    complaint (empty = local endpoint, no auth).
 
 ### 3.3 Cloud-endpoint warning (FR-007 cloud key gap)
 
-1. [ ] Type `https://api.anthropic.com/v1` into LLM Base URL. As you type, an
+1. [X] Type `https://api.anthropic.com/v1` into LLM Base URL. As you type, an
    amber warning must appear: "API key is stored locally but not forwarded to
    the hub server…". It must NOT block Save.
-2. [ ] Restore `https://lemonade.tdkottke.com/v1` — the warning disappears.
+2. [X] Restore `https://lemonade.tdkottke.com/v1` — the warning disappears.
 
 ### 3.4 First-launch hint (FR-007)
 
-1. [ ] Quit the app and delete the config to simulate a fresh install:
+1. [X] Quit the app and delete the config to simulate a fresh install:
 
    ```bash
    rm ~/Library/Application\ Support/com.iracing.engineer/config.json
    ```
 
-2. [ ] Relaunch, open **Setup → Connection**. The blue "Default — update for your
+2. [X] Relaunch, open **Setup → Connection**. The blue "Default — update for your
    setup" hint must be visible near the LLM fields.
-3. [ ] Click its **×**. The hint hides. Quit and relaunch WITHOUT saving — the
+3. [X] Click its **×**. The hint hides. Quit and relaunch WITHOUT saving — the
    hint must be back (dismiss is session-only).
-4. [ ] Now click **Save** (defaults unchanged is fine), quit, relaunch — the hint
+4. [X] Now click **Save** (defaults unchanged is fine), quit, relaunch — the hint
    must be gone permanently.
 
 ### 3.5 Model change reaches Redis (no restart — FR-009)
 
-1. [ ] Change **LLM Model** to `test-model-1B` and click **Save**.
-2. [ ] Verify the Redis key the hub reads per-request:
+1. [X] Change **LLM Model** to `test-model-1B` and click **Save**.
+2. [X] Verify the Redis key the hub reads per-request:
 
    ```bash
    docker compose -f infra/docker-compose.yml exec redis redis-cli GET hub:config:llm
@@ -209,16 +231,16 @@ notice.
 
    Expected: `{"baseUrl":"https://lemonade.tdkottke.com/v1","model":"test-model-1B"}`
    — and confirm there is **no `apiKey`** in the value.
-3. [ ] **[needs iRacing/Windows + stt build]** Hold PTT and ask a question; the
+3. [X] **[needs iRacing/Windows + stt build]** Hold PTT and ask a question; the
    hub terminal's `Inference triggered` log must show the new model on the
    very next Tier 3 call — no hub restart.
-4. [ ] Restore the original model name and click **Save**, then re-check the key:
+4. [X] Restore the original model name and click **Save**, then re-check the key:
 
    ```bash
    docker compose -f infra/docker-compose.yml exec redis redis-cli GET hub:config:llm
    ```
 
-5. [ ] **Audit event**: change the API key field to anything, Save, and check the
+5. [X] **Audit event**: change the API key field to anything, Save, and check the
    Tauri terminal for a `llm-api-key-updated hasKey=true` log line — the key
    VALUE must never appear in the log. Clear the key and Save again →
    `hasKey=false`.
@@ -236,35 +258,35 @@ apiKey, audit event fires without leaking the key.
 
 ### 4.1 Never-configured state
 
-1. [ ] Simulate a fresh install (quit the app first):
+1. [X] Simulate a fresh install (quit the app first):
 
    ```bash
    rm ~/Library/Application\ Support/com.iracing.engineer/config.json
    ```
 
-2. [ ] Relaunch → **Setup → Hotkeys**. You must see the SOFT prompt "No PTT key
+2. [X] Relaunch → **Setup → Hotkeys**. You must see the SOFT prompt "No PTT key
    set — click 'Set PTT Key' to bind one" with a dismiss **×** — NOT a red
    error banner. The Tauri terminal shows
    `no PTT key configured — skipping global shortcut registration`.
 
 ### 4.2 Binding a key
 
-1. [ ] Click **Set PTT Key** → "Listening for key…" appears and the button
+1. [X] Click **Set PTT Key** → "Listening for key…" appears and the button
    disables.
-2. [ ] **Keep the app window focused** and press **F14** (or any function key /
+2. [X] **Keep the app window focused** and press **F14** (or any function key /
    letter). The capture happens through the settings window during the
    listening period; the *bound* shortcut afterwards is global.
-3. [ ] The display updates to the key name. The binding **auto-saves** — do NOT
+3. [X] The display updates to the key name. The binding **auto-saves** — do NOT
    click Save; instead quit and relaunch and confirm the key is still shown
    (and the terminal logs `global PTT shortcut registered`).
-4. [ ] **Timeout path**: click **Set PTT Key** and press nothing for 10 seconds →
+4. [X] **Timeout path**: click **Set PTT Key** and press nothing for 10 seconds →
    the inline message "No key pressed — try again" appears (no red banner).
 
 ### 4.3 PTT-active indicator (the SC-003 confirmation signal)
 
-1. [ ] Stay on the Hotkeys tab. **Hold** the bound key — the grey `● PTT`
+1. [X] Stay on the Hotkeys tab. **Hold** the bound key — the grey `● PTT`
    indicator must turn green for exactly as long as you hold it.
-2. [ ] Now click into another app (unfocus iRacing-style), hold the key again
+2. [X] Now click into another app (unfocus iRacing-style), hold the key again
    while watching the settings window on screen — the indicator must still
    light, proving the shortcut is OS-global.
    > The mic level meter in the Audio tab is deliberately NOT the signal here
@@ -272,18 +294,18 @@ apiKey, audit event fires without leaking the key.
 
 ### 4.4 Accessibility-denied banner (macOS)
 
-1. [ ] Open **System Settings → Privacy & Security → Accessibility** and remove /
+1. [S] Open **System Settings → Privacy & Security → Accessibility** and remove /
    disable the iRacing Engineer (or terminal, in dev) entry.
-2. [ ] Back in the app: **Set PTT Key** → press a key. A RED persistent banner
+2. [S] Back in the app: **Set PTT Key** → press a key. A RED persistent banner
    must appear: "Voice queries disabled — PTT key could not be registered:
    Accessibility permission required…" with an **Open Accessibility
    Settings** button beneath it.
-3. [ ] Click the button — macOS must open directly to the Privacy & Security →
+3. [S] Click the button — macOS must open directly to the Privacy & Security →
    Accessibility pane.
-4. [ ] Switch to the Audio tab and back to Hotkeys — the banner must STILL be
+4. [S] Switch to the Audio tab and back to Hotkeys — the banner must STILL be
    there (it survives tab switches and only clears on a successful bind).
-5. [ ] Confirm every other tab still works — the error is contained to Hotkeys.
-6. [ ] Re-grant the permission, bind a key successfully → banner clears.
+5. [S] Confirm every other tab still works — the error is contained to Hotkeys.
+6. [S] Re-grant the permission, bind a key successfully → banner clears.
 
 **Pass**: soft prompt vs. banner are distinct, binding auto-persists, timeout
 is transient, indicator tracks the physical key globally, accessibility flow
@@ -293,9 +315,9 @@ shows the banner + working deep-link button.
 
 ## 5. Engineer personality (US4 / quickstart SC-4)
 
-1. [ ] Open **Setup → Personality**. All five sliders must show the previously
+1. [X] Open **Setup → Personality**. All five sliders must show the previously
    saved values (not 3/3/3/3/3 defaults, if you changed them before).
-2. [ ] Drag **Energy** to **1**. The amber "Quiet mode: Tier 2 and Tier 3
+2. [X] Drag **Energy** to **1**. The amber "Quiet mode: Tier 2 and Tier 3
    commentary will be suppressed." warning must appear IMMEDIATELY — before
    any Save.
 3. [ ] Click **Save**, then verify the hub-side key:
@@ -306,9 +328,9 @@ shows the banner + working deep-link button.
 
    Expected: `{"openness":3,"warmth":3,"energy":1,"conscientiousness":3,"assertiveness":3}`
    (with your values; `energy` must be `1`).
-4. [ ] **[needs iRacing/Windows]** With a session running, trigger a Tier 2 alert
+4. [X] **[needs iRacing/Windows]** With a session running, trigger a Tier 2 alert
    → no audio (suppressed). Direct PTT queries still get answered.
-5. [ ] Set Energy back to 3 and **Save**, then confirm:
+5. [X] Set Energy back to 3 and **Save**, then confirm:
 
    ```bash
    docker compose -f infra/docker-compose.yml exec redis redis-cli GET hub:config:personality
@@ -321,24 +343,33 @@ reflects each Save without a hub restart.
 
 ## 6. Debug tab (US5 / quickstart SC-5)
 
-1. [ ] Open **Setup → Debug**. The **Live Snapshot** section is at the top.
-2. [ ] **Badges**:
+1. [X] Open **Setup → Debug**. The **Live Snapshot** section is at the top.
+2. [X] **Badges**:
    - `Redis: Connected` (green) while docker Redis is up.
    - `Hub:` starts as grey `Checking…`, then turns green `Connected` within a
      couple of seconds (first probe result).
    - `Whisper:` shows `Load failed` (red) in a default macOS dev build (STT is
      not compiled in) or `Loading…` → `Ready` in an `stt` build with the model
      present.
-3. [ ] **Hub loss**: press `Ctrl+C` in the hub terminal to stop it. Watch the Hub
-   badge — it must flip to red `Disconnected` within ~12 seconds (10s stale
-   window measured from the last successful probe, +2s probe timeout worst
-   case). Everything else in the app keeps working. Restart the hub:
+3. [X] **Hub loss**: press `Ctrl+C` in the hub terminal to stop it.
+   > **Refresh behavior (finding 6.3 — accepted as designed, 2026-07-10)**:
+   > the badges LIVE-update at 1Hz only while an iRacing session is active
+   > (the spec scopes the event feed to sessions). Without a session, switch
+   > to another tab and back to Debug to refresh the snapshot. For connection
+   > troubleshooting, the Connection tab's status badges poll every 5 seconds
+   > regardless of session state — that is the more responsive place to watch.
+
+   Wait ~12 seconds (10s stale window measured from the last successful
+   probe, +2s probe timeout worst case), refresh the tab (switch away and
+   back if no session is active), and confirm the Hub badge shows red
+   `Disconnected`. Everything else in the app keeps working. Restart the hub:
 
    ```bash
    cd apps/hub-server && npm run dev
    ```
 
-   The badge must return to `Connected` within ~11 seconds.
+   Wait ~11 seconds, refresh the tab the same way, and confirm the badge is
+   back to `Connected`.
 4. [ ] **No-session state**: with iRacing absent (i.e., on this Mac), the section
    shows "No active session" and the four telemetry values show `—`. Never
    stale numbers.
@@ -393,9 +424,9 @@ displays and reddens past 500 ms, no-session state is honest.
    `~/Library/Application Support/com.iracing.engineer/logs/telemetry`
    (a resolved absolute path — if it ever shows "could not be resolved", the
    toggle must be disabled/greyed out).
-2. [ ] Switch the toggle **on**. No error should appear (the directory is created
+2. [X] Switch the toggle **on**. No error should appear (the directory is created
    and write-probed at toggle time).
-3. [ ] Confirm the setting persists: quit, relaunch, reopen Logging — still on.
+3. [X] Confirm the setting persists: quit, relaunch, reopen Logging — still on.
    Then check the directory exists:
 
    ```bash

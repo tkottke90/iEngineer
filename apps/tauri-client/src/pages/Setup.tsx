@@ -408,9 +408,18 @@ export function Setup({ initialTab }: SetupProps = {}) {
     } else {
       const cmd = service === 'redis' ? 'check_redis' : 'check_hub';
       const url = service === 'redis' ? formState.redis_url : formState.hub_url;
+      // Client-side latency so a successful test always shows NEW information
+      // — a bare "✓" next to an already-green status badge read as "nothing
+      // happened" during manual testing (finding 3.1.2).
+      const started = Date.now();
       invoke<boolean>(cmd, { url })
         .then((ok) =>
-          done({ service, ok, latencyMs: null, error: ok ? null : 'not reachable' }),
+          done({
+            service,
+            ok,
+            latencyMs: Date.now() - started,
+            error: ok ? null : 'not reachable',
+          }),
         )
         .catch((e) => done({ service, ok: false, latencyMs: null, error: String(e) }));
     }
@@ -423,11 +432,21 @@ export function Setup({ initialTab }: SetupProps = {}) {
         <button onClick={() => runTest(service)} disabled={result === 'running'}>
           {label}
         </button>
-        {result === 'running' && <span style={{ color: '#9ca3af' }}>…</span>}
+        {result === 'running' && <span style={{ color: '#9ca3af' }}>testing…</span>}
         {result && result !== 'running' && (
-          <span style={{ color: result.ok ? '#22c55e' : '#ef4444', fontSize: '0.85rem' }}>
+          <span
+            data-testid={`test-result-${service}`}
+            style={{
+              color: result.ok ? '#bbf7d0' : '#fecaca',
+              background: result.ok ? '#14532d' : '#7f1d1d',
+              padding: '0.1rem 0.5rem',
+              borderRadius: '9999px',
+              fontSize: '0.8rem',
+              whiteSpace: 'nowrap',
+            }}
+          >
             {result.ok
-              ? `✓${result.latencyMs != null ? ` ${result.latencyMs}ms` : ''}`
+              ? `✓ Connected${result.latencyMs != null ? ` (${result.latencyMs}ms)` : ''}`
               : `✗ ${result.error ?? 'failed'}`}
           </span>
         )}
