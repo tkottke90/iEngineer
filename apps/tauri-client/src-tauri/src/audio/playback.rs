@@ -1,6 +1,14 @@
 use anyhow::{bail, Context, Result};
+use cpal::traits::{DeviceTrait, HostTrait};
 use rodio::{Decoder, OutputStream, Sink};
 use std::io::Cursor;
+
+fn find_output_device(name: &str) -> Option<cpal::Device> {
+    cpal::default_host()
+        .output_devices()
+        .ok()?
+        .find(|d| d.name().ok().as_deref() == Some(name))
+}
 
 pub struct AudioPlayback {
     output_device_name: Option<String>,
@@ -37,17 +45,22 @@ impl AudioPlayback {
     }
 
     pub fn play_bytes(&self, bytes: Vec<u8>) -> Result<()> {
-        // NOTE: device selection is not implemented yet — playback always uses the
-        // system default output. output_device_name is logged for diagnostics so a
-        // "played fine but heard nothing" case points at the default-device gap.
-        tracing::debug!(
-            requested_device = ?self.output_device_name,
-            bytes = bytes.len(),
-            "[engineer] playing clip on system default output (device selection not yet wired)"
-        );
-
-        let (_stream, stream_handle) =
-            OutputStream::try_default().context("no default audio output device available")?;
+        // T013: route through the selected output device; fall back to the
+        // system default (with a warning) if the saved device is gone.
+        let (_stream, stream_handle) = match self.output_device_name.as_deref() {
+            Some(name) => match find_output_device(name) {
+                Some(device) => OutputStream::try_from_device(&device)
+                    .with_context(|| format!("failed to open output device '{name}'"))?,
+                None => {
+                    tracing::warn!(device = %name, "[audio] selected output device not found — falling back to system default");
+                    OutputStream::try_default()
+                        .context("no default audio output device available")?
+                }
+            },
+            None => {
+                OutputStream::try_default().context("no default audio output device available")?
+            }
+        };
         let sink = Sink::try_new(&stream_handle).context("failed to open audio sink")?;
         let cursor = Cursor::new(bytes);
         let source =

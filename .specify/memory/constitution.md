@@ -1,23 +1,23 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.1.2 → 1.2.0 (MINOR — Ratified M5 LLM deviations: Tier 3 latency budget +
-in-client STT)
+Version change: 1.2.0 → 1.2.1 (PATCH — LLM default wording aligned with owner-ratified
+reality; no normative rule change)
 
 Modified principles:
-- I. Real-Time Reliability — Split the voice-latency rule into two budget classes. Rule-based
-  Tier 1/2 alerts retain the ≤3s budget; LLM-synthesized Tier 3 messages (on-demand driver
-  queries and reasoned briefings) get a ≤5s time-to-first-audio budget. Rationale: LLM
-  reasoning has an irreducible ~2.7s time-to-first-token in this stack (POC-0003); a reasoned
-  answer cannot meet 3s. The relaxed budget is scoped strictly to messages with LLM reasoning
-  in the delivery path and MUST NOT excuse rule-path latency.
-- IV. Local-First Infrastructure — STT changed from "Whisper via Speaches" to Whisper base.en
-  running in-process in the Tauri client via whisper-rs (Metal on macOS, Vulkan on Windows/
-  AMD). Rationale: POC-0001 measured remote Speaches STT at ~12s (network upload dominates);
-  POC-0002 measured in-client whisper-rs at ~60ms. Still offline Whisper base.en, no cloud.
+- IV. Local-First Infrastructure — LLM bullet reworded: the operating default is the
+  OpenAI-compatible local endpoint (Lemonade homelab, per apps/hub-server/config/
+  engineer-config.json — in effect since M5); the Anthropic Claude API is the
+  runtime-switchable alternative. The normative MUST (runtime-switchable provider, no
+  hard-coded lock-in) is unchanged. Rationale: the constitution previously named "Claude
+  API is the default" while every shipped default since M5 has been the local endpoint;
+  M10's config UI (specs/006-client-config-ui) surfaced the mismatch. Project-owner
+  sign-off recorded 2026-07-08 in specs/006-client-config-ui/plan.md DoD (B1 / C1-IV
+  extension); this PATCH closes the deferred wording amendment.
 
 Modified sections:
-- Technology Constraints — STT row updated to whisper-rs (in-client) with POC rationale.
+- Technology Constraints — LLM default row updated to the OpenAI-compatible local endpoint
+  (Lemonade) with Claude API as the runtime-switchable alternative.
 
 Added sections: N/A
 Removed sections: N/A
@@ -28,8 +28,14 @@ Templates requiring updates:
 - .specify/templates/tasks-template.md — ✅ reviewed, no change
 
 Follow-up TODOs:
-- Postgres `engineer_events` table (prior M5 TODO) is being implemented in feature 005
-  (specs/005-llm-push-to-talk). The Principle V LLM audit gate now applies without exemption.
+- Cloud API key forwarding (Tauri → hub) is a known M10 gap (silent 401 for cloud endpoints;
+  Constitution V exception signed off 2026-07-08 in specs/006-client-config-ui/plan.md DoD).
+  If a cloud LLM ever becomes the operating default in a future milestone, key forwarding
+  must land first.
+
+Prior amendment (1.1.2 → 1.2.0, MINOR): Ratified M5 LLM deviations — Tier 3 ≤5s
+time-to-first-audio budget (Principle I split) and in-client whisper-rs STT (Principle IV +
+Technology Constraints STT row). See git history for the full 1.2.0 report.
 -->
 
 # iRacing Engineer Constitution
@@ -107,8 +113,10 @@ All real-time AI inference and data persistence MUST run on self-hosted infrastr
   (POC-0001 measured remote Speaches STT at ~12s; POC-0002 measured in-client whisper-rs at ~60ms)
 - TTS: Chatterbox; no cloud TTS dependency
 - Data: Redis Streams (telemetry bus) + Postgres (session history, audit log)
-- LLM: Claude API is the default; an OpenAI-compatible local endpoint MUST remain a
-  runtime-switchable alternative — no hard-coded provider
+- LLM: an OpenAI-compatible local endpoint (Lemonade homelab, per `engineer-config.json`) is
+  the operating default; the Anthropic Claude API MUST remain a runtime-switchable
+  alternative — no hard-coded provider (wording ratified v1.2.1, 2026-07-08; the
+  switchability MUST is unchanged)
 - New infrastructure dependencies MUST be added to `infra/` Docker Compose before any
   application code references them
 
@@ -182,7 +190,7 @@ constitution amendment:
 | TTS | Chatterbox (self-hosted) | Voice-cloning capability, no cloud cost |
 | STT | Whisper base.en via `whisper-rs` (in Tauri client; Metal/Vulkan) | In-process, no network hop; ~60ms vs ~12s remote (POC-0001/0002) |
 | OBS control | WebSocket v5 | Official OBS protocol |
-| LLM default | Anthropic Claude API | Frontier reasoning; switchable at runtime |
+| LLM default | OpenAI-compatible local endpoint (Lemonade homelab) | Local-first latency and cost; Claude API remains runtime-switchable (v1.2.1) |
 
 ## Development Workflow
 
@@ -214,4 +222,4 @@ Amendments require:
 
 All feature plans MUST include a Constitution Check gate before Phase 0 research.
 
-**Version**: 1.2.0 | **Ratified**: 2026-06-26 | **Last Amended**: 2026-07-02
+**Version**: 1.2.1 | **Ratified**: 2026-06-26 | **Last Amended**: 2026-07-08

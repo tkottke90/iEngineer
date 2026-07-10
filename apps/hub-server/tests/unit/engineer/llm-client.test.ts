@@ -111,3 +111,108 @@ describe('llm-client — runLlm', () => {
     if (r.status === 'unreachable') expect(r.error).to.include('ECONNREFUSED');
   });
 });
+
+// ─── M10 T018/T021: hub:config:llm resolution ───────────────────────────────
+
+import type { LlmConfig } from '@iracing-engineer/types';
+import {
+  parseLlmConfig,
+  resolveLlmConfig,
+  _resetLlmConfigWarnings,
+} from '../../../src/engineer/llm-client.js';
+import { logger } from '../../../src/logger.js';
+
+const FALLBACK: LlmConfig = {
+  baseUrl: 'http://fallback/v1',
+  model: 'fallback-model',
+  provider: 'openai-compatible',
+  timeoutMs: 8000,
+  maxResponseTokens: 300,
+  tokenBudget: 6000,
+};
+
+function captureWarns(): { warns: string[]; restore: () => void } {
+  const warns: string[] = [];
+  const orig = logger.warn;
+  (logger as unknown as { warn: (m: string) => void }).warn = (m: string) => warns.push(String(m));
+  return {
+    warns,
+    restore: () => {
+      (logger as unknown as { warn: typeof logger.warn }).warn = orig;
+    },
+  };
+}
+
+describe('llm-client — parseLlmConfig / resolveLlmConfig (M10 T018, tested per T021)', () => {
+  beforeEach(() => _resetLlmConfigWarnings());
+
+  it('absent key → config defaults + exactly one warn per startup', async () => {
+    const { warns, restore } = captureWarns();
+    try {
+      const first = await resolveLlmConfig(async () => null, FALLBACK);
+      const second = await resolveLlmConfig(async () => null, FALLBACK);
+      expect(first.model).to.equal('fallback-model');
+      expect(first.baseUrl).to.equal('http://fallback/v1');
+      expect(second.model).to.equal('fallback-model');
+      const fallbackWarns = warns.filter((w) => w.includes('absent'));
+      expect(fallbackWarns, 'one warn per startup, not per call').to.have.length(1);
+    } finally {
+      restore();
+    }
+  });
+
+  it('present key with valid JSON → baseUrl/model applied on the next call', async () => {
+    const raw = JSON.stringify({ baseUrl: 'http://new/v1', model: 'new-model' });
+    const resolved = await resolveLlmConfig(async () => raw, FALLBACK);
+    expect(resolved.model).to.equal('new-model');
+    expect(resolved.baseUrl).to.equal('http://new/v1');
+    // Static fields always come from the fallback config.
+    expect(resolved.timeoutMs).to.equal(8000);
+    expect(resolved.tokenBudget).to.equal(6000);
+  });
+
+  it('malformed JSON → config defaults + one warn', async () => {
+    const { warns, restore } = captureWarns();
+    try {
+      const resolved = await resolveLlmConfig(async () => '{not json', FALLBACK);
+      expect(resolved.model).to.equal('fallback-model');
+      await resolveLlmConfig(async () => '{not json', FALLBACK);
+      expect(warns.filter((w) => w.includes('malformed'))).to.have.length(1);
+    } finally {
+      restore();
+    }
+  });
+
+  it('C3 (FR-009 no-restart): a key change between calls is applied — no process restart simulated', async () => {
+    let raw = JSON.stringify({ baseUrl: 'x', model: 'model-A' });
+    const getRaw = async () => raw;
+    const first = await resolveLlmConfig(getRaw, FALLBACK);
+    raw = JSON.stringify({ baseUrl: 'x', model: 'model-B' });
+    const second = await resolveLlmConfig(getRaw, FALLBACK);
+    expect(first.model).to.equal('model-A');
+    expect(second.model).to.equal('model-B');
+  });
+
+  it('C2 (contract): apiKey is never read from the Redis value — a stray one is ignored', async () => {
+    const raw = JSON.stringify({ baseUrl: 'http://new/v1', model: 'new-model', apiKey: 'sk-leak' });
+    const resolved = await resolveLlmConfig(async () => raw, FALLBACK);
+    expect(resolved).to.not.have.property('apiKey');
+    expect(JSON.stringify(resolved)).to.not.include('sk-leak');
+  });
+
+  it('per-field fallback: an empty or missing field falls back individually', () => {
+    const { config } = parseLlmConfig(JSON.stringify({ model: 'only-model' }), FALLBACK);
+    expect(config.model).to.equal('only-model');
+    expect(config.baseUrl).to.equal('http://fallback/v1');
+    const { config: c2 } = parseLlmConfig(JSON.stringify({ baseUrl: '', model: '' }), FALLBACK);
+    expect(c2.baseUrl).to.equal('http://fallback/v1');
+    expect(c2.model).to.equal('fallback-model');
+  });
+
+  it('a throwing getter (Redis down) degrades to the absent-key path', async () => {
+    const resolved = await resolveLlmConfig(async () => {
+      throw new Error('redis down');
+    }, FALLBACK);
+    expect(resolved.model).to.equal('fallback-model');
+  });
+});

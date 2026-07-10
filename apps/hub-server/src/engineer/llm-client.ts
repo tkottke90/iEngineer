@@ -46,7 +46,95 @@ export interface LlmDeps {
 export type LlmResult =
   | { status: 'ok'; text: string; toolsCalled: string[]; latencyMs: number }
   | { status: 'timeout' }
-  | { status: 'unreachable'; error: string };
+  // httpStatus present = the endpoint RESPONDED with an error (e.g. 404 from a
+  // model-name typo) — the T018/U1 degraded-mode branch in the synthesizer
+  // suppresses Tier 3 entirely for these; absent = network-level failure
+  // (connection refused), which keeps M5's canned-line behavior (FR-023).
+  | { status: 'unreachable'; error: string; httpStatus?: number };
+
+// ─── M10 T018: per-request LLM config from hub:config:llm ───────────────────
+
+export type LlmConfigSource = 'redis' | 'absent' | 'malformed';
+
+/**
+ * Merge the raw `hub:config:llm` Redis value over the engineer-config fallback.
+ * Only `baseUrl` and `model` are runtime-switchable (per-field: an invalid or
+ * missing field falls back individually); provider/timeouts/budgets always come
+ * from the static config. `apiKey` is NEVER read from Redis — the write
+ * contract (contracts/hub-llm-config.md) excludes it and this parser ignores
+ * any stray value (C2).
+ */
+export function parseLlmConfig(
+  raw: string | null | undefined,
+  fallback: LlmConfig,
+): { config: LlmConfig; source: LlmConfigSource } {
+  if (raw === null || raw === undefined || raw === '') {
+    return { config: { ...fallback }, source: 'absent' };
+  }
+  let parsed: { baseUrl?: unknown; model?: unknown };
+  try {
+    parsed = JSON.parse(raw) as { baseUrl?: unknown; model?: unknown };
+  } catch {
+    return { config: { ...fallback }, source: 'malformed' };
+  }
+  const str = (v: unknown, d: string): string =>
+    typeof v === 'string' && v.length > 0 ? v : d;
+  return {
+    config: {
+      ...fallback,
+      baseUrl: str(parsed.baseUrl, fallback.baseUrl),
+      model: str(parsed.model, fallback.model),
+    },
+    source: 'redis',
+  };
+}
+
+// One warn per fallback type per startup (T018) — mirrors the
+// _personalityWarnEmitted pattern in racing-engineer.ts.
+const llmConfigWarned = { absent: false, malformed: false };
+
+/** Test hook: reset the once-per-startup warn guards. */
+export function _resetLlmConfigWarnings(): void {
+  llmConfigWarned.absent = false;
+  llmConfigWarned.malformed = false;
+}
+
+/**
+ * Resolve the LLM config for ONE synthesis call: read `hub:config:llm` (via the
+ * injected getter — the caller owns the Redis connection), merge over the
+ * static fallback, and warn once per startup per fallback type. Called at the
+ * START of each synthesis request (FR-009) — the resolved value is then used
+ * for both the audit row and the LLM call, so an in-flight call never switches
+ * models mid-execution (spec edge case E1).
+ */
+export async function resolveLlmConfig(
+  getRaw: () => Promise<string | null>,
+  fallback: LlmConfig,
+): Promise<LlmConfig> {
+  let raw: string | null = null;
+  try {
+    raw = await getRaw();
+  } catch {
+    raw = null; // Redis unreachable → same path as an absent key
+  }
+  const { config, source } = parseLlmConfig(raw, fallback);
+  if (source === 'absent' && !llmConfigWarned.absent) {
+    llmConfigWarned.absent = true;
+    logger.warn('[engineer] hub:config:llm absent — using engineer-config defaults', {
+      component: 'engineer',
+      event: 'llm-config-fallback',
+      reason: 'hub:config:llm absent',
+    });
+  }
+  if (source === 'malformed' && !llmConfigWarned.malformed) {
+    llmConfigWarned.malformed = true;
+    logger.warn('[engineer] hub:config:llm malformed — using engineer-config defaults', {
+      component: 'engineer',
+      event: 'llm-config-malformed',
+    });
+  }
+  return config;
+}
 
 const MAX_TOOL_ROUNDS = 4;
 
@@ -157,12 +245,20 @@ export async function runLlm(
       return { status: 'ok', text: '', toolsCalled, latencyMs: Date.now() - start };
     } catch (err) {
       if (controller.signal.aborted) return { status: 'timeout' };
+      // The OpenAI SDK attaches `status` on HTTP-level errors (401/404/5xx) —
+      // surfaced so the synthesizer can distinguish "endpoint responded with an
+      // error" (T018/U1 full suppression) from network-level unreachable.
+      const httpStatus =
+        typeof (err as { status?: unknown })?.status === 'number'
+          ? (err as { status: number }).status
+          : undefined;
       logger.warn('[engineer] LLM unreachable', {
         component: 'engineer',
         event: 'llm_unreachable',
         error: String(err),
+        ...(httpStatus !== undefined ? { statusCode: httpStatus } : {}),
       });
-      return { status: 'unreachable', error: String(err) };
+      return { status: 'unreachable', error: String(err), httpStatus };
     }
   };
 

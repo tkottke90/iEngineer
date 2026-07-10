@@ -33,6 +33,16 @@ jobs:
       # Step 2: Redis service is provided above via services.redis
 
       # Step 3: Run Rust integration tests (single-threaded — streams are ordered)
+      # Tauri v2 on Linux compiles against the GTK/WebKit stack, and cpal
+      # needs ALSA headers. Never surfaced before because the old cargo step
+      # failed at the package spec without compiling anything.
+      - name: Install Tauri Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev libxdo-dev \
+            libssl-dev libasound2-dev
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
@@ -42,7 +52,10 @@ jobs:
           workspaces: apps/tauri-client/src-tauri
 
       - name: "Step 3: cargo test"
-        run: cargo test -p iracing-engineer-lib -- --test-threads=1
+        # -p takes the PACKAGE name (iracing-engineer), not the lib target
+        # (iracing_engineer_lib). The old spec never matched — this step failed
+        # in ~30s on every run since M4, so the npm steps below never executed.
+        run: cargo test -p iracing-engineer --lib -- --test-threads=1
         working-directory: apps/tauri-client/src-tauri
         env:
           REDIS_URL: redis://localhost:6379
@@ -62,5 +75,16 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      - name: "Step 4: Build hub-server"
-        run: npm run build -w apps/hub-server
+      # Packages FIRST: npm's --workspaces order is apps/* before packages/*,
+      # so a bare root build has hub-server resolving @iracing-engineer/types
+      # before its dist/ exists (fresh checkout has no dist anywhere).
+      - name: "Step 4: Build workspace (packages, then apps)"
+        run: |
+          npm run build -w packages/types -w packages/ui
+          npm run build -w apps/hub-server -w apps/tauri-client
+
+      # Step 5 (M10 T043 — Constitution III & V enforcement): the tier3
+      # write-path audit test MUST run in CI (FR-029 ladder branch a). Also
+      # runs the client/ui/types suites per T041/C1.
+      - name: "Step 5: Unit tests (hub tier3 audit gate + client + ui + types)"
+        run: npm test -w packages/types -w packages/ui -w apps/tauri-client -w apps/hub-server

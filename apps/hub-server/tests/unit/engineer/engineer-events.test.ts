@@ -34,14 +34,32 @@ async function captureError(fn: () => Promise<void>): Promise<string[]> {
 }
 
 describe('engineer-events — recordEvent (FR-022 write-before-act)', () => {
-  it('INSERTs a provisional row with outcome=error and returns a uuid', async () => {
+  it('INSERTs a provisional row with outcome=error, the resolved LLM fields (T043/FR-029), and returns a uuid', async () => {
     const { pool, calls } = fakePool();
-    const id = await recordEvent({ sessionId: 's1', tier3Type: 'driver-query', prompt: 'p' }, pool);
+    const id = await recordEvent(
+      {
+        sessionId: 's1',
+        tier3Type: 'driver-query',
+        prompt: 'p',
+        llmModel: 'audit-model',
+        llmBaseUrl: 'http://llm.example/v1',
+      },
+      pool,
+    );
     expect(id).to.match(/^[0-9a-f-]{36}$/);
     expect(calls).to.have.length(1);
     expect(calls[0].text).to.include('INSERT INTO engineer_events');
     expect(calls[0].text).to.include("'error'"); // provisional outcome
-    expect(calls[0].values).to.deep.equal([id, 's1', 'driver-query', 'p']);
+    expect(calls[0].text).to.include('llm_model');
+    expect(calls[0].text).to.include('llm_base_url');
+    expect(calls[0].values).to.deep.equal([
+      id,
+      's1',
+      'driver-query',
+      'p',
+      'audit-model',
+      'http://llm.example/v1',
+    ]);
   });
 
   it('fail-closed: logs and rethrows when the pre-write fails', async () => {
@@ -49,7 +67,10 @@ describe('engineer-events — recordEvent (FR-022 write-before-act)', () => {
     let threw = false;
     const logs = await captureError(async () => {
       try {
-        await recordEvent({ sessionId: 's1', tier3Type: 'pit-entry', prompt: 'p' }, pool);
+        await recordEvent(
+          { sessionId: 's1', tier3Type: 'pit-entry', prompt: 'p', llmModel: 'm', llmBaseUrl: 'x' },
+          pool,
+        );
       } catch {
         threw = true;
       }

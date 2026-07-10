@@ -97,8 +97,26 @@ export async function startPipeline(): Promise<void> {
   // One session memory shared by the synthesizer (reads it into context) and the
   // override tracker (writes recommendation outcomes + deference state).
   const sessionMemory = new SessionMemoryStore();
-  _synthesizer = new Tier3Synthesizer(getSnapshot, sessionMemory, tools, queue, engineerConfig);
+  _synthesizer = new Tier3Synthesizer(getSnapshot, sessionMemory, tools, queue, engineerConfig, {
+    // M10 T018: per-request LLM config — the synthesizer reads hub:config:llm
+    // at the start of every synthesis call via the shared command connection.
+    getLlmConfigRaw: () => commandConn.get('hub:config:llm'),
+  });
   const overrideTracker = new OverrideTracker(sessionMemory, engineerConfig.deferenceThreshold);
+
+  // M10 US6 (T035): re-apply an uploaded voice profile after restart — only if
+  // the reference file still exists and is non-empty; otherwise default voice.
+  {
+    const { stat } = await import('node:fs/promises');
+    const { recoverVoiceProfile } = await import('./engineer/tts-client.js');
+    recoverVoiceProfile(
+      (key) => commandConn.get(key),
+      engineerConfig,
+      async (path) => (await stat(path)).size,
+    ).catch((err) =>
+      logger.warn('[engineer] voice profile recovery failed', { error: String(err) }),
+    );
+  }
 
   _engineer = new RacingEngineerService(
     commandConn,
