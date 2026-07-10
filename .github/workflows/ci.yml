@@ -75,10 +75,13 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      # Workspace-wide so packages/types + packages/ui dist/ exist before the
-      # hub (and any consumer) builds or tests against their `main` entries.
-      - name: "Step 4: Build workspace"
-        run: npm run build
+      # Packages FIRST: npm's --workspaces order is apps/* before packages/*,
+      # so a bare root build has hub-server resolving @iracing-engineer/types
+      # before its dist/ exists (fresh checkout has no dist anywhere).
+      - name: "Step 4: Build workspace (packages, then apps)"
+        run: |
+          npm run build -w packages/types -w packages/ui
+          npm run build -w apps/hub-server -w apps/tauri-client
 
       # Step 5 (M10 T043 — Constitution III & V enforcement): the tier3
       # write-path audit test MUST run in CI (FR-029 ladder branch a). Also
