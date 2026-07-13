@@ -1,23 +1,21 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.2.0 → 1.2.1 (PATCH — LLM default wording aligned with owner-ratified
-reality; no normative rule change)
+Version change: 1.2.2 → 1.2.3 (PATCH — Principle I Tier 1/2 latency wording clarified to
+acknowledge the safe-window gate; no normative rule change to shipped practice)
 
 Modified principles:
-- IV. Local-First Infrastructure — LLM bullet reworded: the operating default is the
-  OpenAI-compatible local endpoint (Lemonade homelab, per apps/hub-server/config/
-  engineer-config.json — in effect since M5); the Anthropic Claude API is the
-  runtime-switchable alternative. The normative MUST (runtime-switchable provider, no
-  hard-coded lock-in) is unchanged. Rationale: the constitution previously named "Claude
-  API is the default" while every shipped default since M5 has been the local endpoint;
-  M10's config UI (specs/006-client-config-ui) surfaced the mismatch. Project-owner
-  sign-off recorded 2026-07-08 in specs/006-client-config-ui/plan.md DoD (B1 / C1-IV
-  extension); this PATCH closes the deferred wording amendment.
+- I. Real-Time Reliability — Tier 1/2 bullet reworded: the 3-second budget applies when a
+  safe window is open; a Tier 2 alert triggered inside a radio-blackout zone is delivered
+  at the next safe window, bounded by the Tier 2 30-second no-safe-window drop. Rationale:
+  the prior unconditional wording ("MUST be delivered within 3 seconds of the triggering
+  telemetry event") predated the M4 safe-window gate and contradicted shipped M4/M5
+  practice and spec 004/007 requirements (FR-009/FR-010: gated delivery, 30s drop
+  backstop). The 3s budget itself is unchanged wherever a window is open.
+  specs/007-tier2-alert-completion analysis (finding C2) surfaced the tension; ratified
+  by this PATCH 2026-07-11, mirroring the v1.2.2 Principle V precedent.
 
-Modified sections:
-- Technology Constraints — LLM default row updated to the OpenAI-compatible local endpoint
-  (Lemonade) with Claude API as the runtime-switchable alternative.
+Modified sections: N/A
 
 Added sections: N/A
 Removed sections: N/A
@@ -33,9 +31,17 @@ Follow-up TODOs:
   If a cloud LLM ever becomes the operating default in a future milestone, key forwarding
   must land first.
 
+Prior amendment (1.2.1 → 1.2.2, PATCH): Principle V audit-gate wording clarified — the
+Postgres audit-table gate binds LLM-backed capabilities only; rule-based capabilities are
+permanently exempt provided structured logs are emitted (owner ruling 2026-07-10, surfaced
+by specs/007-tier2-alert-completion analysis finding C1).
+Prior amendment (1.2.0 → 1.2.1, PATCH): LLM default wording aligned with owner-ratified
+reality — operating default is the OpenAI-compatible local endpoint (Lemonade homelab);
+Claude API remains the runtime-switchable alternative (Principle IV + Technology
+Constraints). Owner sign-off 2026-07-08 in specs/006-client-config-ui/plan.md DoD.
 Prior amendment (1.1.2 → 1.2.0, MINOR): Ratified M5 LLM deviations — Tier 3 ≤5s
 time-to-first-audio budget (Principle I split) and in-client whisper-rs STT (Principle IV +
-Technology Constraints STT row). See git history for the full 1.2.0 report.
+Technology Constraints STT row). See git history for the full reports.
 -->
 
 # iRacing Engineer Constitution
@@ -49,7 +55,10 @@ that path MUST prioritize low latency over completeness. Specifically:
 
 - Telemetry ingestion MUST NOT block on LLM calls; use async queuing via Redis Streams
 - Rule-based voice feedback (Tier 1/2 alerts) MUST be delivered within 3 seconds of the
-  triggering telemetry event
+  triggering telemetry event when a safe window is open; a Tier 2 alert triggered inside a
+  radio-blackout zone is delivered at the next safe window, bounded by the Tier 2 30-second
+  no-safe-window drop (silence over stale delivery — wording clarified v1.2.3, 2026-07-11;
+  the 3s budget is unchanged wherever a window is open)
 - LLM-synthesized voice feedback (Tier 3: on-demand driver queries and reasoned briefings)
   MUST begin audio within 5 seconds of the triggering event or push-to-talk release. This
   relaxed budget applies ONLY to messages with LLM reasoning in the delivery path, is bounded
@@ -135,8 +144,10 @@ All data flows MUST be inspectable:
   log entry explaining why
 - **Gate**: Every new **LLM-backed** agent capability MUST include a Postgres table or column
   for its audit log before the feature is considered complete. Rule-based agent capabilities
-  (no LLM inference in the decision path) are exempt from this gate until M5, provided
-  structured console logs are emitted for all decisions and failures
+  (no LLM inference in the decision path) are exempt from the Postgres audit-table gate,
+  provided structured logs are emitted for all decisions and failures (wording clarified
+  v1.2.2, 2026-07-10 — the former "until M5" phrasing was ambiguous; the exemption is
+  permanent, not milestone-bound)
 
 **Rationale:** When an AI makes a wrong call mid-race, post-session forensics require a
 complete, timestamped log of what the agent saw and decided. Without it, debugging is
@@ -222,4 +233,4 @@ Amendments require:
 
 All feature plans MUST include a Constitution Check gate before Phase 0 research.
 
-**Version**: 1.2.1 | **Ratified**: 2026-06-26 | **Last Amended**: 2026-07-08
+**Version**: 1.2.3 | **Ratified**: 2026-06-26 | **Last Amended**: 2026-07-11
