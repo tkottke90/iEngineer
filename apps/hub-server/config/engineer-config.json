@@ -6,6 +6,8 @@
   "maxVoiceProfileDurationSecs": 60,
   "fuelCriticalLapsRemaining": 1.0,
   "gapThresholdSeconds": 2.0,
+  "relevantPositionRange": 3,
+  "gapHysteresisMarginSeconds": 0.5,
   "audioIdleCleanupIntervalMs": 30000,
   "llm": {
     "baseUrl": "https://lemonade.tdkottke.com/v1",

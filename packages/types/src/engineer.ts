@@ -101,7 +101,12 @@ export interface EngineerConfig {
   minVoiceProfileDurationSecs: number;
   maxVoiceProfileDurationSecs: number;
   fuelCriticalLapsRemaining: number;
-  gapThresholdSeconds: number; // FR-015 M4 placeholder — gap rule returns null in M4
+  // Reserved by 004 FR-015 as an M4 placeholder; consumed by the GapAlertMonitor
+  // per 007 FR-004/FR-006 (closing fires below this threshold).
+  gapThresholdSeconds: number;
+  // 007 additions (FR-011): both default in the config loader when absent.
+  relevantPositionRange: number; // ± class positions around the hero for competitor pit relevance (007 FR-001)
+  gapHysteresisMarginSeconds: number; // dead-band width above gapThresholdSeconds (007 FR-005/FR-006)
   audioIdleCleanupIntervalMs: number;
   // M5 additions
   llm: LlmConfig;

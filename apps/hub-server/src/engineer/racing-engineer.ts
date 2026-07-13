@@ -23,6 +23,20 @@ import { performance } from 'node:perf_hooks';
 
 const DISPATCH_INTERVAL_MS = 100;
 
+// Dedup scope for the scoped-event-cleared alert types (007 data-model.md):
+// carIdx for competitor pit alerts, degradation level for the pace alert.
+function scopeForEvent(event: RaceEvent): string | undefined {
+  switch (event.type) {
+    case 'competitor:pit_entry':
+    case 'competitor:pit_exit':
+      return typeof event.payload.carIdx === 'number' ? String(event.payload.carIdx) : undefined;
+    case 'hero:pace_degradation':
+      return typeof event.payload.signal === 'string' ? event.payload.signal : undefined;
+    default:
+      return undefined;
+  }
+}
+
 // Injectable so tests can supply a fake TTS without hitting Chatterbox.
 type ClipGenerator = (text: string, config: EngineerConfig) => Promise<Buffer>;
 
@@ -224,6 +238,19 @@ export class RacingEngineerService {
           return;
         }
         break;
+      // 007 US1: competitor pit events are clear signals for each other's
+      // per-car key AND alert candidates — dual role, so NO early return
+      // (contract §Compatibility notes).
+      case 'competitor:pit_entry':
+        if (typeof event.payload.carIdx === 'number') {
+          this.dedup.recordCleared('competitor:pit_exit', String(event.payload.carIdx));
+        }
+        break;
+      case 'competitor:pit_exit':
+        if (typeof event.payload.carIdx === 'number') {
+          this.dedup.recordCleared('competitor:pit_entry', String(event.payload.carIdx));
+        }
+        break;
     }
 
     // Proactive Tier 3 briefings (additive to the rule path).
@@ -236,20 +263,24 @@ export class RacingEngineerService {
       else if (event.type === 'hero:lap_complete') this.overrides.onLapComplete(event.lapNumber);
     }
 
-    const signals = this.getRaceState().signals;
-    const alert = evaluateTier1(event, this.config) ?? evaluateTier2(event, signals, this.config);
+    const state = this.getRaceState();
+    const alert = evaluateTier1(event, this.config) ?? evaluateTier2(event, state, this.config);
     if (!alert) return;
 
-    if (!this.dedup.shouldFire(alert.eventType, alert.lapNumber)) {
+    // 007: scoped dedup dimension — per car for competitor pit alerts, per
+    // level for pace degradation (data-model.md §Dedup keys).
+    const scope = scopeForEvent(event);
+    if (!this.dedup.shouldFire(alert.eventType, alert.lapNumber, scope)) {
       logger.info('[engineer] Alert deduplicated', {
         component: 'engineer',
         event: 'alert_deduplicated',
         alertType: alert.eventType,
+        dedupKey: alert.dedupKey,
         lapNumber: alert.lapNumber,
       });
       return;
     }
-    this.dedup.recordFired(alert.eventType, alert.lapNumber);
+    this.dedup.recordFired(alert.eventType, alert.lapNumber, scope);
     this.queue.enqueue(alert);
     logger.info('[engineer] Alert enqueued', {
       component: 'engineer',

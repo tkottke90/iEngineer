@@ -17,12 +17,39 @@ const CONFIG_DIR = join(__dirname, '..', '..', 'config');
 /**
  * Load the engineer configuration (thresholds, Chatterbox URL, voice file, LLM
  * settings, personality defaults).
+ *
+ * The two 007 fields default when absent (FR-011 — untouched configs keep
+ * working) but fail fast with a descriptive error when present and invalid
+ * (manual guide TC-21): a silently-coerced threshold would misfire alerts
+ * mid-race, which is worse than refusing to start.
  */
 export function loadEngineerConfig(
   path = join(CONFIG_DIR, 'engineer-config.json'),
 ): EngineerConfig {
   const raw = readFileSync(path, 'utf-8');
-  return JSON.parse(raw) as EngineerConfig;
+  const config = JSON.parse(raw) as EngineerConfig;
+
+  if (config.relevantPositionRange === undefined) {
+    config.relevantPositionRange = 3;
+  } else if (!Number.isInteger(config.relevantPositionRange) || config.relevantPositionRange < 1) {
+    throw new Error(
+      `engineer-config.json: relevantPositionRange must be an integer >= 1, got ${JSON.stringify(config.relevantPositionRange)}`,
+    );
+  }
+
+  if (config.gapHysteresisMarginSeconds === undefined) {
+    config.gapHysteresisMarginSeconds = 0.5;
+  } else if (
+    typeof config.gapHysteresisMarginSeconds !== 'number' ||
+    !Number.isFinite(config.gapHysteresisMarginSeconds) ||
+    config.gapHysteresisMarginSeconds <= 0
+  ) {
+    throw new Error(
+      `engineer-config.json: gapHysteresisMarginSeconds must be a finite number > 0, got ${JSON.stringify(config.gapHysteresisMarginSeconds)}`,
+    );
+  }
+
+  return config;
 }
 
 /**

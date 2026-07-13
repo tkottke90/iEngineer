@@ -1,18 +1,22 @@
 import type {
   RaceEvent,
-  DerivedSignals,
+  RaceState,
+  CarState,
+  HeroState,
   QueuedAlert,
   EngineerConfig,
   AlertEventType,
   AlertTier,
 } from '@iracing-engineer/types';
 import { dedupKeyFor } from './dedup-tracker.js';
+import { logger } from '../logger.js';
 
 function makeAlert(
   tier: AlertTier,
   eventType: AlertEventType,
   messageText: string,
   event: RaceEvent,
+  scope?: string,
 ): QueuedAlert {
   return {
     tier,
@@ -20,7 +24,50 @@ function makeAlert(
     messageText,
     lapNumber: event.lapNumber,
     sessionTime: event.sessionTime,
-    dedupKey: dedupKeyFor(eventType, event.lapNumber),
+    dedupKey: dedupKeyFor(eventType, event.lapNumber, scope),
+  };
+}
+
+type SkipReason = 'relevance' | 'identity-unresolved' | 'no-hero' | 'invalid-signal';
+
+// FR-012: a rule returning null is a decision — it must say why (no silent failures).
+function skip(alertType: AlertEventType, reason: SkipReason, carIdx?: number): null {
+  logger.info('[engineer] Alert skipped', {
+    component: 'engineer',
+    event: 'alert_skipped',
+    alertType,
+    ...(carIdx !== undefined ? { carIdx } : {}),
+    reason,
+  });
+  return null;
+}
+
+// Relevance window (contract §Relevance window (T2-02/03), research.md R4): same
+// class and within ±range class positions. Degenerate class data on either car
+// (carClassId ≤ 0 or classPosition ≤ 0 — single-class sessions, incomplete
+// session YAML) falls back to overall position for both the test and the
+// announced position.
+function competitorRelevance(
+  hero: HeroState,
+  competitor: CarState,
+  range: number,
+): { relevant: boolean; pos: number } {
+  const classValid =
+    hero.carClassId > 0 &&
+    competitor.carClassId > 0 &&
+    hero.classPosition > 0 &&
+    competitor.classPosition > 0;
+  if (classValid) {
+    return {
+      relevant:
+        competitor.carClassId === hero.carClassId &&
+        Math.abs(competitor.classPosition - hero.classPosition) <= range,
+      pos: competitor.classPosition,
+    };
+  }
+  return {
+    relevant: Math.abs(competitor.position - hero.position) <= range,
+    pos: competitor.position,
   };
 }
 
@@ -67,13 +114,13 @@ export function evaluateTier1(event: RaceEvent, config: EngineerConfig): QueuedA
  */
 export function evaluateTier2(
   event: RaceEvent,
-  signals: DerivedSignals,
-  _config: EngineerConfig,
+  state: RaceState,
+  config: EngineerConfig,
 ): QueuedAlert | null {
   switch (event.type) {
     case 'hero:pit_window_open':
       // T2-01
-      if (signals.pitWindowOpen !== true) return null;
+      if (state.signals.pitWindowOpen !== true) return null;
       return makeAlert(
         2,
         'hero:pit_window_open',
@@ -81,16 +128,36 @@ export function evaluateTier2(
         event,
       );
 
-    // ── M5 stubs — return null, no logic in M4 (FR-003 / YAGNI) ──
-    case 'competitor:pit_entry': // T2-02 TODO M5
-      return null;
-    case 'competitor:pit_exit': // T2-03 TODO M5
-      return null;
-    case 'gap:closing': // T2-04 TODO M5
-      return null;
-    case 'gap:pulling_away': // T2-05 TODO M5
-      return null;
-    case 'hero:pace_degradation': // T2-06 TODO M5
+    // T2-02 / T2-03 — competitor pit awareness (007 FR-001/FR-002). Identity
+    // and position resolve from live RaceState at trigger time (research.md R6).
+    case 'competitor:pit_entry':
+    case 'competitor:pit_exit': {
+      const alertType = event.type;
+      if (!state.hero) return skip(alertType, 'no-hero');
+      const carIdx = event.payload.carIdx;
+      const competitor = typeof carIdx === 'number' ? state.field[carIdx] : undefined;
+      if (!competitor || !competitor.carNumber) {
+        return skip(alertType, 'identity-unresolved', typeof carIdx === 'number' ? carIdx : undefined);
+      }
+      const { relevant, pos } = competitorRelevance(
+        state.hero,
+        competitor,
+        config.relevantPositionRange,
+      );
+      if (!relevant) return skip(alertType, 'relevance', competitor.carIdx);
+      const messageText =
+        alertType === 'competitor:pit_entry'
+          ? `Car ${competitor.carNumber} pitting from P${pos}`
+          : `Car ${competitor.carNumber} out of pits, P${pos}`;
+      return makeAlert(2, alertType, messageText, event, String(competitor.carIdx));
+    }
+
+    // T2-04 / T2-05 (gap:closing / gap:pulling_away) are OWNED by the
+    // GapAlertMonitor (state-driven, contract §Compatibility notes) — the
+    // events remain on the bus for other consumers but are not alert
+    // candidates here.
+
+    case 'hero:pace_degradation': // T2-06 TODO 007 US3
       return null;
 
     default:
