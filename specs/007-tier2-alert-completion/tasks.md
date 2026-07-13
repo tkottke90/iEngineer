@@ -92,13 +92,13 @@ Monorepo per plan.md: `packages/types/src/`, `apps/hub-server/src/engineer/`, `a
 
 ### Tests for User Story 3 (write first — must FAIL)
 
-- [ ] T018 [P] [US3] Write FAILING tests in `apps/hub-server/tests/unit/engineer/alert-rules.test.ts`: `signal:'watch'` fires `Pace dropping — tires starting to go off` with dedup key `hero:pace_degradation:watch`; `signal:'critical'` with `trend: 2.34` fires `Pace critical — tires are done, 2.3 seconds off your early pace` (trend to 1dp — the value is rolling-window pace loss, not delta-to-best, hence the wording); unknown/nominal signal → null + `alert_skipped {reason:'invalid-signal'}` (defensive branch, per contract)
-- [ ] T019 [P] [US3] Write FAILING test in `apps/hub-server/tests/unit/engineer/racing-engineer.test.ts` (created in T010; create it here if US3 runs first): repeat watch event deduplicated (`alert_deduplicated`); `hero:pit_exit` clears BOTH pace scopes alongside its existing pit-window clear, so a post-pit watch event fires again
+- [x] T018 [P] [US3] Write FAILING tests in `apps/hub-server/tests/unit/engineer/alert-rules.test.ts`: `signal:'watch'` fires `Pace dropping — tires starting to go off` with dedup key `hero:pace_degradation:watch`; `signal:'critical'` with `trend: 2.34` fires `Pace critical — tires are done, 2.3 seconds off your early pace` (trend to 1dp — the value is rolling-window pace loss, not delta-to-best, hence the wording); unknown/nominal signal → null + `alert_skipped {reason:'invalid-signal'}` (defensive branch, per contract)
+- [x] T019 [P] [US3] Write FAILING test in `apps/hub-server/tests/unit/engineer/racing-engineer.test.ts` (created in T010; create it here if US3 runs first): repeat watch event deduplicated (`alert_deduplicated`); `hero:pit_exit` clears BOTH pace scopes alongside its existing pit-window clear, so a post-pit watch event fires again
 
 ### Implementation for User Story 3
 
-- [ ] T020 [US3] Implement T2-06 in `apps/hub-server/src/engineer/alert-rules.ts`: consume `hero:pace_degradation` payload `{signal, trend}` (already transition-gated upstream — research.md R5), level-scoped dedup key, contract templates — T018 green (depends: T006, T007, T018; sequential with T011 — same file)
-- [ ] T021 [US3] Add pace-scope clearing to the `hero:pit_exit` case in `apps/hub-server/src/engineer/racing-engineer.ts` (`recordCleared('hero:pace_degradation')`, all scopes) and scoped `shouldFire`/`recordFired` on the pace path — T019 green (depends: T019, T020)
+- [x] T020 [US3] Implement T2-06 in `apps/hub-server/src/engineer/alert-rules.ts`: consume `hero:pace_degradation` payload `{signal, trend}` (already transition-gated upstream — research.md R5), level-scoped dedup key, contract templates — T018 green (depends: T006, T007, T018; sequential with T011 — same file)
+- [x] T021 [US3] Add pace-scope clearing to the `hero:pit_exit` case in `apps/hub-server/src/engineer/racing-engineer.ts` (`recordCleared('hero:pace_degradation')`, all scopes) and scoped `shouldFire`/`recordFired` on the pace path — T019 green (depends: T019, T020)
 
 **Checkpoint**: All three stories independently functional.
 

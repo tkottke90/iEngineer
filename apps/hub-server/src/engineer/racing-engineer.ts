@@ -246,6 +246,9 @@ export class RacingEngineerService {
     switch (event.type) {
       case 'hero:pit_exit': // T029 — reset pit-window dedup for next stint
         this.dedup.recordCleared('hero:pit_window_open');
+        // 007 US3 (FR-008): pit exit is the stint boundary — clear BOTH pace
+        // degradation level scopes so the new stint re-arms.
+        this.dedup.recordCleared('hero:pace_degradation');
         return;
       case 'session:safety_car_cleared': // T033a
         this.dedup.recordCleared('session:safety_car_deployed');

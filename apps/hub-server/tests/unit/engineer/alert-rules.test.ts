@@ -269,4 +269,41 @@ describe('alert-rules T2-02/T2-03 — competitor pit awareness (US1)', () => {
     expect(a).to.be.null;
     expect(skipped('no-hero')).to.not.be.undefined;
   });
+
+  // ── T2-06: pace degradation (007 US3, FR-008) ──────────────────────────
+
+  it('T2-06: watch signal fires the exact template with the level-scoped dedup key', () => {
+    const a = evaluateTier2(
+      ev('hero:pace_degradation', { signal: 'watch', trend: 0.9 }),
+      state(),
+      CONFIG,
+    );
+    expect(a).to.not.be.null;
+    expect(a!.tier).to.equal(2);
+    expect(a!.eventType).to.equal('hero:pace_degradation');
+    expect(a!.messageText).to.equal('Pace dropping — tires starting to go off');
+    expect(a!.dedupKey).to.equal('hero:pace_degradation:watch');
+  });
+
+  it('T2-06: critical signal renders trend to one decimal place', () => {
+    const a = evaluateTier2(
+      ev('hero:pace_degradation', { signal: 'critical', trend: 2.34 }),
+      state(),
+      CONFIG,
+    );
+    expect(a).to.not.be.null;
+    expect(a!.messageText).to.equal(
+      'Pace critical — tires are done, 2.3 seconds off your early pace',
+    );
+    expect(a!.dedupKey).to.equal('hero:pace_degradation:critical');
+  });
+
+  it('T2-06: unknown/nominal signal is skipped with reason invalid-signal (defensive)', () => {
+    for (const signal of ['nominal', 'bogus', undefined]) {
+      logs.length = 0;
+      const a = evaluateTier2(ev('hero:pace_degradation', { signal }), state(), CONFIG);
+      expect(a, `signal=${String(signal)}`).to.be.null;
+      expect(skipped('invalid-signal'), `signal=${String(signal)}`).to.not.be.undefined;
+    }
+  });
 });

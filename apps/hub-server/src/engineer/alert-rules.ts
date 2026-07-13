@@ -157,8 +157,36 @@ export function evaluateTier2(
     // events remain on the bus for other consumers but are not alert
     // candidates here.
 
-    case 'hero:pace_degradation': // T2-06 TODO 007 US3
-      return null;
+    // T2-06 — pace degradation (007 FR-008). The event is already
+    // transition-gated upstream (research.md R5); dedup is per level per
+    // stint, cleared by hero:pit_exit in racing-engineer.ts.
+    case 'hero:pace_degradation': {
+      const signal = event.payload.signal;
+      if (signal === 'watch') {
+        return makeAlert(
+          2,
+          'hero:pace_degradation',
+          'Pace dropping — tires starting to go off',
+          event,
+          'watch',
+        );
+      }
+      if (signal === 'critical') {
+        // trend = rolling-window pace loss in seconds (last lap vs. first lap
+        // of the window) — NOT delta-to-best, hence the "early pace" wording.
+        const trend = typeof event.payload.trend === 'number' ? event.payload.trend : 0;
+        return makeAlert(
+          2,
+          'hero:pace_degradation',
+          `Pace critical — tires are done, ${trend.toFixed(1)} seconds off your early pace`,
+          event,
+          'critical',
+        );
+      }
+      // Defensive — unreachable via the current pipeline, but FR-012 forbids
+      // a silent null.
+      return skip('hero:pace_degradation', 'invalid-signal');
+    }
 
     default:
       return null;

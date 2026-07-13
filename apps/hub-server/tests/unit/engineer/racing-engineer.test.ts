@@ -309,6 +309,38 @@ describe('racing-engineer wiring — competitor pit clear signals (US1, FR-003)'
     expect(h.clipTexts[0]).to.equal('Gap closing — 1.8 seconds to the car ahead');
   });
 
+  it('T019/US3: repeat watch event is deduplicated; hero:pit_exit re-arms both pace scopes', async () => {
+    const h = await startHarness();
+    // Watch fires once…
+    h.conn.deliver(
+      'hub:events',
+      JSON.stringify(ev('hero:pace_degradation', { signal: 'watch', trend: 0.9 })),
+    );
+    await waitUntil(() => h.refs().length >= 1);
+    // …a repeat watch is deduplicated (alert_deduplicated, no second clip).
+    h.conn.deliver(
+      'hub:events',
+      JSON.stringify(ev('hero:pace_degradation', { signal: 'watch', trend: 1.1 })),
+    );
+    await waitUntil(() => h.logs.some((l) => l.meta?.event === 'alert_deduplicated'));
+    expect(h.refs().length).to.equal(1);
+    // Critical is an independent level within the stint.
+    h.conn.deliver(
+      'hub:events',
+      JSON.stringify(ev('hero:pace_degradation', { signal: 'critical', trend: 2.3 })),
+    );
+    await waitUntil(() => h.refs().length >= 2);
+    // Stint boundary: pit exit clears BOTH pace scopes (alongside its existing
+    // pit-window clear), so a post-pit watch fires again.
+    h.conn.deliver('hub:events', JSON.stringify(ev('hero:pit_exit', {})));
+    h.conn.deliver(
+      'hub:events',
+      JSON.stringify(ev('hero:pace_degradation', { signal: 'watch', trend: 0.8 })),
+    );
+    await waitUntil(() => h.refs().length >= 3);
+    expect(h.refs()[2].eventType).to.equal('hero:pace_degradation');
+  });
+
   it('coalesced-then-suppressed ordering: Energy=1 logs alerts_coalesced then ONE alert_suppressed', async () => {
     const energy1 = {
       ...CONFIG,
