@@ -6,13 +6,12 @@ import type {
   QueuedAlert,
   EngineerConfig,
   AlertEventType,
-  AlertTier,
 } from '@iracing-engineer/types';
 import { dedupKeyFor } from './dedup-tracker.js';
 import { logger } from '../logger.js';
 
 function makeAlert(
-  tier: AlertTier,
+  tier: 1 | 2, // rule-based alerts only — Tier 3 is LLM-synthesized (QueuedTier3)
   eventType: AlertEventType,
   messageText: string,
   event: RaceEvent,
@@ -137,7 +136,11 @@ export function evaluateTier2(
       const carIdx = event.payload.carIdx;
       const competitor = typeof carIdx === 'number' ? state.field[carIdx] : undefined;
       if (!competitor || !competitor.carNumber) {
-        return skip(alertType, 'identity-unresolved', typeof carIdx === 'number' ? carIdx : undefined);
+        return skip(
+          alertType,
+          'identity-unresolved',
+          typeof carIdx === 'number' ? carIdx : undefined,
+        );
       }
       const { relevant, pos } = competitorRelevance(
         state.hero,

@@ -1,5 +1,13 @@
 # Contract: Alert Rule Definitions
 
+> **Supersession note (2026-07-13)**: the T2-02…T2-06 reference rows below were
+> marked "for future reference only" and are SUPERSEDED by
+> [`specs/007-tier2-alert-completion/contracts/alert-rules.md`](../../007-tier2-alert-completion/contracts/alert-rules.md)
+> — the shipped rules differ materially (class-relative relevance window, a
+> state-driven GapAlertMonitor instead of gap-event conditions, classification
+> transitions instead of a percentage threshold, and revised templates).
+> T1 rules and T2-01 remain authoritative here.
+
 **Evaluated by**: hub-server `alert-rules.ts`  
 **Input**: `RaceEvent` from the event bus (`hub:events` Redis pub/sub)  
 **Output**: `QueuedAlert | null`

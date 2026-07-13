@@ -69,15 +69,30 @@ function rig(): Rig {
     lapCompleted: 12,
   }) as HeroState;
   const ahead = car({ carIdx: 1, carNumber: '11', position: 4, classPosition: 4, gapToLeader: 40 });
-  const behind = car({ carIdx: 2, carNumber: '22', position: 6, classPosition: 6, gapToLeader: 60 });
+  const behind = car({
+    carIdx: 2,
+    carNumber: '22',
+    position: 6,
+    classPosition: 6,
+    gapToLeader: 60,
+  });
   const state: RaceState = {
     session: { sessionPhase: 'Racing' } as RaceState['session'],
     field: { 0: hero, 1: ahead, 2: behind },
     hero,
-    signals: { safeWindowOpen: true, cutWindowOpen: false, activeBattles: [], pitWindowOpen: false },
+    signals: {
+      safeWindowOpen: true,
+      cutWindowOpen: false,
+      activeBattles: [],
+      pitWindowOpen: false,
+    },
   };
   const enqueued: QueuedAlert[] = [];
-  const monitor = new GapAlertMonitor(CONFIG, () => state, (a) => enqueued.push(a));
+  const monitor = new GapAlertMonitor(
+    CONFIG,
+    () => state,
+    (a) => enqueued.push(a),
+  );
   return {
     state,
     enqueued,
@@ -183,7 +198,7 @@ describe('GapAlertMonitor — hysteresis state machine (US2)', () => {
     expect(r.enqueued[1].messageText).to.equal("Gap 2.8 seconds — you're pulling away");
   });
 
-  it("FR-005: an initial gap under T that widens past T+M without a closing fire stays silent", () => {
+  it('FR-005: an initial gap under T that widens past T+M without a closing fire stays silent', () => {
     const r = rig();
     r.setGapAhead(1.5); // first sight under T — disarmed
     r.tick();
@@ -305,7 +320,10 @@ describe('GapAlertMonitor — hysteresis state machine (US2)', () => {
   });
 
   for (const [label, applySuppression] of [
-    ['caution', (s: RaceState) => ((s.session as { sessionPhase: string }).sessionPhase = 'Caution')],
+    [
+      'caution',
+      (s: RaceState) => ((s.session as { sessionPhase: string }).sessionPhase = 'Caution'),
+    ],
     ['hero-on-pit-road', (s: RaceState) => (s.hero!.onPitRoad = true)],
     ['adjacent-on-pit-road', (s: RaceState) => (s.field[1].onPitRoad = true)],
   ] as const) {

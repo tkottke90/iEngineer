@@ -117,7 +117,7 @@ describe('GapModel', () => {
 
     // Simulate: gap goes from 0.8 → 0.4 (closing fast)
     field = makeField([{ carIdx: 0, f2Time: 0 }, { carIdx: 1, f2Time: 0.4 }]);
-    const result1 = engine.update(field, makeSession());
+    engine.update(field, makeSession());
     // Still in battle, 1 tick of fast closing
     const entry1 = engine.getEntries().find(e => e.leadCarIdx === 0);
     expect(entry1?.battleStatus).to.equal('battle'); // unchanged

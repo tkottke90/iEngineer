@@ -19,7 +19,7 @@ export class TireModelEngine {
   }
 
   getSnapshot(): TireModel {
-    const median = this._median();
+    void this._median(); // computed for parity with _trend; snapshot exposes trend/signal only
     const trend = this._trend();
     const signal = this._classify(trend);
     return {

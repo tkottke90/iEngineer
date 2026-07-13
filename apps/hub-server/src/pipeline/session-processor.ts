@@ -1,5 +1,5 @@
 import type Redis from 'ioredis';
-import type { CarState, HeroState, SessionState, WeatherState, SkyState } from '@iracing-engineer/types';
+import type { CarState, HeroState, WeatherState, SkyState } from '@iracing-engineer/types';
 import { SessionFlags } from '@iracing-engineer/types';
 import * as raceState from '../state/race-state.js';
 import { publishEvent } from './event-bus.js';
@@ -50,7 +50,11 @@ const SKY_STATES: SkyState[] = ['Clear', 'PartlyCloudy', 'MostlyCloudy', 'Overca
 
 // The wire carries the raw SDK field names (AirTemp, …) from the collector's
 // SESSION_RATE_FIELDS; the hub test fixtures use camelCase — accept both.
-function weatherNum(data: Record<string, unknown>, sdkName: string, camelName: string): number | undefined {
+function weatherNum(
+  data: Record<string, unknown>,
+  sdkName: string,
+  camelName: string,
+): number | undefined {
   const v = data[sdkName] ?? data[camelName];
   return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
 }
@@ -91,7 +95,12 @@ export class SessionProcessor {
   private prevPitWindowOpen = false;
   private prevDegradationSignal = 'nominal';
 
-  constructor(commandConn: Redis, fuelModel: FuelModelEngine, tireModel: TireModelEngine, gapModel: GapModelEngine) {
+  constructor(
+    commandConn: Redis,
+    fuelModel: FuelModelEngine,
+    tireModel: TireModelEngine,
+    gapModel: GapModelEngine,
+  ) {
     this.commandConn = commandConn;
     this.fuelModel = fuelModel;
     this.tireModel = tireModel;
@@ -108,12 +117,15 @@ export class SessionProcessor {
     const fuel = this.fuelModel.getSnapshot();
     const tire = this.tireModel.getSnapshot();
     // FR-029: pitWindowOpen = fuelDeficit ≤ 0 AND (degradationSignal !== "nominal" OR lapAge > 5)
-    const pitWindowOpen = fuel.fuelDeficit <= 0 && (tire.degradationSignal !== 'nominal' || tire.lapAge > 5);
+    const pitWindowOpen =
+      fuel.fuelDeficit <= 0 && (tire.degradationSignal !== 'nominal' || tire.lapAge > 5);
     return { pitWindowOpen };
   }
 
   async onSessionTelemetry(payload: string): Promise<void> {
-    return withSpan('hub.session-processor.cycle', { eventCount: 0 }, () => this._onSessionTelemetryInner(payload));
+    return withSpan('hub.session-processor.cycle', { eventCount: 0 }, () =>
+      this._onSessionTelemetryInner(payload),
+    );
   }
 
   private async _onSessionTelemetryInner(payload: string): Promise<void> {
@@ -162,7 +174,10 @@ export class SessionProcessor {
     }
     for (const [pos, idxes] of Object.entries(positionSeen)) {
       if (idxes.length > 1) {
-        logger.warn('[hub] Duplicate position detected', { duplicatePosition: pos, carIdxes: idxes });
+        logger.warn('[hub] Duplicate position detected', {
+          duplicatePosition: pos,
+          carIdxes: idxes,
+        });
       }
     }
 
@@ -172,7 +187,16 @@ export class SessionProcessor {
     const numCars = Math.max(lapCompleted.length, positions.length, onPitRoads.length);
     for (let i = 0; i < numCars; i++) {
       if (!snapshot.field[i]) {
-        raceState.updateCarState(i, emptyCarState(i, { carIdx: i, userName: `Car ${i}`, carNumber: String(i), teamName: '', carClassID: 0 }));
+        raceState.updateCarState(
+          i,
+          emptyCarState(i, {
+            carIdx: i,
+            userName: `Car ${i}`,
+            carNumber: String(i),
+            teamName: '',
+            carClassID: 0,
+          }),
+        );
       }
     }
 
@@ -200,23 +224,43 @@ export class SessionProcessor {
         const eventType = isHero ? 'hero:pit_entry' : 'competitor:pit_entry';
         eventCount.push(eventType);
         await publishEvent(
-          { type: eventType, sessionId, sessionTime, lapNumber: newLap, lapDistPct: lapDistPcts[carIdx] ?? 0, payload: { lapNumber: newLap, carIdx } },
-          this.commandConn, sessionId, cycleStart,
+          {
+            type: eventType,
+            sessionId,
+            sessionTime,
+            lapNumber: newLap,
+            lapDistPct: lapDistPcts[carIdx] ?? 0,
+            payload: { lapNumber: newLap, carIdx },
+          },
+          this.commandConn,
+          sessionId,
+          cycleStart,
         );
       } else if (!newOnPit && prevPit) {
         // Pit exit
         pitExitTime = sessionTime;
         estimatedPitDuration = pitEntryTime !== null ? sessionTime - pitEntryTime : null;
         if (carIdx === playerCarIdx) {
-          this.fuelModel.onPitExit(data.fuelLevel as number ?? 0);
-          this.tireModel.onPitStop((data.carIdxTireCompound as string[] ?? [])[carIdx] ?? 'Unknown');
+          this.fuelModel.onPitExit((data.fuelLevel as number) ?? 0);
+          this.tireModel.onPitStop(
+            ((data.carIdxTireCompound as string[]) ?? [])[carIdx] ?? 'Unknown',
+          );
         }
         const isHero = carIdx === playerCarIdx;
         const eventType = isHero ? 'hero:pit_exit' : 'competitor:pit_exit';
         eventCount.push(eventType);
         await publishEvent(
-          { type: eventType, sessionId, sessionTime, lapNumber: newLap, lapDistPct: lapDistPcts[carIdx] ?? 0, payload: { lapNumber: newLap, carIdx, estimatedPitDuration } },
-          this.commandConn, sessionId, cycleStart,
+          {
+            type: eventType,
+            sessionId,
+            sessionTime,
+            lapNumber: newLap,
+            lapDistPct: lapDistPcts[carIdx] ?? 0,
+            payload: { lapNumber: newLap, carIdx, estimatedPitDuration },
+          },
+          this.commandConn,
+          sessionId,
+          cycleStart,
         );
       }
       this.prevOnPitRoad[carIdx] = newOnPit;
@@ -228,8 +272,17 @@ export class SessionProcessor {
         const eventType = isHero ? 'hero:position_change' : 'competitor:position_change';
         eventCount.push(eventType);
         await publishEvent(
-          { type: eventType, sessionId, sessionTime, lapNumber: newLap, lapDistPct: lapDistPcts[carIdx] ?? 0, payload: { carIdx, from: prevPos, to: newPos } },
-          this.commandConn, sessionId, cycleStart,
+          {
+            type: eventType,
+            sessionId,
+            sessionTime,
+            lapNumber: newLap,
+            lapDistPct: lapDistPcts[carIdx] ?? 0,
+            payload: { carIdx, from: prevPos, to: newPos },
+          },
+          this.commandConn,
+          sessionId,
+          cycleStart,
         );
       }
       this.prevPosition[carIdx] = newPos;
@@ -241,7 +294,13 @@ export class SessionProcessor {
         const fuelStart = this.prevFuelLevel ?? fuelEnd;
         const isOutlap = (existingCar.lapsSinceLastPit ?? 1) === 0;
         const isInlap = newOnPit;
-        this.fuelModel.onLapCompletion(fuelStart, fuelEnd, lastLapTimes[carIdx] ?? 90, isOutlap, isInlap);
+        this.fuelModel.onLapCompletion(
+          fuelStart,
+          fuelEnd,
+          lastLapTimes[carIdx] ?? 90,
+          isOutlap,
+          isInlap,
+        );
         this.tireModel.onLapCompletion(lastLapTimes[carIdx] ?? 90, isOutlap, isInlap);
 
         // Write fuel/tire KV snapshots (FR-008)
@@ -254,8 +313,20 @@ export class SessionProcessor {
         if (fuelSnap.lapsRemaining !== null && fuelSnap.lapsRemaining < 1.0) {
           eventCount.push('hero:fuel_critical');
           await publishEvent(
-            { type: 'hero:fuel_critical', sessionId, sessionTime, lapNumber: newLap, lapDistPct: lapDistPcts[carIdx] ?? 0, payload: { lapsRemaining: fuelSnap.lapsRemaining, fuelRemaining: fuelSnap.fuelRemaining } },
-            this.commandConn, sessionId, cycleStart,
+            {
+              type: 'hero:fuel_critical',
+              sessionId,
+              sessionTime,
+              lapNumber: newLap,
+              lapDistPct: lapDistPcts[carIdx] ?? 0,
+              payload: {
+                lapsRemaining: fuelSnap.lapsRemaining,
+                fuelRemaining: fuelSnap.fuelRemaining,
+              },
+            },
+            this.commandConn,
+            sessionId,
+            cycleStart,
           );
         }
       }
@@ -290,31 +361,97 @@ export class SessionProcessor {
       raceState.setSession({ ...snapshot.session!, sessionPhase: newPhase, flags });
       eventCount.push('session:phase_change');
       await publishEvent(
-        { type: 'session:phase_change', sessionId, sessionTime, lapNumber: lapCompleted[playerCarIdx ?? 0] ?? 0, lapDistPct: 0, payload: { from: prevPhase, to: newPhase } },
-        this.commandConn, sessionId, cycleStart,
+        {
+          type: 'session:phase_change',
+          sessionId,
+          sessionTime,
+          lapNumber: lapCompleted[playerCarIdx ?? 0] ?? 0,
+          lapDistPct: 0,
+          payload: { from: prevPhase, to: newPhase },
+        },
+        this.commandConn,
+        sessionId,
+        cycleStart,
       );
     } else {
-      raceState.setSession({ ...snapshot.session!, flags,
-        lapsRemaining: (data.sessionLapsRemain as number) === -1 ? null : (data.sessionLapsRemain as number) ?? session.lapsRemaining,
+      raceState.setSession({
+        ...snapshot.session!,
+        flags,
+        lapsRemaining:
+          (data.sessionLapsRemain as number) === -1
+            ? null
+            : ((data.sessionLapsRemain as number) ?? session.lapsRemaining),
         timeRemaining: (data.sessionTimeRemain as number) ?? session.timeRemaining,
       });
     }
 
     // Flag events
-    if ((flags & SessionFlags.caution) && !(this.prevFlags & SessionFlags.caution)) {
+    if (flags & SessionFlags.caution && !(this.prevFlags & SessionFlags.caution)) {
       eventCount.push('session:flag_yellow');
-      await publishEvent({ type: 'session:flag_yellow', sessionId, sessionTime, lapNumber: 0, lapDistPct: 0, payload: {} }, this.commandConn, sessionId, cycleStart);
+      await publishEvent(
+        {
+          type: 'session:flag_yellow',
+          sessionId,
+          sessionTime,
+          lapNumber: 0,
+          lapDistPct: 0,
+          payload: {},
+        },
+        this.commandConn,
+        sessionId,
+        cycleStart,
+      );
     }
-    if ((flags & SessionFlags.green) && !(this.prevFlags & SessionFlags.green) && prevPhase === 'Caution') {
+    if (
+      flags & SessionFlags.green &&
+      !(this.prevFlags & SessionFlags.green) &&
+      prevPhase === 'Caution'
+    ) {
       eventCount.push('session:flag_green');
-      await publishEvent({ type: 'session:flag_green', sessionId, sessionTime, lapNumber: 0, lapDistPct: 0, payload: {} }, this.commandConn, sessionId, cycleStart);
+      await publishEvent(
+        {
+          type: 'session:flag_green',
+          sessionId,
+          sessionTime,
+          lapNumber: 0,
+          lapDistPct: 0,
+          payload: {},
+        },
+        this.commandConn,
+        sessionId,
+        cycleStart,
+      );
     }
-    if ((flags & SessionFlags.checkered) && !(this.prevFlags & SessionFlags.checkered)) {
+    if (flags & SessionFlags.checkered && !(this.prevFlags & SessionFlags.checkered)) {
       eventCount.push('session:flag_checkered');
-      await publishEvent({ type: 'session:flag_checkered', sessionId, sessionTime, lapNumber: 0, lapDistPct: 0, payload: {} }, this.commandConn, sessionId, cycleStart);
+      await publishEvent(
+        {
+          type: 'session:flag_checkered',
+          sessionId,
+          sessionTime,
+          lapNumber: 0,
+          lapDistPct: 0,
+          payload: {},
+        },
+        this.commandConn,
+        sessionId,
+        cycleStart,
+      );
     }
-    if ((flags & SessionFlags.blue) && playerCarIdx !== null) {
-      await publishEvent({ type: 'hero:blue_flag', sessionId, sessionTime, lapNumber: 0, lapDistPct: 0, payload: {} }, this.commandConn, sessionId, cycleStart);
+    if (flags & SessionFlags.blue && playerCarIdx !== null) {
+      await publishEvent(
+        {
+          type: 'hero:blue_flag',
+          sessionId,
+          sessionTime,
+          lapNumber: 0,
+          lapDistPct: 0,
+          payload: {},
+        },
+        this.commandConn,
+        sessionId,
+        cycleStart,
+      );
     }
     this.prevFlags = flags;
 
@@ -341,7 +478,8 @@ export class SessionProcessor {
       } as HeroState);
 
       // Update fuel model context
-      const lapsRemain = (data.sessionLapsRemain as number) === -1 ? null : (data.sessionLapsRemain as number);
+      const lapsRemain =
+        (data.sessionLapsRemain as number) === -1 ? null : (data.sessionLapsRemain as number);
       const timeRemain = (data.sessionTimeRemain as number) ?? null;
       this.fuelModel.setSessionContext({ lapsRemaining: lapsRemain, timeRemaining: timeRemain });
 
@@ -351,13 +489,31 @@ export class SessionProcessor {
 
     // Gap model
     const currentSnap = raceState.getSnapshot();
-    const gapResult = this.gapModel.update(currentSnap.field, { ...currentSnap.session!, estimatedLapTime: estTimes[playerCarIdx ?? 0] ?? 90 } as any);
-    const activeBattles = this.gapModel.getEntries().filter(e => e.battleStatus === 'battle' || e.battleStatus === 'closing').map(e => ({ leadCarIdx: e.leadCarIdx, trailCarIdx: e.trailCarIdx }));
+    const gapResult = this.gapModel.update(currentSnap.field, {
+      ...currentSnap.session!,
+      estimatedLapTime: estTimes[playerCarIdx ?? 0] ?? 90,
+    } as any);
+    const activeBattles = this.gapModel
+      .getEntries()
+      .filter((e) => e.battleStatus === 'battle' || e.battleStatus === 'closing')
+      .map((e) => ({ leadCarIdx: e.leadCarIdx, trailCarIdx: e.trailCarIdx }));
     raceState.updateSignals({ activeBattles });
 
     // Gap events
     for (const evt of gapResult.events) {
-      await publishEvent({ type: evt.type as any, sessionId, sessionTime, lapNumber: 0, lapDistPct: 0, payload: evt.payload }, this.commandConn, sessionId, cycleStart);
+      await publishEvent(
+        {
+          type: evt.type as any,
+          sessionId,
+          sessionTime,
+          lapNumber: 0,
+          lapDistPct: 0,
+          payload: evt.payload,
+        },
+        this.commandConn,
+        sessionId,
+        cycleStart,
+      );
     }
 
     // pitWindowOpen
@@ -366,16 +522,43 @@ export class SessionProcessor {
       const fuel = this.fuelModel.getSnapshot();
       const tire = this.tireModel.getSnapshot();
       eventCount.push('hero:pit_window_open');
-      await publishEvent({ type: 'hero:pit_window_open', sessionId, sessionTime, lapNumber: 0, lapDistPct: 0, payload: { lapAge: tire.lapAge, fuelDeficit: fuel.fuelDeficit } }, this.commandConn, sessionId, cycleStart);
+      await publishEvent(
+        {
+          type: 'hero:pit_window_open',
+          sessionId,
+          sessionTime,
+          lapNumber: 0,
+          lapDistPct: 0,
+          payload: { lapAge: tire.lapAge, fuelDeficit: fuel.fuelDeficit },
+        },
+        this.commandConn,
+        sessionId,
+        cycleStart,
+      );
     }
     this.prevPitWindowOpen = pitWindowOpen;
     raceState.updateSignals({ pitWindowOpen });
 
     // Degradation signal event
     const tireSnap = this.tireModel.getSnapshot();
-    if (tireSnap.degradationSignal !== this.prevDegradationSignal && (tireSnap.degradationSignal === 'watch' || tireSnap.degradationSignal === 'critical')) {
+    if (
+      tireSnap.degradationSignal !== this.prevDegradationSignal &&
+      (tireSnap.degradationSignal === 'watch' || tireSnap.degradationSignal === 'critical')
+    ) {
       eventCount.push('hero:pace_degradation');
-      await publishEvent({ type: 'hero:pace_degradation', sessionId, sessionTime, lapNumber: 0, lapDistPct: 0, payload: { signal: tireSnap.degradationSignal, trend: tireSnap.paceDegradationTrend } }, this.commandConn, sessionId, cycleStart);
+      await publishEvent(
+        {
+          type: 'hero:pace_degradation',
+          sessionId,
+          sessionTime,
+          lapNumber: 0,
+          lapDistPct: 0,
+          payload: { signal: tireSnap.degradationSignal, trend: tireSnap.paceDegradationTrend },
+        },
+        this.commandConn,
+        sessionId,
+        cycleStart,
+      );
     }
     this.prevDegradationSignal = tireSnap.degradationSignal;
 
@@ -392,10 +575,18 @@ export class SessionProcessor {
     const cycleLatencyMs = Date.now() - cycleStart;
 
     if (eventCount.length > 0) {
-      logger.debug('[hub] Session processor cycle', { cycleLatencyMs, eventCount: eventCount.length, sessionTime });
+      logger.debug('[hub] Session processor cycle', {
+        cycleLatencyMs,
+        eventCount: eventCount.length,
+        sessionTime,
+      });
     } else {
       // FR-028: no-event cycle log
-      logger.debug('[hub] Session processor cycle (no events)', { cycleLatencyMs, eventCount: 0, sessionTime });
+      logger.debug('[hub] Session processor cycle (no events)', {
+        cycleLatencyMs,
+        eventCount: 0,
+        sessionTime,
+      });
     }
   }
 

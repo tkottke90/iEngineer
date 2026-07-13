@@ -5,9 +5,9 @@ import { publishEvent } from './event-bus.js';
 
 const tracer = trace.getTracer('hub-server');
 
-const G_MS2 = 9.80665; // 1g in m/s²
+const _G_MS2 = 9.80665; // 1g in m/s² — kept for the accel-unit conversion planned in M6
 const BRAKE_THRESHOLD = 0.05;
-const LATACCEL_LIMIT = 0.4;  // g
+const LATACCEL_LIMIT = 0.4; // g
 const THROTTLE_MIN = 0.7;
 const SAFE_DISTANCE_M = 150;
 const INCIDENT_LONG_ACCEL_G = 3.0;
@@ -124,8 +124,17 @@ export class LiveProcessor {
         const snap = raceState.getSnapshot();
         const sessionId = snap.session?.sessionId ?? '';
         publishEvent(
-          { type: 'hero:incident', sessionId, sessionTime, lapNumber: 0, lapDistPct: t.lapDistPct ?? 0, payload: { longAccel: t.longAccel, speedDrop, sessionTime } },
-          this.commandConn, sessionId, Date.now(),
+          {
+            type: 'hero:incident',
+            sessionId,
+            sessionTime,
+            lapNumber: 0,
+            lapDistPct: t.lapDistPct ?? 0,
+            payload: { longAccel: t.longAccel, speedDrop, sessionTime },
+          },
+          this.commandConn,
+          sessionId,
+          Date.now(),
         ).catch(() => {});
         this.incidentSpikeTime = null;
         this.incidentSpikeSpeed = null;

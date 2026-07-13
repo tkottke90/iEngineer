@@ -1,5 +1,12 @@
 import type Redis from 'ioredis';
-import type { RaceState, SessionState, CarState, HeroState, DerivedSignals, WeatherState } from '@iracing-engineer/types';
+import type {
+  RaceState,
+  SessionState,
+  CarState,
+  HeroState,
+  DerivedSignals,
+  WeatherState,
+} from '@iracing-engineer/types';
 
 const state: RaceState = {
   session: null as unknown as SessionState,

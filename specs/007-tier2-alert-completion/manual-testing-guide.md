@@ -152,7 +152,7 @@ pub() { docker compose -f infra/docker-compose.yml exec redis redis-cli PUBLISH 
   (watch key was cleared by `hero:pit_exit`) — the watch alert fires again for
   the new stint. TC-03's audio line plays again.
 
-### TC-07 — Competitor pit entry with unresolvable identity is skipped, not announced
+### TC-07 — Competitor pit entry with no resolvable state is skipped, not announced
 
 - **Action**:
 
@@ -161,9 +161,13 @@ pub() { docker compose -f infra/docker-compose.yml exec redis redis-cli PUBLISH 
   grep "alert_skipped" /tmp/hub-007.log | tail -3
   ```
 
-- **Expected Outcome**: `alert_skipped` with `reason: 'identity-unresolved'`
-  and `carIdx: 42` (no live race state ⇒ no field entry for car 42). No clip is
-  generated — the engineer never announces a placeholder like "Car unknown".
+- **Expected Outcome**: `alert_skipped` with `reason: 'no-hero'` — the identity
+  guard checks `state.hero` FIRST (contract §Identity guard), and with no
+  telemetry flowing there is no hero yet. No clip is generated — the engineer
+  never announces a placeholder like "Car unknown". (The
+  `identity-unresolved` branch — hero present but `state.field[carIdx]`
+  missing or `carNumber` empty — needs live state to stage and is covered by
+  the unit suite, TC-01.)
 
 ### TC-08 — Every synthetic event is accounted for (no silent failures)
 
@@ -293,6 +297,13 @@ mid-field. Hub + Tauri running as in Section 0, telemetry publishing.
 - **Expected Outcome**: Every triggering event has a corresponding decision
   line — no alert-candidate event vanished without a logged outcome.
 
+> **Grep disambiguation**: `gap:closing` / `gap:pulling_away` appear in the log
+> BOTH as gap-model bus events (still published for other consumers) and as
+> monitor-produced ALERTS. They are different things (contract §Compatibility
+> notes). When counting engineer decisions, filter by the decision-log event
+> names (`alert_enqueued`, `gap_alert_suppressed`, …) as the second command
+> does — never by a bare `grep "gap:closing"`.
+
 ---
 
 ## 4. Configuration (Mac or Windows)
@@ -404,9 +415,9 @@ mid-field. Hub + Tauri running as in Section 0, telemetry publishing.
 
 | TC | Pass/Fail | Notes |
 |----|-----------|-------|
-| 01 |  |  |
-| 02 |  |  |
-| 03 |  |  |
+| 01 | PASS | 2026-07-13 (implement session): 207 unit tests green; eslint 0 errors; workspace build + typecheck green; `cargo fmt --check` + `clippy` clean; `cargo test --lib telemetry` 20 passed incl. the 8 weather-field assertions (3 pre-existing Redis round-trip failures unrelated to 007, fail on the pristine tree too) |
+| 02 | PASS | 2026-07-13: zero `TODO M5` / stub returns left in `alert-rules.ts` |
+| 03 |  | needs running hub + Redis (`pub` injection) |
 | 04 |  |  |
 | 05 |  |  |
 | 06 |  |  |
@@ -422,10 +433,10 @@ mid-field. Hub + Tauri running as in Section 0, telemetry publishing.
 | 16 |  |  |
 | 17 |  |  |
 | 18 |  |  |
-| 19 |  |  |
-| 20 |  |  |
-| 21 |  |  |
-| 22 |  |  |
-| 23 |  |  |
-| 24 |  |  |
-| 25 |  |  |
+| 19 | PASS | 2026-07-13: config without the two new fields loads with defaults (3 / 0.5); shipped `engineer-config.json` loads clean |
+| 20 |  | needs live/unit re-verify with overridden threshold |
+| 21 | PASS | 2026-07-13: `relevantPositionRange` 0 and 2.5, `gapHysteresisMarginSeconds` -1 and "x" all throw with the field named |
+| 22 |  | needs running hub + Redis |
+| 23 |  | needs running hub + Redis |
+| 24 |  | needs running hub + browser |
+| 25 |  | live/Windows (tracked by the T034 follow-up issue) |

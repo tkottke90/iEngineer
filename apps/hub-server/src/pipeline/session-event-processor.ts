@@ -20,7 +20,17 @@ export class SessionEventProcessor {
   }
 
   async onSessionEvent(payload: string): Promise<void> {
-    let event: SessionEvent & { driver_info?: { drivers?: Array<{ carIdx: number; userName: string; carNumber: string; teamName: string; carClassID: number }> } };
+    let event: SessionEvent & {
+      driver_info?: {
+        drivers?: Array<{
+          carIdx: number;
+          userName: string;
+          carNumber: string;
+          teamName: string;
+          carClassID: number;
+        }>;
+      };
+    };
     try {
       event = JSON.parse(payload);
     } catch (err) {
@@ -37,7 +47,7 @@ export class SessionEventProcessor {
 
     if (!event.active) {
       // Session ended
-      const session = snapshot.session ?? {} as any;
+      const session = snapshot.session ?? ({} as any);
       raceState.setSession({ ...session, sessionPhase: 'PostRace', playerCarIdx: null } as any);
       const sessionId = session.sessionId ?? String(event.ts);
       const detectedAt = Date.now();
@@ -77,7 +87,12 @@ export class SessionEventProcessor {
           sessionTime: 0,
           lapNumber: 0,
           lapDistPct: 0,
-          payload: { previousSource: 'observer', newSource: 'driver', lapNumber: 0, sessionTime: 0 },
+          payload: {
+            previousSource: 'observer',
+            newSource: 'driver',
+            lapNumber: 0,
+            sessionTime: 0,
+          },
         },
         this.commandConn,
         sessionId,
@@ -113,11 +128,22 @@ export class SessionEventProcessor {
       playerCarIdx,
     } as any);
 
-    logger.info('[hub] Session started', { sessionId, trackName: event.track_name, heroCarIdx: playerCarIdx });
+    logger.info('[hub] Session started', {
+      sessionId,
+      trackName: event.track_name,
+      heroCarIdx: playerCarIdx,
+    });
 
     // Mid-race re-derive: hero carIdx changed
-    if (existingSession?.sessionPhase === 'Racing' && prevPlayerCarIdx !== null && prevPlayerCarIdx !== playerCarIdx) {
-      logger.warn('[hub] Hero carIdx changed during race', { from: prevPlayerCarIdx, to: playerCarIdx });
+    if (
+      existingSession?.sessionPhase === 'Racing' &&
+      prevPlayerCarIdx !== null &&
+      prevPlayerCarIdx !== playerCarIdx
+    ) {
+      logger.warn('[hub] Hero carIdx changed during race', {
+        from: prevPlayerCarIdx,
+        to: playerCarIdx,
+      });
     }
   }
 }

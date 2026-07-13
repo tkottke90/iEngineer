@@ -152,7 +152,7 @@ describe('Redis integration tests', function () {
     await crashCommand.xadd('iracing:telemetry:session', '*', 'payload', payload);
 
     // Run consumer loop briefly (read entries but do NOT xack — simulate crash)
-    const noAckProc = new SessionProcessor(crashCommand, fuelModel, tireModel, gapModel);
+    new SessionProcessor(crashCommand, fuelModel, tireModel, gapModel);
     abortSignal.aborted = false;
     const crashLoop = streamConsumerLoop(crashConsumer, crashCommand,
       async () => {},

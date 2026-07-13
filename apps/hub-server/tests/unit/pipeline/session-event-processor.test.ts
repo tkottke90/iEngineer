@@ -3,7 +3,6 @@ import { expect } from 'chai';
 import { SessionEventProcessor } from '../../../src/pipeline/session-event-processor.js';
 import { FuelModelEngine } from '../../../src/models/fuel-model.js';
 import * as raceState from '../../../src/state/race-state.js';
-import type { SessionState } from '@iracing-engineer/types';
 
 function mockRedis(publishedEvents: unknown[]) {
   return {

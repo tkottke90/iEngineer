@@ -105,7 +105,12 @@ function makeRaceState(): RaceState {
       3: car({ carIdx: 3, carNumber: '31', position: 6, classPosition: 6 }),
     },
     hero,
-    signals: { safeWindowOpen: true, cutWindowOpen: false, activeBattles: [], pitWindowOpen: false },
+    signals: {
+      safeWindowOpen: true,
+      cutWindowOpen: false,
+      activeBattles: [],
+      pitWindowOpen: false,
+    },
   };
 }
 
