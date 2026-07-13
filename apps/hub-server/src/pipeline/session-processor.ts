@@ -1,5 +1,5 @@
 import type Redis from 'ioredis';
-import type { CarState, HeroState, SessionState } from '@iracing-engineer/types';
+import type { CarState, HeroState, SessionState, WeatherState, SkyState } from '@iracing-engineer/types';
 import { SessionFlags } from '@iracing-engineer/types';
 import * as raceState from '../state/race-state.js';
 import { publishEvent } from './event-bus.js';
@@ -42,6 +42,40 @@ function emptyCarState(carIdx: number, info: DriverInfo): CarState {
     lapsSinceLastPit: null,
     estimatedPitDuration: null,
   };
+}
+
+// ── Weather passthrough (007 US4, FR-015/FR-016) ──────────────────────────────
+
+const SKY_STATES: SkyState[] = ['Clear', 'PartlyCloudy', 'MostlyCloudy', 'Overcast'];
+
+// The wire carries the raw SDK field names (AirTemp, …) from the collector's
+// SESSION_RATE_FIELDS; the hub test fixtures use camelCase — accept both.
+function weatherNum(data: Record<string, unknown>, sdkName: string, camelName: string): number | undefined {
+  const v = data[sdkName] ?? data[camelName];
+  return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+}
+
+// Build the partial update from exactly the fields the frame carries — the
+// per-field no-regress guard (FR-016) is this partiality plus updateWeather's
+// merge. Returns null for a weather-less frame (older collector build).
+function extractWeather(data: Record<string, unknown>): Partial<WeatherState> | null {
+  const update: Partial<WeatherState> = {};
+  const map: Array<[keyof WeatherState, string, string]> = [
+    ['tempCelsius', 'AirTemp', 'airTemp'],
+    ['trackTempCelsius', 'TrackTempCrew', 'trackTempCrew'],
+    ['humidity', 'RelativeHumidity', 'relativeHumidity'],
+    ['windSpeedMs', 'WindVel', 'windVel'],
+    ['windDirRad', 'WindDir', 'windDir'],
+    ['precipitation', 'Precipitation', 'precipitation'],
+    ['fogLevel', 'FogLevel', 'fogLevel'],
+  ];
+  for (const [field, sdkName, camelName] of map) {
+    const v = weatherNum(data, sdkName, camelName);
+    if (v !== undefined) (update as Record<string, number>)[field] = v;
+  }
+  const skies = weatherNum(data, 'Skies', 'skies');
+  if (skies !== undefined) update.skies = SKY_STATES[skies] ?? 'Clear';
+  return Object.keys(update).length > 0 ? update : null;
 }
 
 export class SessionProcessor {
@@ -344,6 +378,13 @@ export class SessionProcessor {
       await publishEvent({ type: 'hero:pace_degradation', sessionId, sessionTime, lapNumber: 0, lapDistPct: 0, payload: { signal: tireSnap.degradationSignal, trend: tireSnap.paceDegradationTrend } }, this.commandConn, sessionId, cycleStart);
     }
     this.prevDegradationSignal = tireSnap.degradationSignal;
+
+    // Weather passthrough (007 FR-015): map incoming weather fields into
+    // session.weather BEFORE the KV snapshot write so /api/race-state serves
+    // them this cycle. A weather-less or partial frame preserves previous
+    // values per field (FR-016).
+    const weatherUpdate = extractWeather(data);
+    if (weatherUpdate) raceState.updateWeather(weatherUpdate);
 
     // Write race state KV snapshot (FR-007)
     await raceState.writeKvSnapshot(this.commandConn, sessionId);

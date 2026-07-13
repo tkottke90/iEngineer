@@ -347,6 +347,59 @@ mid-field. Hub + Tauri running as in Section 0, telemetry publishing.
 
 ---
 
+## 6. Weather passthrough (007 US4, FR-015/FR-016/SC-007)
+
+### TC-23 — Synthetic weather frame reaches /api/race-state (Mac)
+
+- **Setup**: a session must be active in the hub (`session.weather` lives on
+  the session). Publish a synthetic session event first if none is:
+
+  ```bash
+  redis-cli XADD iracing:events:session MAXLEN '~' 100 '*' payload '{"active":true,"ts":1720900000000,"track_name":"Spa","player_car_idx":0,"session_type":"Race"}'
+  ```
+
+- **Action**: inject a weather-bearing session-telemetry frame (raw SDK field
+  names, exactly as the collector publishes them), then read the API:
+
+  ```bash
+  redis-cli XADD iracing:telemetry:session MAXLEN '~' 900 '*' _ts 1720900001000 AirTemp 24.5 TrackTempCrew 31.2 RelativeHumidity 0.55 WindVel 3.4 WindDir 1.57 Skies 3 Precipitation 0.25 FogLevel 0.1
+  curl -s http://localhost:5173/api/race-state | jq .session.weather
+  ```
+
+- **Expected Outcome**: live values, not the placeholder —
+  `tempCelsius: 24.5`, `trackTempCelsius: 31.2`, `humidity: 0.55`,
+  `windSpeedMs: 3.4`, `windDirRad: 1.57`, `skies: "Overcast"`,
+  `precipitation: 0.25`, `fogLevel: 0.1`. Then inject a frame with only
+  `AirTemp 19.0` and confirm `tempCelsius` updates while every other field
+  keeps its value (FR-016 per-field no-regress).
+
+### TC-24 — file:// overlay reads the API cross-origin (Mac, SC-007)
+
+- **Action**: open `weather.html` (streaming-assets volume) directly via
+  `file://` in a browser, with its fetch pointed at
+  `http://localhost:5173/api/race-state` (or run
+  `fetch('http://localhost:5173/api/race-state').then(r => r.json())` from any
+  `file://` page's dev-tools console).
+- **Expected Outcome**: the response resolves with the weather JSON and **no
+  CORS error** in the console (`Access-Control-Allow-Origin: *` — the
+  `Origin: null` case). This is SC-007's `file://` clause, testable against
+  the TC-23 synthetic frame with no iRacing needed.
+
+### TC-25 — Live weather in observer mode **[needs iRacing/Windows]**
+
+- **Action**: join any session as a spectator (observer mode — no hero car) at
+  a track with non-trivial weather (overcast or wet if available). With the
+  collector running, poll `curl -s http://<hub>:5173/api/race-state | jq .session.weather`
+  and compare against the in-sim weather display; also load `weather.html`
+  from OBS on `http://10.0.0.9` and confirm it renders without CORS errors.
+- **Expected Outcome**: values match the sim's display (within rounding) and
+  update at session cadence; weather populates despite there being no hero car
+  (global vars, FR-015). While here, verify the eight field names against
+  `sdk.enumerate_vars()` and confirm `WindDir`'s from/to convention (T025) —
+  record it in the `WeatherState.windDirRad` doc comment.
+
+---
+
 ## Result log
 
 | TC | Pass/Fail | Notes |
@@ -373,3 +426,6 @@ mid-field. Hub + Tauri running as in Section 0, telemetry publishing.
 | 20 |  |  |
 | 21 |  |  |
 | 22 |  |  |
+| 23 |  |  |
+| 24 |  |  |
+| 25 |  |  |

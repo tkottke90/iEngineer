@@ -1,5 +1,5 @@
 import type Redis from 'ioredis';
-import type { RaceState, SessionState, CarState, HeroState, DerivedSignals } from '@iracing-engineer/types';
+import type { RaceState, SessionState, CarState, HeroState, DerivedSignals, WeatherState } from '@iracing-engineer/types';
 
 const state: RaceState = {
   session: null as unknown as SessionState,
@@ -27,6 +27,14 @@ export function setHeroState(hero: HeroState | null): void {
 
 export function updateSignals(signals: Partial<DerivedSignals>): void {
   state.signals = { ...state.signals, ...signals };
+}
+
+// 007 US4 (FR-015/FR-016): merge live weather into the session. Partial by
+// design — a frame updates exactly the fields it carries; absent fields keep
+// their previous values (per-field no-regress guard).
+export function updateWeather(update: Partial<WeatherState>): void {
+  if (!state.session) return;
+  state.session.weather = { ...state.session.weather, ...update };
 }
 
 export function getSnapshot(): RaceState {

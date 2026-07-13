@@ -101,6 +101,18 @@ pub static SESSION_RATE_FIELDS: LazyLock<HashSet<&'static str>> = LazyLock::new(
         "PitSvFlags",
         "PitOptRepairLeft",
         "PitRepairLeft",
+        // Weather (007 US4 / FR-015) — global sim vars, present in driver AND
+        // observer mode, published unconditionally. Names to be verified
+        // against sdk.enumerate_vars() on the next Windows session (007 T025;
+        // confirm WindDir's from/to convention there too).
+        "AirTemp",
+        "TrackTempCrew",
+        "RelativeHumidity",
+        "WindVel",
+        "WindDir",
+        "Skies",
+        "Precipitation",
+        "FogLevel",
     ]
     .into_iter()
     .collect()
@@ -666,6 +678,23 @@ mod tests {
             SESSION_RATE_FIELDS.contains("FuelLevel"),
             "FuelLevel missing from SESSION_RATE_FIELDS — verify field name capitalization against sdk.enumerate_vars()"
         );
+
+        // 007 US4: the eight weather vars ride the session stream (FR-015).
+        for weather_field in [
+            "AirTemp",
+            "TrackTempCrew",
+            "RelativeHumidity",
+            "WindVel",
+            "WindDir",
+            "Skies",
+            "Precipitation",
+            "FogLevel",
+        ] {
+            assert!(
+                SESSION_RATE_FIELDS.contains(weather_field),
+                "{weather_field} missing from SESSION_RATE_FIELDS — verify field name capitalization against sdk.enumerate_vars()"
+            );
+        }
 
         let fields = vec![
             ("_ts", "1719619200456"),

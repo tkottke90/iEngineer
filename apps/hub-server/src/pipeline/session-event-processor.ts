@@ -97,7 +97,18 @@ export class SessionEventProcessor {
       lapsRemaining: existingSession?.lapsRemaining ?? null,
       timeRemaining: existingSession?.timeRemaining ?? null,
       flags: existingSession?.flags ?? 0,
-      weather: existingSession?.weather ?? { tempCelsius: 0, humidity: 0, windSpeedMs: 0, skies: 'Clear' },
+      // Placeholder until the first weather-bearing telemetry frame
+      // (007 FR-016: only ever visible pre-weather, never a mid-session regression).
+      weather: existingSession?.weather ?? {
+        tempCelsius: 0,
+        trackTempCelsius: 0,
+        humidity: 0,
+        windSpeedMs: 0,
+        windDirRad: 0,
+        skies: 'Clear',
+        precipitation: 0,
+        fogLevel: 0,
+      },
       sessionStartWallClock: event.ts,
       playerCarIdx,
     } as any);

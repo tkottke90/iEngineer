@@ -27,11 +27,33 @@ export const SessionFlags = {
 
 export type SessionFlagKey = keyof typeof SessionFlags;
 
+// Sky state mapped from iRacing's 0–3 `Skies` enum; out-of-range → 'Clear'.
+export type SkyState = 'Clear' | 'PartlyCloudy' | 'MostlyCloudy' | 'Overcast';
+
+// Live sim weather (007 US4 / FR-015). Consumed by out-of-repo stream
+// overlays via GET /api/race-state — these doc comments are the overlay's
+// only unit contract, so every field states units/range/convention.
 export interface WeatherState {
+  /** AIR temperature, °C (iRacing `AirTemp`). */
   tempCelsius: number;
+  /** Track surface temperature, °C (`TrackTempCrew`). */
+  trackTempCelsius: number;
+  /** Relative humidity, 0–1 (`RelativeHumidity`). */
   humidity: number;
+  /** Wind speed, m/s (`WindVel`). */
   windSpeedMs: number;
-  skies: string;
+  /**
+   * Wind direction, radians (`WindDir`). From/to convention is the iRacing
+   * SDK's — confirm against the SDK var description + in-sim wind display
+   * during the 007 T025 Windows check and update this comment.
+   */
+  windDirRad: number;
+  /** Sky state (see SkyState). */
+  skies: SkyState;
+  /** Precipitation intensity, 0–1 (`Precipitation`). */
+  precipitation: number;
+  /** Fog level, 0–1 (`FogLevel`). */
+  fogLevel: number;
 }
 
 export interface SessionState {

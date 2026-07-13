@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { writeFile, unlink } from 'node:fs/promises';
 import { parseBuffer } from 'music-metadata';
 import { getSnapshot } from './state/race-state.js';
@@ -12,6 +13,12 @@ import { handleVoiceProfileUpload } from './engineer/voice-profile.js';
 // mounts this app ahead of its reserved /__loaders path
 // and the SSR catch-all. See https://framework.sbesh.com/docs/hono-middleware
 const app = new Hono();
+
+// Allow browser dashboards to fetch telemetry cross-origin (e.g. a page served
+// from another LAN host or opened via file://, which sends Origin: null).
+// Wildcard is acceptable: these endpoints are read-only LAN telemetry with no
+// cookies or credentials.
+app.use('/api/*', cors());
 
 app.get('/healthz', (c) => c.text('ok'));
 

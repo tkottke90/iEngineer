@@ -43,6 +43,27 @@ XADD iracing:telemetry:session MAXLEN ~ 900 *
   CarIdxPosition "[1,3,2,4]"
 ```
 
+#### Weather fields (007 US4, FR-015)
+
+Since spec 007, `iracing:telemetry:session` additionally carries eight weather
+fields — global sim variables published unconditionally (present in driver AND
+observer mode, not hero-gated). Absent fields on older collector builds are
+tolerated: the hub preserves the previous value per field (FR-016).
+
+| Field | Unit / range | Maps to (`session.weather`) |
+|-------|--------------|------------------------------|
+| `AirTemp` | °C | `tempCelsius` |
+| `TrackTempCrew` | °C | `trackTempCelsius` |
+| `RelativeHumidity` | 0–1 | `humidity` |
+| `WindVel` | m/s | `windSpeedMs` |
+| `WindDir` | radians (SDK convention) | `windDirRad` |
+| `Skies` | 0–3 enum | `skies` (`Clear` / `PartlyCloudy` / `MostlyCloudy` / `Overcast`; out-of-range → `Clear`) |
+| `Precipitation` | 0–1 | `precipitation` |
+| `FogLevel` | 0–1 | `fogLevel` |
+
+The mapped values are served on `GET /api/race-state` (CORS-enabled) at the
+KV-snapshot cadence for consumption by out-of-repo stream overlays.
+
 ---
 
 ## Publisher Guarantees
