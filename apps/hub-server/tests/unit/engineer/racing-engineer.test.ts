@@ -125,7 +125,9 @@ interface Harness {
   conn: FakeRedis;
   engineer: RacingEngineerService;
   raceState: RaceState;
+  queue: PriorityMessageQueue;
   logs: Array<{ msg: string; meta: Record<string, unknown> | undefined }>;
+  clipTexts: string[]; // every text handed to the fake TTS, in dispatch order
   refs: () => AudioClipRef[];
 }
 
@@ -141,24 +143,32 @@ afterEach(async () => {
   active = null;
 });
 
-async function startHarness(config: EngineerConfig = CONFIG): Promise<Harness> {
+async function startHarness(
+  config: EngineerConfig = CONFIG,
+  zones: Parameters<PriorityMessageQueue['dequeueNext']>[1] = [],
+): Promise<Harness> {
   const conn = new FakeRedis();
   const raceState = makeRaceState();
+  const queue = new PriorityMessageQueue();
   const logs: Harness['logs'] = [];
   (logger as unknown as { info: (m: string, meta?: Record<string, unknown>) => void }).info = (
     m,
     meta,
   ) => logs.push({ msg: m, meta });
+  const clipTexts: string[] = [];
   const engineer = new RacingEngineerService(
     conn as unknown as Redis,
     new AudioStore(config.audioIdleCleanupIntervalMs),
-    new PriorityMessageQueue(),
+    queue,
     new DedupTracker(),
     () => raceState,
-    [],
+    zones,
     config,
     null,
-    async () => Buffer.from('mp3'),
+    async (text) => {
+      clipTexts.push(text);
+      return Buffer.from('mp3');
+    },
   );
   active = engineer;
   await engineer.start();
@@ -166,7 +176,9 @@ async function startHarness(config: EngineerConfig = CONFIG): Promise<Harness> {
     conn,
     engineer,
     raceState,
+    queue,
     logs,
+    clipTexts,
     refs: () =>
       conn.published
         .filter((p) => p.channel === 'voice:audio')
@@ -223,6 +235,78 @@ describe('racing-engineer wiring — competitor pit clear signals (US1, FR-003)'
     h.conn.deliver('hub:events', JSON.stringify(ev('competitor:pit_entry', { carIdx: 5 })));
     await waitUntil(() => h.refs().length >= 2);
     expect(h.refs().every((r) => r.eventType === 'competitor:pit_entry')).to.be.true;
+  });
+
+  it('T017/US2: gap monitor runs on the dispatch tick and a fired alert flows through TTS dispatch', async () => {
+    const h = await startHarness();
+    // Put a same-class car directly ahead of the hero (P7), 3.0s up the road.
+    h.raceState.hero!.gapToLeader = 50;
+    h.raceState.field[0].gapToLeader = 50;
+    h.raceState.field[7] = car({
+      carIdx: 7,
+      carNumber: '9',
+      position: 7,
+      classPosition: 7,
+      gapToLeader: 47, // gapAhead = 3.0 ≥ T → arms on the next tick
+    });
+    await new Promise((r) => setTimeout(r, 250)); // let the monitor observe ≥ T
+    h.raceState.field[7].gapToLeader = 48.2; // gapAhead = 1.8 — crossing
+    await waitUntil(() => h.refs().length >= 1);
+    const ref = h.refs()[0];
+    expect(ref.eventType).to.equal('gap:closing');
+    expect(ref.tier).to.equal(2);
+    const enq = h.logs.find((l) => l.meta?.event === 'alert_enqueued');
+    expect(enq!.meta!.alertType).to.equal('gap:closing');
+  });
+
+  it('T017/SC-002 (hub-side bound): an eligible Tier 2 alert publishes within ~one dispatch tick', async () => {
+    const h = await startHarness();
+    const enqueuedAt = Date.now();
+    h.queue.enqueue({
+      tier: 2,
+      eventType: 'hero:pit_window_open',
+      messageText: 'Pit window is open — you can box this lap',
+      lapNumber: 5,
+      sessionTime: 100,
+      dedupKey: 'hero:pit_window_open',
+    });
+    await waitUntil(() => h.refs().length >= 1);
+    const elapsed = Date.now() - enqueuedAt;
+    // 100ms dispatch cadence + fake-TTS + scheduling slack. This is the
+    // hub-side half of SC-002; the audible 3s bound needs the live run (T034).
+    expect(elapsed).to.be.lessThan(500);
+  });
+
+  it('T017/edge: gap alert held through a blackout zone delivers at the next safe window with trigger-time values', async () => {
+    // Hero sits at lapDistPct 0.1 — inside the zone. Tier 2 is gated.
+    const h = await startHarness(CONFIG, [{ lapDistPctStart: 0.05, lapDistPctEnd: 0.2 }]);
+    h.raceState.hero!.gapToLeader = 50;
+    h.raceState.field[0].gapToLeader = 50;
+    h.raceState.field[7] = car({
+      carIdx: 7,
+      carNumber: '9',
+      position: 7,
+      classPosition: 7,
+      gapToLeader: 47,
+    });
+    await new Promise((r) => setTimeout(r, 250)); // arm
+    h.raceState.field[7].gapToLeader = 48.2; // crossing at 1.8s — fires into the gated queue
+    await waitUntil(() => h.logs.some((l) => l.meta?.event === 'alert_enqueued'));
+    // Gap drifts into the dead band while blacked out; nothing published yet.
+    h.raceState.field[7].gapToLeader = 47.8;
+    await new Promise((r) => setTimeout(r, 250));
+    expect(h.refs().length).to.equal(0);
+    // Zone clears → delivery, carrying the gap value from trigger time (1.8).
+    h.raceState.hero!.lapDistPct = 0.5;
+    await waitUntil(() => h.refs().length >= 1);
+    const published = h.conn.published
+      .filter((p) => p.channel === 'voice:audio')
+      .map((p) => JSON.parse(p.message) as AudioClipRef);
+    expect(published[0].eventType).to.equal('gap:closing');
+    // Trigger-time value preserved through the queue (stale-trigger edge case):
+    // the delivered text carries the 1.8s gap from the crossing, not the
+    // dead-band value the gap drifted to while blacked out.
+    expect(h.clipTexts[0]).to.equal('Gap closing — 1.8 seconds to the car ahead');
   });
 
   it('coalesced-then-suppressed ordering: Energy=1 logs alerts_coalesced then ONE alert_suppressed', async () => {

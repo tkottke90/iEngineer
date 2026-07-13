@@ -10,9 +10,11 @@ import type {
   EngineerQuery,
   Tier3Type,
 } from '@iracing-engineer/types';
+import type { QueuedAlert } from '@iracing-engineer/types';
 import { AudioStore } from './audio-store.js';
 import { PriorityMessageQueue } from './message-queue.js';
 import { DedupTracker } from './dedup-tracker.js';
+import { GapAlertMonitor } from './gap-alert-monitor.js';
 import { evaluateTier1, evaluateTier2 } from './alert-rules.js';
 import { generateClip } from './tts-client.js';
 import { shouldSuppressAlert, parsePersonality } from './personality-config.js';
@@ -58,6 +60,10 @@ export class RacingEngineerService {
   private _synthQueue: SynthRequest[] = [];
   private _synthInFlight = false;
   private _lapCompleteCount = 0;
+  // T2-04/05 (007 US2): state-driven gap alerts, evaluated each dispatch tick.
+  // Fired alerts route through enqueueAlert; the monitor's own arm/disarm state
+  // is the dedup (DedupTracker bypassed by design — research.md R3).
+  private gapMonitor: GapAlertMonitor;
 
   constructor(
     private commandConn: Redis,
@@ -70,7 +76,23 @@ export class RacingEngineerService {
     private synthesizer: Tier3Synthesizer | null = null,
     private generateClipFn: ClipGenerator = generateClip,
     private overrides: OverrideTracker | null = null,
-  ) {}
+  ) {
+    this.gapMonitor = new GapAlertMonitor(config, getRaceState, (alert) =>
+      this.enqueueAlert(alert),
+    );
+  }
+
+  // Shared enqueue + FR-012 accounting for rule-path and monitor alerts.
+  private enqueueAlert(alert: QueuedAlert): void {
+    this.queue.enqueue(alert);
+    logger.info('[engineer] Alert enqueued', {
+      component: 'engineer',
+      event: 'alert_enqueued',
+      alertType: alert.eventType,
+      tier: alert.tier,
+      lapNumber: alert.lapNumber,
+    });
+  }
 
   async start(): Promise<void> {
     // A subscribed ioredis connection cannot issue other commands, so use a
@@ -281,14 +303,7 @@ export class RacingEngineerService {
       return;
     }
     this.dedup.recordFired(alert.eventType, alert.lapNumber, scope);
-    this.queue.enqueue(alert);
-    logger.info('[engineer] Alert enqueued', {
-      component: 'engineer',
-      event: 'alert_enqueued',
-      alertType: alert.eventType,
-      tier: alert.tier,
-      lapNumber: alert.lapNumber,
-    });
+    this.enqueueAlert(alert);
 
     // The pit-window-open alert IS the pit recommendation (US4) — log it so the
     // override tracker can resolve it as followed/overridden.
@@ -343,6 +358,10 @@ export class RacingEngineerService {
   }
 
   private dispatchTick(): void {
+    // Gap monitor runs BEFORE dequeue (plan §Gap alerts) so a crossing detected
+    // this tick is dispatchable this tick.
+    this.gapMonitor.tick();
+
     if (this._generating) return;
 
     const lapDistPct = this.getRaceState().hero?.lapDistPct ?? 0;
